@@ -1,54 +1,131 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import VacanciesTable from "../components/tables/VacanciesTable";
-import VacanciesCards from "../components/cards/VacanciesCards";
-import {
-  getDepartmentById,
-  getVacanciesByDepartmentId,
-} from "../data/sampleData";
+import ManagementTable from "../components/tables/ManagementTable";
+import { getDepartmentApi, getManagementApi } from "../utils/api";
+import toast from "react-hot-toast";
 
 const DepartmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState("table");
   const [department, setDepartment] = useState(null);
-  const [vacancies, setVacancies] = useState([]);
+  const [management, setManagement] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const dept = getDepartmentById(id);
-    const deptVacancies = getVacanciesByDepartmentId(id);
+    fetchDepartmentAndManagement();
+  }, [id]);
 
-    if (dept) {
-      setDepartment(dept);
-      setVacancies(deptVacancies);
-    } else {
-      navigate("/departments");
+  const fetchDepartmentAndManagement = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch department data
+      const departmentData = await getDepartmentApi(id);
+      setDepartment(departmentData);
+
+      // Fetch all management data
+      const allManagement = await getManagementApi();
+
+      // Filter management by department ID
+      const filteredManagement = allManagement.filter(
+        (item) => item.department === parseInt(id)
+      );
+
+      setManagement(filteredManagement);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError(error.message);
+      toast.error("Ma'lumotlarni yuklashda xatolik yuz berdi");
+    } finally {
+      setLoading(false);
     }
-  }, [id, navigate]);
+  };
 
   const handleEdit = (updatedData) => {
-    setVacancies((prev) =>
-      prev.map((vacancy) =>
-        vacancy.id === updatedData.id ? { ...vacancy, ...updatedData } : vacancy
+    setManagement((prev) =>
+      prev.map((item) =>
+        item.id === updatedData.id ? { ...item, ...updatedData } : item
       )
     );
   };
 
-  const handleDelete = (vacancyId) => {
-    setVacancies((prev) => prev.filter((vacancy) => vacancy.id !== vacancyId));
+  const handleDelete = (managementId) => {
+    setManagement((prev) => prev.filter((item) => item.id !== managementId));
   };
 
-  if (!department) {
+  const handleViewDetails = (managementId) => {
+    // For now, just show a toast message
+    toast.success(`Boshqarma ID: ${managementId} tafsilotlari ko'rsatiladi`);
+    // TODO: Navigate to management details page when created
+  };
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex items-center justify-center py-12">
+        <div className="flex items-center space-x-2">
+          <svg
+            className="animate-spin h-8 w-8 text-blue-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <span className="text-gray-600 dark:text-gray-400">
             Yuklanmoqda...
-          </p>
+          </span>
         </div>
       </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <svg
+          className="mx-auto h-12 w-12 text-red-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+          Xatolik yuz berdi
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error}</p>
+        <button
+          onClick={fetchDepartmentAndManagement}
+          className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Qayta urinish
+        </button>
+      </div>
+    );
+  }
+
+  if (!department) {
+    navigate("/departments");
+    return null;
   }
 
   return (
@@ -79,63 +156,15 @@ const DepartmentDetails = () => {
               Departament: {department.name}
             </h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Vakansiyalar va lavozimlar
+              Boshqarmalar va tashkilotlar
             </p>
           </div>
         </div>
 
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-          {/* View Toggle */}
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                viewMode === "table"
-                  ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300"
-              }`}
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 10h18M3 14h18m-9-4v8m-7 0V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode("card")}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                viewMode === "card"
-                  ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300"
-              }`}
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Add Vacancy Button */}
+          {/* Add Management Button */}
           <Link
-            to={`/departments/${id}/new-vacancy`}
+            to={`/departments/${id}/new-management`}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
           >
             <svg
@@ -151,40 +180,57 @@ const DepartmentDetails = () => {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            + Yangi vakansiya qo'shish
+            Yangi boshqarma qo'shish
           </Link>
         </div>
       </div>
 
       {/* Department Info */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Description */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Vazifalari:
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Bo'lim tavsifi:
             </h3>
-            <p className="text-sm text-gray-900 dark:text-gray-100">
-              {department.responsibilities}
+            <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
+              {department.description}
             </p>
           </div>
+
+          {/* Tasks */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Majburiyatlari:
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Bo'lim vazifalari ({department.department_tasks?.length || 0} ta):
             </h3>
-            <p className="text-sm text-gray-900 dark:text-gray-100">
-              {department.obligations}
-            </p>
+            <div className="space-y-3">
+              {department.department_tasks?.map((task, index) => (
+                <div
+                  key={index}
+                  className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                >
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-semibold">
+                      {index + 1}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
+                    {task.task}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Vacancies */}
+      {/* Management */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Vakansiyalar
+          Boshqarmalar
         </h2>
 
-        {vacancies.length === 0 ? (
+        {management.length === 0 ? (
           <div className="text-center py-12">
             <svg
               className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"
@@ -196,34 +242,24 @@ const DepartmentDetails = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
               />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-              Vakansiyalar yo'q
+              Boshqarmalar yo'q
             </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Birinchi vakansiyani qo'shish uchun tugmani bosing.
+              Birinchi boshqarmani qo'shish uchun tugmani bosing.
             </p>
           </div>
         ) : (
-          <>
-            {viewMode === "table" ? (
-              <VacanciesTable
-                vacancies={vacancies}
-                departmentId={id}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ) : (
-              <VacanciesCards
-                vacancies={vacancies}
-                departmentId={id}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            )}
-          </>
+          <ManagementTable
+            management={management}
+            departmentId={id}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onViewDetails={handleViewDetails}
+          />
         )}
       </div>
     </div>

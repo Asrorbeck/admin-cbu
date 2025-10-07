@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import toast from "react-hot-toast";
 
 const Header = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   // Load theme from localStorage on component mount
   useEffect(() => {
@@ -39,8 +42,8 @@ const Header = () => {
   };
 
   const handleLogout = () => {
-    // Logout logic
-    console.log("Logout clicked");
+    logout();
+    toast.success("Successfully logged out");
     setIsProfileOpen(false);
   };
 
@@ -121,14 +124,16 @@ const Header = () => {
               className="flex items-center space-x-3 p-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
             >
               <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">A</span>
+                <span className="text-white text-sm font-medium">
+                  {user?.name?.charAt(0) || "A"}
+                </span>
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  Admin User
+                  {user?.name || "Admin User"}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  HR Manager
+                  {user?.role || "HR Manager"}
                 </p>
               </div>
               <svg
@@ -160,14 +165,16 @@ const Header = () => {
                   <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center space-x-3">
                       <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white font-medium">A</span>
+                        <span className="text-white font-medium">
+                          {user?.name?.charAt(0) || "A"}
+                        </span>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Admin User
+                          {user?.name || "Admin User"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          admin@example.com
+                          {user?.username || "admin@example.com"}
                         </p>
                       </div>
                     </div>

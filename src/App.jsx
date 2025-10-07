@@ -1,30 +1,103 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
 import Departments from "./pages/Departments";
 import DepartmentDetails from "./pages/DepartmentDetails";
 import NewDepartment from "./pages/NewDepartment";
 import NewVacancy from "./pages/NewVacancy";
+import NewManagement from "./pages/NewManagement";
+
+function AppRoutes() {
+  const { user } = useAuth();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/" replace /> : <Login />}
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Departments />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/departments"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Departments />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/departments/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewDepartment />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/departments/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <DepartmentDetails />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/departments/:id/new-vacancy"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewVacancy />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/departments/:id/new-management"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewManagement />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Departments />} />
-            <Route path="/departments" element={<Departments />} />
-            <Route path="/departments/new" element={<NewDepartment />} />
-            <Route path="/departments/:id" element={<DepartmentDetails />} />
-            <Route
-              path="/departments/:id/new-vacancy"
-              element={<NewVacancy />}
-            />
-          </Routes>
-        </Layout>
-        <Toaster position="top-right" />
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <AppRoutes />
+          <Toaster position="top-right" />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 

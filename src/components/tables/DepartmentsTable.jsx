@@ -2,7 +2,6 @@ import { useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import toast from "react-hot-toast";
 import EditDepartmentModal from "../modals/EditDepartmentModal";
-import { updateDepartment, deleteDepartment } from "../../data/sampleData";
 
 const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
   const [editingDepartment, setEditingDepartment] = useState(null);
@@ -12,14 +11,9 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
   };
 
   const handleSaveEdit = (updatedData) => {
-    const success = updateDepartment(editingDepartment.id, updatedData);
-    if (success) {
-      toast.success("Bo'lim muvaffaqiyatli yangilandi");
-      onEdit(updatedData);
-      setEditingDepartment(null);
-    } else {
-      toast.error("Xatolik yuz berdi");
-    }
+    toast.success("Bo'lim muvaffaqiyatli yangilandi");
+    onEdit(updatedData);
+    setEditingDepartment(null);
   };
 
   const handleDelete = (department) => {
@@ -37,13 +31,8 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
           label: "O'chirish",
           onClick: () => {
             console.log("Delete confirmed");
-            const success = deleteDepartment(department.id);
-            if (success) {
-              toast.success("Bo'lim muvaffaqiyatli o'chirildi");
-              onDelete(department.id);
-            } else {
-              toast.error("Xatolik yuz berdi");
-            }
+            toast.success("Bo'lim muvaffaqiyatli o'chirildi");
+            onDelete(department.id);
           },
         },
       ],
@@ -67,10 +56,10 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   Bo'lim nomi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Vazifalari
+                  Tavsifi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Majburiyatlari
+                  Vazifalar soni
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Amallar
@@ -93,12 +82,14 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-gray-300 max-w-xs truncate">
-                      {department.responsibilities}
+                      {department.description}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-gray-300 max-w-xs truncate">
-                      {department.obligations}
+                      {department.department_tasks?.length > 0
+                        ? `${department.department_tasks.length} ta vazifa`
+                        : "Vazifalar yo'q"}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
