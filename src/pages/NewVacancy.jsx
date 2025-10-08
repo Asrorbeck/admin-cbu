@@ -67,7 +67,7 @@ const NewVacancy = () => {
         job_tasks: formData.job_tasks.trim(),
         is_active: formData.is_active,
         application_deadline: formData.application_deadline,
-        management: formData.management,
+        management_id: formData.management,
       };
 
       console.log("Sending vacancy data:", vacancyData);
