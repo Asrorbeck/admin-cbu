@@ -87,8 +87,12 @@ export const deleteDepartmentApi = async (id) => {
 };
 
 // Management API calls
-export const getManagementApi = async () => {
-  return apiRequest(API_CONFIG.ENDPOINTS.MANAGEMENT, {
+export const getManagementApi = async (departmentId = null) => {
+  const endpoint = departmentId
+    ? `${API_CONFIG.ENDPOINTS.MANAGEMENT}?department_id=${departmentId}`
+    : API_CONFIG.ENDPOINTS.MANAGEMENT;
+
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };
@@ -115,6 +119,69 @@ export const updateManagementApi = async (id, data) => {
 
 export const deleteManagementApi = async (id) => {
   return apiRequest(`${API_CONFIG.ENDPOINTS.MANAGEMENT}${id}/`, {
+    method: "DELETE",
+  });
+};
+
+// Vacancy API calls
+export const getVacanciesApi = async (managementId = null) => {
+  const endpoint = managementId
+    ? `${API_CONFIG.ENDPOINTS.VACANCIES}?management_id=${managementId}`
+    : API_CONFIG.ENDPOINTS.VACANCIES;
+
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+export const getVacancyByIdApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.VACANCIES}${id}/`, {
+    method: "GET",
+  });
+};
+
+export const createVacancyApi = async (data) => {
+  return apiRequest(API_CONFIG.ENDPOINTS.VACANCIES, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateVacancyApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.VACANCIES}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteVacancyApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.VACANCIES}${id}/`, {
+    method: "DELETE",
+  });
+};
+
+// Applications API calls
+export const getApplicationsApi = async () => {
+  return apiRequest("/apply-jobs/", {
+    method: "GET",
+  });
+};
+
+export const getApplicationByIdApi = async (id) => {
+  return apiRequest(`/apply-jobs/${id}/`, {
+    method: "GET",
+  });
+};
+
+export const updateApplicationApi = async (id, data) => {
+  return apiRequest(`/apply-jobs/${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteApplicationApi = async (id) => {
+  return apiRequest(`/apply-jobs/${id}/`, {
     method: "DELETE",
   });
 };

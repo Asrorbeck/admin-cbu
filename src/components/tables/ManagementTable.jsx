@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { confirmAlert } from "react-confirm-alert";
 import toast from "react-hot-toast";
 
@@ -9,12 +10,14 @@ const ManagementTable = ({
   onDelete,
   onViewDetails,
 }) => {
+  const navigate = useNavigate();
+
   const handleEdit = (managementItem) => {
     onEdit(managementItem);
   };
 
   const handleViewDetails = (managementItem) => {
-    onViewDetails(managementItem.id);
+    navigate(`/management/${managementItem.id}`);
   };
 
   const handleDelete = (managementItem) => {

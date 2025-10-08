@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import ManagementTable from "../components/tables/ManagementTable";
+import EditManagementModal from "../components/modals/EditManagementModal";
 import { getDepartmentApi, getManagementApi } from "../utils/api";
 import toast from "react-hot-toast";
 
@@ -11,9 +12,12 @@ const DepartmentDetails = () => {
   const [management, setManagement] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedManagement, setSelectedManagement] = useState(null);
 
   useEffect(() => {
     fetchDepartmentAndManagement();
+    document.title = "Bo'lim tafsilotlari - Markaziy Bank Administratsiyasi";
   }, [id]);
 
   const fetchDepartmentAndManagement = async () => {
@@ -25,13 +29,8 @@ const DepartmentDetails = () => {
       const departmentData = await getDepartmentApi(id);
       setDepartment(departmentData);
 
-      // Fetch all management data
-      const allManagement = await getManagementApi();
-
-      // Filter management by department ID
-      const filteredManagement = allManagement.filter(
-        (item) => item.department === parseInt(id)
-      );
+      // Fetch management data filtered by department ID
+      const filteredManagement = await getManagementApi(id);
 
       setManagement(filteredManagement);
     } catch (error) {
@@ -43,22 +42,27 @@ const DepartmentDetails = () => {
     }
   };
 
-  const handleEdit = (updatedData) => {
+  const handleEdit = (managementItem) => {
+    setSelectedManagement(managementItem);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = (updatedData) => {
     setManagement((prev) =>
       prev.map((item) =>
-        item.id === updatedData.id ? { ...item, ...updatedData } : item
+        item.id === selectedManagement.id ? { ...item, ...updatedData } : item
       )
     );
+    setSelectedManagement(null);
+  };
+
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedManagement(null);
   };
 
   const handleDelete = (managementId) => {
     setManagement((prev) => prev.filter((item) => item.id !== managementId));
-  };
-
-  const handleViewDetails = (managementId) => {
-    // For now, just show a toast message
-    toast.success(`Boshqarma ID: ${managementId} tafsilotlari ko'rsatiladi`);
-    // TODO: Navigate to management details page when created
   };
 
   if (loading) {
@@ -258,10 +262,17 @@ const DepartmentDetails = () => {
             departmentId={id}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onViewDetails={handleViewDetails}
           />
         )}
       </div>
+
+      {/* Edit Management Modal */}
+      <EditManagementModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModal}
+        management={selectedManagement}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 };

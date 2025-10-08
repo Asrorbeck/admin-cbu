@@ -5,6 +5,7 @@ export const API_CONFIG = {
     LOGIN: "/token/login/",
     DEPARTMENTS: "/departments/",
     MANAGEMENT: "/management/",
+    VACANCIES: "/vacancies/",
   },
 };
 

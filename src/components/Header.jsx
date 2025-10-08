@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
 
@@ -7,6 +7,27 @@ const Header = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const location = useLocation();
+
+  // Get current section title based on pathname
+  const getCurrentSectionTitle = () => {
+    const pathname = location.pathname;
+
+    if (pathname === "/murojaatlar") {
+      return "Murojaatlar bo'limi boshqaruv paneli";
+    } else if (pathname === "/arizalar") {
+      return "Arizalar bo'limi boshqaruv paneli";
+    } else if (
+      pathname === "/kadrlar" ||
+      pathname === "/" ||
+      pathname.startsWith("/departments") ||
+      pathname.startsWith("/management")
+    ) {
+      return "Kadrlar bo'limi boshqaruv paneli";
+    } else {
+      return "Markaziy Bank Administratsiyasi";
+    }
+  };
 
   // Load theme from localStorage on component mount
   useEffect(() => {
@@ -52,9 +73,25 @@ const Header = () => {
       <div className="flex items-center justify-between">
         {/* Left side - Breadcrumb or title */}
         <div className="flex items-center space-x-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            HR Boshqaruv Paneli
-          </h2>
+          <div className="flex items-center space-x-3">
+            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg
+                className="h-5 w-5 text-white"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Markaziy Bank Administratsiyasi
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {getCurrentSectionTitle()}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right side - Actions */}

@@ -14,6 +14,10 @@ import DepartmentDetails from "./pages/DepartmentDetails";
 import NewDepartment from "./pages/NewDepartment";
 import NewVacancy from "./pages/NewVacancy";
 import NewManagement from "./pages/NewManagement";
+import ManagementDetails from "./pages/ManagementDetails";
+import Murojaatlar from "./pages/Murojaatlar";
+import KadrlarDashboard from "./pages/KadrlarDashboard";
+import Arizalar from "./pages/Arizalar";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -29,7 +33,17 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <Departments />
+              <KadrlarDashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kadrlar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <KadrlarDashboard />
             </Layout>
           </ProtectedRoute>
         }
@@ -80,6 +94,46 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <NewManagement />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/management/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ManagementDetails />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/management/:id/new-vacancy"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewVacancy />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/murojaatlar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Murojaatlar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/arizalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Arizalar />
             </Layout>
           </ProtectedRoute>
         }

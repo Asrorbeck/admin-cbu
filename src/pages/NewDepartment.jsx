@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { createDepartmentApi } from "../utils/api";
@@ -11,6 +11,10 @@ const NewDepartment = () => {
     department_tasks: [{ task: "" }], // Start with one empty task
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    document.title = "Yangi bo'lim - Markaziy Bank Administratsiyasi";
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -87,12 +91,34 @@ const NewDepartment = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           {/* Form Header */}
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Bo'lim ma'lumotlari
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Yangi bo'lim uchun zarur ma'lumotlarni to'ldiring
-            </p>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+              <div>
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Bo'lim ma'lumotlari
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Yangi bo'lim uchun zarur ma'lumotlarni to'ldiring
+                </p>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-8">

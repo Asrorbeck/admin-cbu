@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DepartmentsTable from "../components/tables/DepartmentsTable";
 import { getDepartmentsApi, deleteDepartmentApi } from "../utils/api";
 import toast from "react-hot-toast";
@@ -8,10 +8,12 @@ const Departments = () => {
   const [departmentsData, setDepartmentsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // Fetch departments from API
   useEffect(() => {
     fetchDepartments();
+    document.title = "Bo'limlar - Markaziy Bank Administratsiyasi";
   }, []);
 
   const fetchDepartments = async () => {
@@ -133,13 +135,33 @@ const Departments = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Bo'limlar
-          </h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Tashkilot bo'limlarini boshqaring
-          </p>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigate("/kadrlar")}
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          >
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Bo'limlar
+            </h1>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Tashkilot bo'limlarini boshqaring
+            </p>
+          </div>
         </div>
 
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
