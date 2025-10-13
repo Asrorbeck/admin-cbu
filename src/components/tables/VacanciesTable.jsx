@@ -17,7 +17,11 @@ const VacanciesTable = ({
   };
 
   const handleViewDetails = (vacancyItem) => {
-    navigate(`/vacancy/${vacancyItem.id}`);
+    if (onViewDetails) {
+      onViewDetails(vacancyItem);
+    } else {
+      navigate(`/vacancy/${vacancyItem.id}`);
+    }
   };
 
   const handleDelete = (vacancyItem) => {

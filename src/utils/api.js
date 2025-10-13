@@ -1,18 +1,79 @@
 import { API_CONFIG, getApiUrl } from "../config/api";
 import secureStorage from "./secureStorage";
 
-// API request utility function
+// Flag to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+// Function to notify all subscribers when token is refreshed
+const onRefreshed = (token) => {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+};
+
+// Function to add subscriber to refresh queue
+const addRefreshSubscriber = (callback) => {
+  refreshSubscribers.push(callback);
+};
+
+// Refresh access token using refresh token
+export const refreshAccessToken = async () => {
+  const refreshToken = secureStorage.getRefreshToken();
+
+  if (!refreshToken) {
+    throw new Error("No refresh token available");
+  }
+
+  try {
+    const response = await fetch(
+      getApiUrl(API_CONFIG.ENDPOINTS.TOKEN_REFRESH),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          refresh: refreshToken,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to refresh token");
+    }
+
+    const data = await response.json();
+
+    // Update both tokens in storage
+    if (data.access && data.refresh) {
+      secureStorage.setTokens(data.access, data.refresh);
+      return data.access;
+    } else if (data.access) {
+      secureStorage.updateAccessToken(data.access);
+      return data.access;
+    }
+
+    throw new Error("Invalid token refresh response");
+  } catch (error) {
+    // If refresh fails, clear all auth data and redirect to login
+    secureStorage.clearAll();
+    window.location.href = "/login";
+    throw error;
+  }
+};
+
+// API request utility function with automatic token refresh
 export const apiRequest = async (endpoint, options = {}) => {
   const url = getApiUrl(endpoint);
-  const token = secureStorage.getToken();
+  const token = secureStorage.getAccessToken();
 
   const defaultHeaders = {
     "Content-Type": "application/json",
   };
 
-  // Add authorization header if token exists
+  // Add authorization header if token exists (JWT Bearer format)
   if (token) {
-    defaultHeaders["Authorization"] = `Token ${token}`;
+    defaultHeaders["Authorization"] = `Bearer ${token}`;
   }
 
   const config = {
@@ -25,6 +86,60 @@ export const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, config);
+
+    // If unauthorized (401), try to refresh the token
+    if (response.status === 401 && token) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+
+        try {
+          const newToken = await refreshAccessToken();
+          isRefreshing = false;
+          onRefreshed(newToken);
+
+          // Retry the original request with new token
+          config.headers["Authorization"] = `Bearer ${newToken}`;
+          const retryResponse = await fetch(url, config);
+
+          if (!retryResponse.ok) {
+            const errorData = await retryResponse.json().catch(() => ({}));
+            throw new Error(
+              errorData.detail ||
+                errorData.message ||
+                `HTTP error! status: ${retryResponse.status}`
+            );
+          }
+
+          return await retryResponse.json();
+        } catch (refreshError) {
+          isRefreshing = false;
+          throw refreshError;
+        }
+      } else {
+        // If already refreshing, wait for the refresh to complete
+        return new Promise((resolve, reject) => {
+          addRefreshSubscriber(async (newToken) => {
+            try {
+              config.headers["Authorization"] = `Bearer ${newToken}`;
+              const retryResponse = await fetch(url, config);
+
+              if (!retryResponse.ok) {
+                const errorData = await retryResponse.json().catch(() => ({}));
+                throw new Error(
+                  errorData.detail ||
+                    errorData.message ||
+                    `HTTP error! status: ${retryResponse.status}`
+                );
+              }
+
+              resolve(await retryResponse.json());
+            } catch (error) {
+              reject(error);
+            }
+          });
+        });
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

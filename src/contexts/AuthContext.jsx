@@ -19,9 +19,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in from secure storage
     const savedUser = secureStorage.getUser();
-    const savedToken = secureStorage.getToken();
+    const savedAccessToken = secureStorage.getAccessToken();
 
-    if (savedUser && savedToken) {
+    if (savedUser && savedAccessToken) {
       setUser(savedUser);
     }
     setLoading(false);
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await loginApi(username, password);
 
-      if (response.token) {
+      if (response.access && response.refresh) {
         const userData = {
           id: 1, // You might want to get this from the API response
           username: username,
@@ -39,14 +39,14 @@ export const AuthProvider = ({ children }) => {
           role: "admin", // You might want to get this from the API response
         };
 
-        // Store token and user data securely
-        secureStorage.setToken(response.token);
+        // Store JWT tokens (access and refresh) and user data securely
+        secureStorage.setTokens(response.access, response.refresh);
         secureStorage.setUser(userData);
 
         setUser(userData);
         return { success: true };
       } else {
-        return { success: false, error: "No token received from server" };
+        return { success: false, error: "No tokens received from server" };
       }
     } catch (error) {
       console.error("Login error:", error);

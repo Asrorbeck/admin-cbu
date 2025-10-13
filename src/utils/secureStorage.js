@@ -18,20 +18,20 @@ class SecureTokenStorage {
     }
   }
 
-  // Store token securely
-  setToken(token) {
+  // Store JWT tokens (access and refresh)
+  setTokens(accessToken, refreshToken) {
     const tokenData = {
-      token: token,
+      access: accessToken,
+      refresh: refreshToken,
       timestamp: Date.now(),
-      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     };
 
     // Use sessionStorage instead of localStorage (cleared on browser close)
     sessionStorage.setItem(this.tokenKey, this.obfuscate(tokenData));
   }
 
-  // Get token securely
-  getToken() {
+  // Get access token
+  getAccessToken() {
     try {
       const obfuscatedData = sessionStorage.getItem(this.tokenKey);
       if (!obfuscatedData) return null;
@@ -39,17 +39,50 @@ class SecureTokenStorage {
       const tokenData = this.deobfuscate(obfuscatedData);
       if (!tokenData) return null;
 
-      // Check if token is expired
-      if (Date.now() > tokenData.expires) {
-        this.clearToken();
-        return null;
-      }
-
-      return tokenData.token;
+      return tokenData.access;
     } catch {
       this.clearToken();
       return null;
     }
+  }
+
+  // Get refresh token
+  getRefreshToken() {
+    try {
+      const obfuscatedData = sessionStorage.getItem(this.tokenKey);
+      if (!obfuscatedData) return null;
+
+      const tokenData = this.deobfuscate(obfuscatedData);
+      if (!tokenData) return null;
+
+      return tokenData.refresh;
+    } catch {
+      this.clearToken();
+      return null;
+    }
+  }
+
+  // Update access token (after refresh)
+  updateAccessToken(accessToken) {
+    try {
+      const obfuscatedData = sessionStorage.getItem(this.tokenKey);
+      if (!obfuscatedData) return;
+
+      const tokenData = this.deobfuscate(obfuscatedData);
+      if (!tokenData) return;
+
+      tokenData.access = accessToken;
+      tokenData.timestamp = Date.now();
+
+      sessionStorage.setItem(this.tokenKey, this.obfuscate(tokenData));
+    } catch {
+      this.clearToken();
+    }
+  }
+
+  // Legacy method for backward compatibility
+  getToken() {
+    return this.getAccessToken();
   }
 
   // Store user data securely
@@ -88,7 +121,7 @@ class SecureTokenStorage {
 
   // Check if user is authenticated
   isAuthenticated() {
-    const token = this.getToken();
+    const token = this.getAccessToken();
     const user = this.getUser();
     return !!(token && user);
   }
