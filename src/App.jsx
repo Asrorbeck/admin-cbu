@@ -13,7 +13,6 @@ import Departments from "./pages/Departments";
 import DepartmentDetails from "./pages/DepartmentDetails";
 import NewDepartment from "./pages/NewDepartment";
 import NewVacancy from "./pages/NewVacancy";
-import NewManagement from "./pages/NewManagement";
 import ManagementDetails from "./pages/ManagementDetails";
 import Murojaatlar from "./pages/Murojaatlar";
 import KadrlarDashboard from "./pages/KadrlarDashboard";
@@ -88,16 +87,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/departments/:id/new-management"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <NewManagement />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+      {/* New management route removed: handled via modal in DepartmentDetails */}
       <Route
         path="/management/:id"
         element={

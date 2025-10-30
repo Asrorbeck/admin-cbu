@@ -2,7 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import ManagementTable from "../components/tables/ManagementTable";
 import EditManagementModal from "../components/modals/EditManagementModal";
-import { getDepartmentApi, getManagementApi } from "../utils/api";
+import EditDepartmentModal from "../components/modals/EditDepartmentModal";
+import NewManagementModal from "../components/modals/NewManagementModal";
+import {
+  getDepartmentApi,
+  getManagementApi,
+  updateDepartmentApi,
+  deleteManagementApi,
+} from "../utils/api";
 import toast from "react-hot-toast";
 
 const DepartmentDetails = () => {
@@ -14,6 +21,8 @@ const DepartmentDetails = () => {
   const [error, setError] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedManagement, setSelectedManagement] = useState(null);
+  const [isDeptEditOpen, setIsDeptEditOpen] = useState(false);
+  const [isNewMgmtOpen, setIsNewMgmtOpen] = useState(false);
 
   useEffect(() => {
     fetchDepartmentAndManagement();
@@ -61,8 +70,46 @@ const DepartmentDetails = () => {
     setSelectedManagement(null);
   };
 
-  const handleDelete = (managementId) => {
-    setManagement((prev) => prev.filter((item) => item.id !== managementId));
+  const handleOpenDepartmentEdit = () => {
+    setIsDeptEditOpen(true);
+  };
+
+  const handleDepartmentEditSave = async (updatedData) => {
+    const payload = {
+      name: updatedData.name,
+      description: updatedData.description,
+      department_tasks: (updatedData.department_tasks || []).filter(
+        (t) => (t.task || "").trim() !== ""
+      ),
+    };
+
+    try {
+      await toast.promise(updateDepartmentApi(department.id, payload), {
+        loading: "Yangilanmoqda...",
+        success: "Bo'lim muvaffaqiyatli yangilandi",
+        error: (err) =>
+          err?.message || "Bo'limni yangilashda xatolik yuz berdi",
+      });
+
+      setDepartment((prev) => ({ ...prev, ...payload }));
+      setIsDeptEditOpen(false);
+    } catch (e) {
+      // keep modal open on error
+    }
+  };
+
+  const handleDelete = async (managementId) => {
+    const tId = toast.loading("O'chirilmoqda...");
+    try {
+      await deleteManagementApi(managementId);
+      setManagement((prev) => prev.filter((item) => item.id !== managementId));
+      toast.success("Boshqarma muvaffaqiyatli o'chirildi");
+    } catch (error) {
+      console.error("Error deleting management:", error);
+      toast.error(error.message || "Boshqarmani o'chirishda xatolik yuz berdi");
+    } finally {
+      toast.dismiss(tId);
+    }
   };
 
   if (loading) {
@@ -166,10 +213,10 @@ const DepartmentDetails = () => {
         </div>
 
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-          {/* Add Management Button */}
-          <Link
-            to={`/departments/${id}/new-management`}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+          <button
+            type="button"
+            onClick={handleOpenDepartmentEdit}
+            className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600"
           >
             <svg
               className="h-4 w-4 mr-2"
@@ -181,11 +228,11 @@ const DepartmentDetails = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 4v16m8-8H4"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
               />
             </svg>
-            Yangi boshqarma qo'shish
-          </Link>
+            Tahrirlash
+          </button>
         </div>
       </div>
 
@@ -230,9 +277,31 @@ const DepartmentDetails = () => {
 
       {/* Management */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Boshqarmalar
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Boshqarmalar
+          </h2>
+          <button
+            type="button"
+            onClick={() => setIsNewMgmtOpen(true)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <svg
+              className="h-4 w-4 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Yangi boshqarma qo'shish
+          </button>
+        </div>
 
         {management.length === 0 ? (
           <div className="text-center py-12">
@@ -272,6 +341,33 @@ const DepartmentDetails = () => {
         onClose={handleCloseModal}
         management={selectedManagement}
         onSuccess={handleEditSuccess}
+      />
+
+      {/* Edit Department Modal */}
+      {isDeptEditOpen && (
+        <EditDepartmentModal
+          department={department}
+          onSave={handleDepartmentEditSave}
+          onClose={() => setIsDeptEditOpen(false)}
+        />
+      )}
+
+      {/* New Management Modal */}
+      <NewManagementModal
+        isOpen={isNewMgmtOpen}
+        onClose={() => setIsNewMgmtOpen(false)}
+        departmentId={id}
+        onSuccess={(payload) => {
+          setManagement((prev) => [
+            ...prev,
+            {
+              id: Math.max(0, ...prev.map((m) => m.id || 0)) + 1, // fallback local id
+              name: payload.name,
+              management_functions: payload.management_functions,
+              department: payload.department,
+            },
+          ]);
+        }}
       />
     </div>
   );

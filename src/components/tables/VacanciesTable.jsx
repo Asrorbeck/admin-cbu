@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { confirmAlert } from "react-confirm-alert";
-import toast from "react-hot-toast";
+import ConfirmDialog from "../modals/ConfirmDialog";
 
 const VacanciesTable = ({
   vacancies,
@@ -24,30 +23,16 @@ const VacanciesTable = ({
     }
   };
 
+  const [confirm, setConfirm] = useState({ open: false, vacancy: null });
+
   const handleDelete = (vacancyItem) => {
-    confirmAlert({
-      title: "Vakansiyani o'chirish",
-      message: `"${vacancyItem.title}" vakansiyasini o'chirishni xohlaysizmi?`,
-      buttons: [
-        {
-          label: "Bekor qilish",
-          onClick: () => {
-            console.log("Delete cancelled");
-          },
-        },
-        {
-          label: "O'chirish",
-          onClick: () => {
-            console.log("Delete confirmed");
-            toast.success("Vakansiya muvaffaqiyatli o'chirildi");
-            onDelete(vacancyItem.id);
-          },
-        },
-      ],
-      closeOnEscape: true,
-      closeOnClickOutside: true,
-      willUnmount: () => {},
-    });
+    setConfirm({ open: true, vacancy: vacancyItem });
+  };
+
+  const confirmDelete = () => {
+    const vacancyItem = confirm.vacancy;
+    setConfirm({ open: false, vacancy: null });
+    onDelete(vacancyItem.id);
   };
 
   const formatDate = (dateString) => {
@@ -71,6 +56,7 @@ const VacanciesTable = ({
   };
 
   return (
+    <>
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -194,6 +180,20 @@ const VacanciesTable = ({
         </table>
       </div>
     </div>
+    <ConfirmDialog
+      open={confirm.open}
+      title="Vakansiyani o'chirish"
+      description={
+        confirm.vacancy
+          ? `"${confirm.vacancy.title}" vakansiyasini o'chirishni xohlaysizmi?`
+          : ""
+      }
+      confirmText="O'chirish"
+      cancelText="Bekor qilish"
+      onConfirm={confirmDelete}
+      onCancel={() => setConfirm({ open: false, vacancy: null })}
+    />
+    </>
   );
 };
 

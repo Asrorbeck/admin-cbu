@@ -56,7 +56,6 @@ const NewDepartment = () => {
     setIsSubmitting(true);
 
     try {
-      // Filter out empty tasks
       const filteredTasks = formData.department_tasks.filter(
         (task) => task.task.trim() !== ""
       );
@@ -73,12 +72,15 @@ const NewDepartment = () => {
         department_tasks: filteredTasks,
       };
 
-      await createDepartmentApi(payload);
-      toast.success("Yangi bo'lim muvaffaqiyatli qo'shildi");
+      await toast.promise(createDepartmentApi(payload), {
+        loading: "Saqlanmoqda...",
+        success: "Yangi bo'lim muvaffaqiyatli qo'shildi",
+        error: (err) => err?.message || "Xatolik yuz berdi",
+      });
+
       navigate("/departments");
     } catch (error) {
       console.error("Error creating department:", error);
-      toast.error(error.message || "Xatolik yuz berdi");
     } finally {
       setIsSubmitting(false);
     }

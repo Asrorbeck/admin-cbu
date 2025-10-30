@@ -7,6 +7,9 @@ const Header = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [hasDuplicates, setHasDuplicates] = useState(false);
+  const [duplicateCount, setDuplicateCount] = useState(0);
   const location = useLocation();
 
   // Get current section title based on pathname
@@ -43,6 +46,17 @@ const Header = () => {
       setIsDarkMode(false);
       document.documentElement.classList.remove("dark");
     }
+  }, []);
+
+  // Listen for applications duplicate updates from pages (e.g., Arizalar)
+  useEffect(() => {
+    const handler = (e) => {
+      const detail = e.detail || {};
+      setHasDuplicates(!!detail.has);
+      setDuplicateCount(detail.count || (detail.has ? 1 : 0));
+    };
+    window.addEventListener("apps-duplicates", handler);
+    return () => window.removeEventListener("apps-duplicates", handler);
   }, []);
 
   const toggleDarkMode = () => {
@@ -134,25 +148,54 @@ const Header = () => {
           </button>
 
           {/* Notifications */}
-          <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors relative">
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="relative">
+            <button
+              onClick={() => setIsNotifOpen((v) => !v)}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors relative"
+              title="Bildirishnomalar"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828zM4.828 17h8l-4-4-4 4z"
-              />
-            </svg>
-            {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-              3
-            </span>
-          </button>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h11z" />
+              </svg>
+              {hasDuplicates && (
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {duplicateCount}
+                </span>
+              )}
+            </button>
+
+            {isNotifOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsNotifOpen(false)} />
+                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
+                  <div className="p-3 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Bildirishnomalar
+                  </div>
+                  <div className="max-h-64 overflow-auto">
+                    {hasDuplicates ? (
+                      <button
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          window.dispatchEvent(new CustomEvent("open-duplicates-modal"));
+                        }}
+                        className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left"
+                      >
+                        <svg className="h-4 w-4 text-amber-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-800 dark:text-gray-100">Bir xillik aniqlanmoqda</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Ism va tug'ilgan sana bir xil bo'lgan arizalar mavjud</p>
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">Yangi bildirishnoma yo'q</div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Profile Dropdown */}
           <div className="relative">

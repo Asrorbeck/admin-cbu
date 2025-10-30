@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import EditManagementModal from "../components/modals/EditManagementModal";
 import VacanciesTable from "../components/tables/VacanciesTable";
 import {
   getManagementByIdApi,
   getVacanciesApi,
   getVacancyByIdApi,
   updateVacancyApi,
+  deleteVacancyApi,
 } from "../utils/api";
 import toast from "react-hot-toast";
 
@@ -19,6 +21,7 @@ const ManagementDetails = () => {
   const [selectedVacancy, setSelectedVacancy] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  const [isMgmtEditOpen, setIsMgmtEditOpen] = useState(false);
 
   // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -218,8 +221,18 @@ const ManagementDetails = () => {
     }, 300);
   };
 
-  const handleDeleteVacancy = (vacancyId) => {
-    setVacancies((prev) => prev.filter((item) => item.id !== vacancyId));
+  const handleDeleteVacancy = async (vacancyId) => {
+    const tId = toast.loading("O'chirilmoqda...");
+    try {
+      await deleteVacancyApi(vacancyId);
+      setVacancies((prev) => prev.filter((item) => item.id !== vacancyId));
+      toast.success("Vakansiya muvaffaqiyatli o'chirildi");
+    } catch (error) {
+      console.error("Error deleting vacancy:", error);
+      toast.error(error.message || "Vakansiyani o'chirishda xatolik yuz berdi");
+    } finally {
+      toast.dismiss(tId);
+    }
   };
 
   const handleViewVacancyDetails = async (vacancy) => {
@@ -306,10 +319,11 @@ const ManagementDetails = () => {
         </div>
 
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-          {/* Edit Management Button */}
-          <Link
-            to={`/management/${id}/edit`}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+          {/* Edit Management Button - styled like DepartmentDetails */}
+          <button
+            type="button"
+            onClick={() => setIsMgmtEditOpen(true)}
+            className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600"
           >
             <svg
               className="h-4 w-4 mr-2"
@@ -325,7 +339,7 @@ const ManagementDetails = () => {
               />
             </svg>
             Tahrirlash
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -365,7 +379,7 @@ const ManagementDetails = () => {
           <div className="mt-2 sm:mt-0">
             <Link
               to={`/management/${id}/new-vacancy`}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
             >
               <svg
                 className="h-4 w-4 mr-2"
@@ -397,8 +411,8 @@ const ManagementDetails = () => {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6"
+                  strokeWidth={1.8}
+                  d="M8.25 6.75V6A2.25 2.25 0 0 1 10.5 3.75h3a2.25 2.25 0 0 1 2.25 2.25v.75m-9.75 0h12.75m-14.25 0h15.75v10.5A2.25 2.25 0 0 1 19.5 19.5H6A2.25 2.25 0 0 1 3.75 17.25V6.75z"
                 />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -827,6 +841,28 @@ const ManagementDetails = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Management Modal (like DepartmentDetails) */}
+      <EditManagementModal
+        isOpen={isMgmtEditOpen}
+        onClose={() => setIsMgmtEditOpen(false)}
+        management={{
+          id: management.id,
+          name: management.name,
+          management_functions: management.management_functions,
+          department:
+            management.department || management.department_id || undefined,
+        }}
+        onSuccess={(updated) => {
+          setManagement((prev) => ({
+            ...prev,
+            name: updated.name ?? prev.name,
+            management_functions:
+              updated.management_functions ?? prev.management_functions,
+          }));
+          setIsMgmtEditOpen(false);
+        }}
+      />
     </div>
   );
 };

@@ -150,6 +150,18 @@ export const apiRequest = async (endpoint, options = {}) => {
       );
     }
 
+    // Handle empty responses (e.g., 204 No Content or empty body)
+    const contentType = response.headers.get("content-type");
+    const contentLength = response.headers.get("content-length");
+    if (
+      response.status === 204 ||
+      contentLength === "0" ||
+      !contentType ||
+      !contentType.includes("application/json")
+    ) {
+      return null;
+    }
+
     return await response.json();
   } catch (error) {
     console.error("API request failed:", error);
@@ -298,6 +310,20 @@ export const updateApplicationApi = async (id, data) => {
 export const deleteApplicationApi = async (id) => {
   return apiRequest(`/apply-jobs/${id}/`, {
     method: "DELETE",
+  });
+};
+
+// Appeals API calls
+export const getAppealsApi = async () => {
+  return apiRequest(API_CONFIG.ENDPOINTS.APPEALS, {
+    method: "GET",
+  });
+};
+
+export const updateAppealApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.APPEALS}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 };
 

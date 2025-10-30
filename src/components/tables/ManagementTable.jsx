@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { confirmAlert } from "react-confirm-alert";
-import toast from "react-hot-toast";
+import ConfirmDialog from "../modals/ConfirmDialog";
 
 const ManagementTable = ({
   management,
@@ -20,30 +19,16 @@ const ManagementTable = ({
     navigate(`/management/${managementItem.id}`);
   };
 
+  const [confirm, setConfirm] = useState({ open: false, item: null });
+
   const handleDelete = (managementItem) => {
-    confirmAlert({
-      title: "Boshqarmani o'chirish",
-      message: `"${managementItem.name}" boshqarmasini o'chirishni xohlaysizmi?`,
-      buttons: [
-        {
-          label: "Bekor qilish",
-          onClick: () => {
-            console.log("Delete cancelled");
-          },
-        },
-        {
-          label: "O'chirish",
-          onClick: () => {
-            console.log("Delete confirmed");
-            toast.success("Boshqarma muvaffaqiyatli o'chirildi");
-            onDelete(managementItem.id);
-          },
-        },
-      ],
-      closeOnEscape: true,
-      closeOnClickOutside: true,
-      willUnmount: () => {},
-    });
+    setConfirm({ open: true, item: managementItem });
+  };
+
+  const confirmDelete = () => {
+    const item = confirm.item;
+    setConfirm({ open: false, item: null });
+    onDelete(item.id);
   };
 
   return (
@@ -70,7 +55,8 @@ const ManagementTable = ({
             {management.map((item, index) => (
               <tr
                 key={item.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleViewDetails(item)}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {index + 1}
@@ -88,7 +74,10 @@ const ManagementTable = ({
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => handleViewDetails(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDetails(item);
+                      }}
                       className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
                       title="Tafsilotlar"
                     >
@@ -113,7 +102,10 @@ const ManagementTable = ({
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleEdit(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(item);
+                      }}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                       title="Tahrirlash"
                     >
@@ -132,7 +124,10 @@ const ManagementTable = ({
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleDelete(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(item);
+                      }}
                       className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                       title="O'chirish"
                     >
@@ -157,6 +152,19 @@ const ManagementTable = ({
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={confirm.open}
+        title="Boshqarmani o'chirish"
+        description={
+          confirm.item
+            ? `"${confirm.item.name}" boshqarmasini o'chirishni xohlaysizmi?`
+            : ""
+        }
+        confirmText="O'chirish"
+        cancelText="Bekor qilish"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirm({ open: false, item: null })}
+      />
     </div>
   );
 };

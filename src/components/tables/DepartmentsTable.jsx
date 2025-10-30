@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { confirmAlert } from "react-confirm-alert";
-import toast from "react-hot-toast";
 import EditDepartmentModal from "../modals/EditDepartmentModal";
+import ConfirmDialog from "../modals/ConfirmDialog";
 
 const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
   const [editingDepartment, setEditingDepartment] = useState(null);
@@ -10,36 +9,25 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
     setEditingDepartment(department);
   };
 
-  const handleSaveEdit = (updatedData) => {
-    toast.success("Bo'lim muvaffaqiyatli yangilandi");
-    onEdit(updatedData);
-    setEditingDepartment(null);
+  const handleSaveEdit = async (updatedData) => {
+    try {
+      await onEdit(updatedData);
+      setEditingDepartment(null);
+    } catch (e) {
+      // Keep modal open on error; parent handles toasts
+    }
   };
 
+  const [confirm, setConfirm] = useState({ open: false, department: null });
+
   const handleDelete = (department) => {
-    confirmAlert({
-      title: "Bo'limni o'chirish",
-      message: `"${department.name}" bo'limini o'chirishni xohlaysizmi?`,
-      buttons: [
-        {
-          label: "Bekor qilish",
-          onClick: () => {
-            console.log("Delete cancelled");
-          },
-        },
-        {
-          label: "O'chirish",
-          onClick: () => {
-            console.log("Delete confirmed");
-            toast.success("Bo'lim muvaffaqiyatli o'chirildi");
-            onDelete(department.id);
-          },
-        },
-      ],
-      closeOnEscape: true,
-      closeOnClickOutside: true,
-      willUnmount: () => {},
-    });
+    setConfirm({ open: true, department });
+  };
+
+  const confirmDelete = () => {
+    const department = confirm.department;
+    setConfirm({ open: false, department: null });
+    onDelete(department.id);
   };
 
   return (
@@ -70,7 +58,8 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
               {departments.map((department, index) => (
                 <tr
                   key={department.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  onClick={() => onViewDetails(department.id)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {index + 1}
@@ -95,7 +84,10 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleEdit(department)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(department);
+                        }}
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                         title="Tahrirlash"
                       >
@@ -114,7 +106,10 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDelete(department)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(department);
+                        }}
                         className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                         title="O'chirish"
                       >
@@ -133,7 +128,10 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                         </svg>
                       </button>
                       <button
-                        onClick={() => onViewDetails(department.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewDetails(department.id);
+                        }}
                         className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
                         title="Tafsilotlar"
                       >
@@ -173,6 +171,20 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
           onClose={() => setEditingDepartment(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={confirm.open}
+        title="Bo'limni o'chirish"
+        description={
+          confirm.department
+            ? `"${confirm.department.name}" bo'limini o'chirishni xohlaysizmi?`
+            : ""
+        }
+        confirmText="O'chirish"
+        cancelText="Bekor qilish"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirm({ open: false, department: null })}
+      />
     </>
   );
 };
