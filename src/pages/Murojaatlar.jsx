@@ -37,48 +37,60 @@ const Murojaatlar = () => {
   };
 
   const getStatusBadge = (s) => {
-    const v = (s || "").toLowerCase();
-    if (v === "new")
+    const v = (s || "").toUpperCase();
+    if (v === "NEW")
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
           Yangi
         </span>
       );
-    if (v === "accepted")
+    if (v === "APPEAL_PENDING")
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-          Qabul qilindi
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+          Koʻrib chiqish kutilmoqda
         </span>
       );
-    if (v === "declined")
+    if (v === "APPEAL_IN_PROGRESS")
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+          Jarayonda
+        </span>
+      );
+    if (v === "APPEAL_CLOSED_ACCEPTED")
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+          Qanoatlantirildi
+        </span>
+      );
+    if (v === "APPEAL_CLOSED_REJECTED")
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
           Rad etildi
         </span>
       );
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-        Kutilmoqda
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300">
+        {s || "Noma'lum"}
       </span>
     );
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppeal, setSelectedAppeal] = useState(null);
-  const [statusValue, setStatusValue] = useState("new");
+  const [statusValue, setStatusValue] = useState("NEW");
   const [savingStatus, setSavingStatus] = useState(false);
 
   const totalCount = appeals.length;
   const newCount = appeals.filter(
-    (a) => (a.status || "").toLowerCase() === "new"
+    (a) => (a.status || "").toUpperCase() === "NEW"
   ).length;
   const answeredCount = appeals.filter(
-    (a) => (a.status || "").toLowerCase() === "accepted"
+    (a) => (a.status || "").toUpperCase() === "CLOSED_ACCEPTED"
   ).length;
 
   const handleRowClick = (a) => {
     setSelectedAppeal(a);
-    setStatusValue(((a.status || "new") + "").toLowerCase());
+    setStatusValue(((a.status || "NEW") + "").toUpperCase());
     setIsModalOpen(true);
   };
   const closeModal = () => {
@@ -262,10 +274,7 @@ const Murojaatlar = () => {
                 {appeals.map((a) => (
                   <tr
                     key={a.id}
-                    onClick={() => {
-                      setSelectedAppeal(a);
-                      setIsModalOpen(true);
-                    }}
+                    onClick={() => handleRowClick(a)}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -354,9 +363,17 @@ const Murojaatlar = () => {
                         onChange={(e) => setStatusValue(e.target.value)}
                         className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
                       >
-                        <option value="new">Yangi</option>
-                        <option value="accepted">Qabul qilindi</option>
-                        <option value="declined">Rad etildi</option>
+                        <option value="APPEAL_NEW">Yangi</option>
+                        <option value="APPEAL_PENDING">
+                          Koʻrib chiqish kutilmoqda
+                        </option>
+                        <option value="APPEAL_IN_PROGRESS">Jarayonda</option>
+                        <option value="APPEAL_CLOSED_ACCEPTED">
+                          Qanoatlantirildi
+                        </option>
+                        <option value="APPEAL_CLOSED_REJECTED">
+                          Rad etildi
+                        </option>
                       </select>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         Joriy: {getStatusBadge(selectedAppeal.status)}
@@ -448,6 +465,7 @@ const Murojaatlar = () => {
                         message: selectedAppeal.message,
                         attachment: selectedAppeal.attachment,
                         created_at: selectedAppeal.created_at,
+                        // Backend formatiga mos: NEW, PENDING, IN_PROGRESS, CLOSED_ACCEPTED, CLOSED_REJECTED
                         status: statusValue.toUpperCase(),
                       };
                       await toast.promise(
@@ -469,6 +487,9 @@ const Murojaatlar = () => {
                         ...p,
                         status: payload.status,
                       }));
+                      // Modalni avtomatik yopish
+                      setIsModalOpen(false);
+                      setTimeout(() => setSelectedAppeal(null), 200);
                     } catch {
                     } finally {
                       setSavingStatus(false);
