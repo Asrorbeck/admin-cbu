@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: "https://jonibekdaminov.pythonanywhere.com/api/v1",
+  BASE_URL: "https://bd242f6369a3.ngrok-free.app/api/v1",
   ENDPOINTS: {
     LOGIN: "/token/",
     TOKEN_REFRESH: "/token/refresh/",
