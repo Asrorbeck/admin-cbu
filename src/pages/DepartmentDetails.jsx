@@ -15,7 +15,11 @@ import toast from "react-hot-toast";
 const DepartmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [department, setDepartment] = useState(null);
+  const [department, setDepartment] = useState({
+    name: "",
+    description: "",
+    department_tasks: [], // Initialize with empty array
+  });
   const [management, setManagement] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,11 +40,19 @@ const DepartmentDetails = () => {
 
       // Fetch department data
       const departmentData = await getDepartmentApi(id);
-      setDepartment(departmentData);
+
+      // Ensure department_tasks is always an array
+      const normalizedData = {
+        ...departmentData,
+        department_tasks: Array.isArray(departmentData.department_tasks)
+          ? departmentData.department_tasks
+          : [],
+      };
+
+      setDepartment(normalizedData);
 
       // Fetch management data filtered by department ID
       const filteredManagement = await getManagementApi(id);
-
       setManagement(filteredManagement);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -255,7 +267,7 @@ const DepartmentDetails = () => {
               Bo'lim vazifalari ({department.department_tasks?.length || 0} ta):
             </h3>
             <div className="space-y-3">
-              {department.department_tasks?.map((task, index) => (
+              {(department?.department_tasks || []).map((task, index) => (
                 <div
                   key={index}
                   className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
