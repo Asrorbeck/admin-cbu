@@ -103,11 +103,14 @@ export const apiRequest = async (endpoint, options = {}) => {
 
           if (!retryResponse.ok) {
             const errorData = await retryResponse.json().catch(() => ({}));
-            throw new Error(
+            const error = new Error(
               errorData.detail ||
                 errorData.message ||
                 `HTTP error! status: ${retryResponse.status}`
             );
+            error.responseData = errorData;
+            error.status = retryResponse.status;
+            throw error;
           }
 
           return await retryResponse.json();
@@ -125,11 +128,14 @@ export const apiRequest = async (endpoint, options = {}) => {
 
               if (!retryResponse.ok) {
                 const errorData = await retryResponse.json().catch(() => ({}));
-                throw new Error(
+                const error = new Error(
                   errorData.detail ||
                     errorData.message ||
                     `HTTP error! status: ${retryResponse.status}`
                 );
+                error.responseData = errorData;
+                error.status = retryResponse.status;
+                throw error;
               }
 
               resolve(await retryResponse.json());
@@ -143,11 +149,15 @@ export const apiRequest = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
+      const error = new Error(
         errorData.detail ||
           errorData.message ||
           `HTTP error! status: ${response.status}`
       );
+      // Preserve the full error data for field-specific error handling
+      error.responseData = errorData;
+      error.status = response.status;
+      throw error;
     }
 
     // Handle empty responses (e.g., 204 No Content or empty body)
@@ -324,6 +334,39 @@ export const updateAppealApi = async (id, data) => {
   return apiRequest(`${API_CONFIG.ENDPOINTS.APPEALS}${id}/`, {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+};
+
+// Tests API calls
+export const getTestsApi = async () => {
+  return apiRequest(API_CONFIG.ENDPOINTS.TESTS, {
+    method: "GET",
+  });
+};
+
+export const getTestByIdApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.TESTS}${id}/`, {
+    method: "GET",
+  });
+};
+
+export const createTestApi = async (data) => {
+  return apiRequest(API_CONFIG.ENDPOINTS.TESTS, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateTestApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.TESTS}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteTestApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.TESTS}${id}/`, {
+    method: "DELETE",
   });
 };
 

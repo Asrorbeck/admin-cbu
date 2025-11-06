@@ -197,7 +197,7 @@ const KadrlarDashboard = () => {
       </div>
 
       {/* Main Action Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Vakansiyalar Card */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6">
@@ -307,6 +307,66 @@ const KadrlarDashboard = () => {
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
             >
               <span>Arizalarni ko'rish</span>
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
+        {/* Testlar Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-16 w-16 bg-blue-500 rounded-xl flex items-center justify-center">
+                <svg
+                  className="h-8 w-8 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Testlar boshqaruvi
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Nomzodlar uchun testlarni yaratish va boshqarish
+                </p>
+                <div className="mt-3 flex items-center space-x-4">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Testlar
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Boshqarish
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <Link
+              to="/testlar"
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+            >
+              <span>Testlarni ko'rish</span>
               <svg
                 className="h-5 w-5"
                 fill="none"

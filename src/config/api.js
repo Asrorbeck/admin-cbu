@@ -8,6 +8,7 @@ export const API_CONFIG = {
     MANAGEMENT: "/management/",
     VACANCIES: "/vacancies/",
     APPEALS: "/Appeals/",
+    TESTS: "/tests/",
   },
 };
 

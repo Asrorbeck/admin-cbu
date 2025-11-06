@@ -17,6 +17,8 @@ import ManagementDetails from "./pages/ManagementDetails";
 import Murojaatlar from "./pages/Murojaatlar";
 import KadrlarDashboard from "./pages/KadrlarDashboard";
 import Arizalar from "./pages/Arizalar";
+import Testlar from "./pages/Testlar";
+import NewTest from "./pages/NewTest";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -124,6 +126,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Arizalar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/testlar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Testlar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/testlar/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewTest />
             </Layout>
           </ProtectedRoute>
         }
