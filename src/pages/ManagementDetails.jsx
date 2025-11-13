@@ -32,10 +32,20 @@ const ManagementDetails = () => {
     requirements: "",
     job_tasks: "",
     application_deadline: "",
+    test_scheduled_at: "",
     is_active: true,
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
+
+  // Helper function to format datetime-local value with GMT+5 timezone
+  const formatDateTimeWithTimezone = (datetimeLocal) => {
+    if (!datetimeLocal) return null;
+    // datetime-local format: "YYYY-MM-DDTHH:mm"
+    // Convert to ISO format with GMT+5 offset: "YYYY-MM-DDTHH:mm:ss+05:00"
+    const [datePart, timePart] = datetimeLocal.split("T");
+    return `${datePart}T${timePart}:00+05:00`;
+  };
 
   useEffect(() => {
     fetchManagementAndVacancies();
@@ -146,12 +156,26 @@ const ManagementDetails = () => {
       setEditingVacancy(fullVacancyData);
 
       // Set form data
+      // Convert ISO datetime to datetime-local format if exists
+      let testScheduledAtValue = "";
+      if (fullVacancyData.test_scheduled_at) {
+        const date = new Date(fullVacancyData.test_scheduled_at);
+        // Convert to local datetime string in format YYYY-MM-DDTHH:mm
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        testScheduledAtValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
       setEditFormData({
         title: fullVacancyData.title || "",
         description: fullVacancyData.description || "",
         requirements: fullVacancyData.requirements || "",
         job_tasks: fullVacancyData.job_tasks || "",
         application_deadline: fullVacancyData.application_deadline || "",
+        test_scheduled_at: testScheduledAtValue,
         is_active: fullVacancyData.is_active ?? true,
       });
     } catch (error) {
@@ -186,6 +210,12 @@ const ManagementDetails = () => {
       const payload = {
         ...editFormData,
         management_id: editingVacancy.management_details?.id || parseInt(id),
+        // Convert datetime-local to ISO format with GMT+5 timezone if exists
+        ...(editFormData.test_scheduled_at && {
+          test_scheduled_at: formatDateTimeWithTimezone(
+            editFormData.test_scheduled_at
+          ),
+        }),
       };
 
       // Update vacancy via API
@@ -216,6 +246,7 @@ const ManagementDetails = () => {
         requirements: "",
         job_tasks: "",
         application_deadline: "",
+        test_scheduled_at: "",
         is_active: true,
       });
     }, 300);
@@ -283,6 +314,34 @@ const ManagementDetails = () => {
     const year = date.getFullYear();
 
     return `${day} ${month} ${year}`;
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "Ma'lumot yo'q";
+
+    const date = new Date(dateString);
+    const months = [
+      "Yanvar",
+      "Fevral",
+      "Mart",
+      "Aprel",
+      "May",
+      "Iyun",
+      "Iyul",
+      "Avgust",
+      "Sentabr",
+      "Oktabr",
+      "Noyabr",
+      "Dekabr",
+    ];
+
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${day} ${month} ${year}, ${hours}:${minutes}`;
   };
 
   return (
@@ -573,13 +632,23 @@ const ManagementDetails = () => {
                     </div>
 
                     {/* Footer Info */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
                       <div className="text-sm text-gray-600 dark:text-gray-400">
                         <span className="font-medium">Ariza muddati:</span>{" "}
                         <span className="text-gray-900 dark:text-white font-semibold">
                           {formatDate(selectedVacancy.application_deadline)}
                         </span>
                       </div>
+                      {selectedVacancy.test_scheduled_at && (
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="font-medium">
+                            Test bo'lish sanasi va vaqti:
+                          </span>{" "}
+                          <span className="text-gray-900 dark:text-white font-semibold">
+                            {formatDateTime(selectedVacancy.test_scheduled_at)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : null}
@@ -740,7 +809,7 @@ const ManagementDetails = () => {
                         </div>
                       </div>
 
-                      {/* Application Deadline and Status - 2 columns */}
+                      {/* Application Deadline and Test Scheduled At - 2 columns */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Application Deadline */}
                         <div>
@@ -758,23 +827,37 @@ const ManagementDetails = () => {
                           />
                         </div>
 
-                        {/* Is Active */}
-                        <div className="flex items-center pt-6">
-                          <input
-                            type="checkbox"
-                            name="is_active"
-                            id="is_active_edit"
-                            checked={editFormData.is_active}
-                            onChange={handleEditFormChange}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label
-                            htmlFor="is_active_edit"
-                            className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
-                          >
-                            Vakansiya faol
+                        {/* Test Scheduled At */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test bo'lish sanasi va vaqti
                           </label>
+                          <input
+                            type="datetime-local"
+                            name="test_scheduled_at"
+                            value={editFormData.test_scheduled_at}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          />
                         </div>
+                      </div>
+
+                      {/* Is Active */}
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="is_active"
+                          id="is_active_edit"
+                          checked={editFormData.is_active}
+                          onChange={handleEditFormChange}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label
+                          htmlFor="is_active_edit"
+                          className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          Vakansiya faol
+                        </label>
                       </div>
 
                       {/* Management Info (read-only) */}

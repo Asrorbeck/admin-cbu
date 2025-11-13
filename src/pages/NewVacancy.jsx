@@ -14,6 +14,7 @@ const NewVacancy = () => {
     job_tasks: "",
     is_active: true,
     application_deadline: "",
+    test_scheduled_at: "",
     management: parseInt(id),
   });
 
@@ -27,6 +28,15 @@ const NewVacancy = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  // Helper function to format datetime-local value with GMT+5 timezone
+  const formatDateTimeWithTimezone = (datetimeLocal) => {
+    if (!datetimeLocal) return null;
+    // datetime-local format: "YYYY-MM-DDTHH:mm"
+    // Convert to ISO format with GMT+5 offset: "YYYY-MM-DDTHH:mm:ss+05:00"
+    const [datePart, timePart] = datetimeLocal.split("T");
+    return `${datePart}T${timePart}:00+05:00`;
   };
 
   const handleSubmit = async (e) => {
@@ -68,6 +78,11 @@ const NewVacancy = () => {
         is_active: formData.is_active,
         application_deadline: formData.application_deadline,
         management_id: formData.management,
+        ...(formData.test_scheduled_at && {
+          test_scheduled_at: formatDateTimeWithTimezone(
+            formData.test_scheduled_at
+          ),
+        }),
       };
 
       console.log("Sending vacancy data:", vacancyData);
@@ -229,6 +244,25 @@ const NewVacancy = () => {
               disabled={loading}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
               required
+            />
+          </div>
+
+          {/* Test Scheduled At */}
+          <div>
+            <label
+              htmlFor="test_scheduled_at"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Test bo'lish sanasi va vaqti
+            </label>
+            <input
+              type="datetime-local"
+              id="test_scheduled_at"
+              name="test_scheduled_at"
+              value={formData.test_scheduled_at}
+              onChange={handleChange}
+              disabled={loading}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
             />
           </div>
 
