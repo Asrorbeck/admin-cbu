@@ -199,7 +199,7 @@ const Arizalar = () => {
       setSavingStatus(true);
       const fullPayload = {
         user_id: selectedApplication.user_id,
-        job: selectedApplication.job,
+        job: selectedApplication.job?.id || selectedApplication.job,
         full_name: selectedApplication.full_name,
         data_of_birth: selectedApplication.data_of_birth,
         phone: selectedApplication.phone,
@@ -710,6 +710,25 @@ const Arizalar = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Job Information */}
+                    {selectedApplication.job && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Ish o'rni
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {selectedApplication.job.title || "Ma'lumot yo'q"}
+                          {selectedApplication.job.management_details?.name && (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {" "}
+                              ({selectedApplication.job.management_details.name}
+                              )
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

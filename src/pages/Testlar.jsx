@@ -291,12 +291,14 @@ const Testlar = () => {
                         {formatDuration(test.duration_minutes)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {test.max_violations !== undefined && test.max_violations !== null
+                        {test.max_violations !== undefined &&
+                        test.max_violations !== null
                           ? test.max_violations
                           : "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {test.total_questions !== undefined && test.total_questions !== null
+                        {test.total_questions !== undefined &&
+                        test.total_questions !== null
                           ? test.total_questions
                           : test.questions?.length || 0}
                       </td>
@@ -341,4 +343,3 @@ const Testlar = () => {
 };
 
 export default Testlar;
-
