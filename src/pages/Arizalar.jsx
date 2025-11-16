@@ -7,6 +7,170 @@ import {
 } from "../utils/api";
 import toast from "react-hot-toast";
 
+const EvalRulesModalContent = ({
+  applications,
+  evaluationRules,
+  onClose,
+  onSaveRules,
+}) => {
+  const uniqueJobsMap = new Map();
+  applications.forEach((a) => {
+    if (a.job && a.job.id && !uniqueJobsMap.has(a.job.id)) {
+      uniqueJobsMap.set(a.job.id, a.job);
+    }
+  });
+  const uniqueJobs = Array.from(uniqueJobsMap.values());
+
+  const [selectedJobId, setSelectedJobId] = useState(uniqueJobs[0]?.id || "");
+  const currentRule = (selectedJobId && evaluationRules[selectedJobId]) || {};
+  const [minAge, setMinAge] = useState(currentRule.minAge || "");
+  const [maxAge, setMaxAge] = useState(currentRule.maxAge || "");
+  const [minExpYears, setMinExpYears] = useState(currentRule.minExpYears || "");
+
+  const handleJobChange = (jobId) => {
+    setSelectedJobId(jobId);
+    const rule = (jobId && evaluationRules[jobId]) || {};
+    setMinAge(rule.minAge || "");
+    setMaxAge(rule.maxAge || "");
+    setMinExpYears(rule.minExpYears || "");
+  };
+
+  const handleSave = () => {
+    if (!selectedJobId) return;
+    const next = { ...evaluationRules };
+    next[selectedJobId] = {
+      minAge: minAge ? Number(minAge) : null,
+      maxAge: maxAge ? Number(maxAge) : null,
+      minExpYears: minExpYears ? Number(minExpYears) : null,
+    };
+    onSaveRules(next);
+    onClose();
+  };
+
+  const handleClear = () => {
+    if (!selectedJobId) return;
+    const next = { ...evaluationRules };
+    delete next[selectedJobId];
+    onSaveRules(next);
+    onClose();
+  };
+
+  return (
+    <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+      <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            O'lchash rejimi
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="px-6 py-5 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+            Vakansiya
+          </label>
+          <select
+            value={selectedJobId}
+            onChange={(e) => handleJobChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+          >
+            {uniqueJobs.length === 0 && (
+              <option value="">Vakansiyalar topilmadi</option>
+            )}
+            {uniqueJobs.map((job) => (
+              <option key={job.id} value={job.id}>
+                {job.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+              Minimal yosh
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={minAge}
+              onChange={(e) => setMinAge(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+              placeholder="masalan 25"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+              Maksimal yosh
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={maxAge}
+              onChange={(e) => setMaxAge(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+              placeholder="ixtiyoriy"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+            Minimal tajriba (yil)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={minExpYears}
+            onChange={(e) => setMinExpYears(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+            placeholder="masalan 2"
+          />
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Ushbu parametrlar faqat tanlangan vakansiyaga tegishli arizalar uchun
+          qo'llaniladi. Jadvalda "Mos" / "Mos emas" badge'lari yangilanadi.
+        </p>
+      </div>
+      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-between gap-3">
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={!selectedJobId}
+          className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors disabled:opacity-50"
+        >
+          Ushbu vakansiya uchun qoidani o'chirish
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!selectedJobId}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          Saqlash
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const Arizalar = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,12 +180,46 @@ const Arizalar = () => {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [statusValue, setStatusValue] = useState("pending");
   const [savingStatus, setSavingStatus] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkStatus, setBulkStatus] = useState("pending");
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [evaluationRules, setEvaluationRules] = useState({});
+  const [evaluationFilter, setEvaluationFilter] = useState("all");
+  const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchApplications();
     document.title = "Arizalar - Markaziy Bank Administratsiyasi";
   }, []);
+
+  // Load / persist evaluation rules in localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("appsEvaluationRules");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setEvaluationRules(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load evaluation rules from storage", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "appsEvaluationRules",
+        JSON.stringify(evaluationRules)
+      );
+    } catch (e) {
+      console.error("Failed to save evaluation rules to storage", e);
+    }
+  }, [evaluationRules]);
 
   const fetchApplications = async () => {
     try {
@@ -30,6 +228,8 @@ const Arizalar = () => {
 
       const applicationsData = await getApplicationsApi();
       setApplications(applicationsData);
+      setSelectedIds(new Set());
+      setPage(1);
     } catch (error) {
       console.error("Error fetching applications:", error);
       setError(error.message);
@@ -42,6 +242,87 @@ const Arizalar = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "Ma'lumot yo'q";
     return new Date(dateString).toLocaleDateString("uz-UZ");
+  };
+
+  const truncateText = (text, maxLength = 60) => {
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trimEnd() + "...";
+  };
+
+  // Helpers for experience calculation
+  const parseDateSafe = (d) => {
+    if (!d) return null;
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+  const diffInMonths = (from, to) => {
+    const a = parseDateSafe(from);
+    const b = parseDateSafe(to) || new Date();
+    if (!a || !b) return 0;
+    const years = b.getFullYear() - a.getFullYear();
+    const months = b.getMonth() - a.getMonth();
+    let total = years * 12 + months;
+    if (b.getDate() < a.getDate()) total -= 1;
+    return Math.max(0, total);
+  };
+
+  const calculateAge = (dateString) => {
+    const dob = parseDateSafe(dateString);
+    if (!dob) return null;
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age -= 1;
+    }
+    return Math.max(0, age);
+  };
+
+  const evaluateApplication = (application) => {
+    const jobId = application.job?.id || application.job;
+    if (!jobId || !evaluationRules[jobId]) return { status: null };
+    const rule = evaluationRules[jobId];
+    const age = calculateAge(application.data_of_birth);
+    const expMonths = getTotalExperienceMonths(application.employments);
+    const expYears = expMonths / 12;
+    let ok = true;
+    const reasons = [];
+
+    if (rule.minAge && (age == null || age < rule.minAge)) {
+      ok = false;
+      reasons.push(`Yosh minimal ${rule.minAge} dan kam`);
+    }
+    if (rule.maxAge && age != null && age > rule.maxAge) {
+      ok = false;
+      reasons.push(`Yosh maksimal ${rule.maxAge} dan katta`);
+    }
+    if (rule.minExpYears && expYears < rule.minExpYears) {
+      ok = false;
+      reasons.push(`Tajriba minimal ${rule.minExpYears} yildan kam`);
+    }
+
+    return {
+      status: ok ? "good" : "bad",
+      age,
+      expYears,
+      reasons,
+    };
+  };
+  const getTotalExperienceMonths = (employments) => {
+    if (!Array.isArray(employments) || employments.length === 0) return 0;
+    return employments.reduce(
+      (sum, e) => sum + diffInMonths(e.date_from, e.date_to),
+      0
+    );
+  };
+  const formatExperience = (months) => {
+    const y = Math.floor(months / 12);
+    const m = months % 12;
+    if (y === 0 && m === 0) return "≈ 0 oy";
+    if (y === 0) return `≈ ${m} oy`;
+    if (m === 0) return `≈ ${y} yil`;
+    return `≈ ${y} yil ${m} oy`;
   };
 
   const getStatusBadge = (status) => {
@@ -72,6 +353,15 @@ const Arizalar = () => {
         Kutilmoqda
       </span>
     );
+  };
+
+  const isExpired = (application) => {
+    const deadline = application?.job?.application_deadline;
+    const testAt = application?.job?.test_scheduled_at;
+    const now = new Date();
+    const d1 = parseDateSafe(deadline);
+    const d2 = parseDateSafe(testAt);
+    return (d1 && now > d1) || (d2 && now > d2);
   };
 
   // Fuzzy duplicate detection (>=70% similar name AND same date_of_birth)
@@ -231,6 +521,86 @@ const Arizalar = () => {
     }
   };
 
+  // Bulk status update
+  const handleToggleAll = (checked, visibleIds) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        visibleIds.forEach((id) => next.add(id));
+      } else {
+        visibleIds.forEach((id) => next.delete(id));
+      }
+      return next;
+    });
+  };
+
+  const handleToggleOne = (id, checked) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBulkUpdating(true);
+      const selectedApps = applications.filter((a) => selectedIds.has(a.id));
+      const jobsMap = new Map(selectedApps.map((a) => [a.id, a.job]));
+      await toast.promise(
+        Promise.all(
+          selectedApps.map((a) =>
+            updateApplicationApi(a.id, {
+              user_id: a.user_id,
+              job: jobsMap.get(a.id)?.id || a.job?.id || a.job,
+              full_name: a.full_name,
+              data_of_birth: a.data_of_birth,
+              phone: a.phone,
+              additional_information: a.additional_information,
+              graduations: a.graduations || [],
+              employments: a.employments || [],
+              languages: a.languages || [],
+              status: bulkStatus,
+            })
+          )
+        ),
+        {
+          loading: "Bir nechta arizalar yangilanmoqda...",
+          success: "Holatlar muvaffaqiyatli yangilandi",
+          error: "Bulk yangilashda xatolik yuz berdi",
+        }
+      );
+      setApplications((prev) =>
+        prev.map((a) =>
+          selectedIds.has(a.id) ? { ...a, status: bulkStatus } : a
+        )
+      );
+      setSelectedIds(new Set());
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  // Pagination + evaluation filter derived data
+  const filteredApps = applications.filter((a) => {
+    const evalResult = evaluateApplication(a);
+    if (evaluationFilter === "good") return evalResult.status === "good";
+    if (evaluationFilter === "bad") return evalResult.status === "bad";
+    return true;
+  });
+  const totalItems = filteredApps.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const visibleApps = filteredApps.slice(startIndex, endIndex);
+  const allVisibleSelected =
+    visibleApps.length > 0 && visibleApps.every((a) => selectedIds.has(a.id));
+  const someVisibleSelected =
+    visibleApps.some((a) => selectedIds.has(a.id)) && !allVisibleSelected;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -325,6 +695,50 @@ const Arizalar = () => {
             </p>
           </div>
         </div>
+        <div className="mt-3 sm:mt-0 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsEvalModalOpen(true)}
+            className="px-3 py-1.5 text-xs sm:text-sm rounded-md border border-blue-200 dark:border-blue-700 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+          >
+            O'lchash rejimi
+          </button>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 dark:text-gray-400">
+              Moslik:
+            </label>
+            <select
+              value={evaluationFilter}
+              onChange={(e) => {
+                setEvaluationFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
+            >
+              <option value="all">Barchasi</option>
+              <option value="good">Faqat mos</option>
+              <option value="bad">Faqat mos emas</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 dark:text-gray-400">
+              Sahifadagi yozuvlar:
+            </label>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Duplicates alert (page-level) */}
@@ -357,6 +771,33 @@ const Arizalar = () => {
         </div>
       )}
 
+      {/* Bulk toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md px-4 py-3">
+          <div className="text-sm text-amber-800 dark:text-amber-200">
+            Tanlangan: {selectedIds.size} ta ariza
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+            >
+              <option value="REVIEWING">Kutilmoqda</option>
+              <option value="TEST_SCHEDULED">Qabul qilindi</option>
+              <option value="REJECTED_DOCS">Rad etildi</option>
+            </select>
+            <button
+              onClick={handleBulkUpdate}
+              disabled={isBulkUpdating}
+              className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {isBulkUpdating ? "Yangilanmoqda..." : "Holatni qo'llash"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Applications Table */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="overflow-x-auto">
@@ -364,19 +805,44 @@ const Arizalar = () => {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={allVisibleSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someVisibleSelected;
+                    }}
+                    onChange={(e) =>
+                      handleToggleAll(
+                        e.target.checked,
+                        visibleApps.map((a) => a.id)
+                      )
+                    }
+                  />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   T/r
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   To'liq ism
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-40 max-w-[180px]">
+                  Ish o'rni
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Tug'ilgan sana
+                  Yosh
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Telefon
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Ta'lim
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Tajriba
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Moslik
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Holati
@@ -387,13 +853,24 @@ const Arizalar = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {applications.map((application, index) => (
+              {visibleApps.map((application, index) => (
                 <tr
                   key={application.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  onClick={() => handleViewDetails(application.id)}
                 >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(application.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        handleToggleOne(application.id, e.target.checked)
+                      }
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {index + 1}
+                    {startIndex + index + 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -420,10 +897,29 @@ const Arizalar = () => {
                           </svg>
                         </span>
                       )}
+                      {isExpired(application) && (
+                        <span
+                          title="Test muddati yoki ariza muddati o'tgan"
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        >
+                          Muddati o'tgan
+                        </span>
+                      )}
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 w-40 max-w-[180px]">
+                    <span
+                      className="block overflow-hidden text-ellipsis"
+                      title={application.job?.title || ""}
+                    >
+                      {truncateText(application.job?.title || "—", 40)}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {formatDate(application.data_of_birth)}
+                    {(() => {
+                      const age = calculateAge(application.data_of_birth);
+                      return age === null ? "Ma'lumot yo'q" : `${age} yosh`;
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {application.phone}
@@ -445,6 +941,44 @@ const Arizalar = () => {
                       )}
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {formatExperience(
+                      getTotalExperienceMonths(application.employments)
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {(() => {
+                      const evalResult = evaluateApplication(application);
+                      if (evalResult.status === "good") {
+                        return (
+                          <span
+                            title="Talablarga mos"
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          >
+                            Mos
+                          </span>
+                        );
+                      }
+                      if (evalResult.status === "bad") {
+                        return (
+                          <span
+                            title={
+                              evalResult.reasons?.join("; ") ||
+                              "Talablarga to'liq mos emas"
+                            }
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                          >
+                            Mos emas
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300">
+                          Qoidalar yo'q
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {getStatusBadge(application.status)}
                   </td>
@@ -452,6 +986,7 @@ const Arizalar = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleViewDetails(application.id)}
+                        onClickCapture={(e) => e.stopPropagation()}
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                         title="Tafsilotlar"
                       >
@@ -482,7 +1017,55 @@ const Arizalar = () => {
             </tbody>
           </table>
         </div>
+        {/* Pagination footer */}
+        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+          <div className="text-xs text-gray-600 dark:text-gray-300">
+            {totalItems === 0
+              ? "0 yozuv"
+              : `${startIndex + 1}–${endIndex} / ${totalItems} yozuv`}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Oldingi
+            </button>
+            <div className="text-sm text-gray-700 dark:text-gray-200">
+              {currentPage} / {totalPages}
+            </div>
+            <button
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Keyingi
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Evaluation rules modal */}
+      {isEvalModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
+              onClick={() => setIsEvalModalOpen(false)}
+            ></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
+              &#8203;
+            </span>
+            <EvalRulesModalContent
+              applications={applications}
+              evaluationRules={evaluationRules}
+              onClose={() => setIsEvalModalOpen(false)}
+              onSaveRules={setEvaluationRules}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Duplicates Modal */}
       {duplicatesOpen && (
@@ -686,10 +1269,17 @@ const Arizalar = () => {
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Tug'ilgan sana
+                          Yosh
                         </h4>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          {formatDate(selectedApplication.data_of_birth)}
+                          {(() => {
+                            const age = calculateAge(
+                              selectedApplication.data_of_birth
+                            );
+                            return age === null
+                              ? "Ma'lumot yo'q"
+                              : `${age} yosh`;
+                          })()}
                         </p>
                       </div>
                       <div>
