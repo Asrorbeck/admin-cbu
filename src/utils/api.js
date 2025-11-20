@@ -370,6 +370,72 @@ export const deleteTestApi = async (id) => {
   });
 };
 
+// FAQ Categories API calls
+export const getFaqCategoriesApi = async () => {
+  return apiRequest(API_CONFIG.ENDPOINTS.FAQ_CATEGORIES, {
+    method: "GET",
+  });
+};
+
+export const getFaqCategoryByIdApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}${id}/`, {
+    method: "GET",
+  });
+};
+
+export const createFaqCategoryApi = async (data) => {
+  return apiRequest(API_CONFIG.ENDPOINTS.FAQ_CATEGORIES, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateFaqCategoryApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteFaqCategoryApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}${id}/`, {
+    method: "DELETE",
+  });
+};
+
+// Organizations API calls
+export const getOrganizationsApi = async () => {
+  return apiRequest(API_CONFIG.ENDPOINTS.ORGANIZATIONS, {
+    method: "GET",
+  });
+};
+
+export const getOrganizationByIdApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.ORGANIZATIONS}${id}/`, {
+    method: "GET",
+  });
+};
+
+export const createOrganizationApi = async (data) => {
+  return apiRequest(API_CONFIG.ENDPOINTS.ORGANIZATIONS, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateOrganizationApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.ORGANIZATIONS}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteOrganizationApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.ORGANIZATIONS}${id}/`, {
+    method: "DELETE",
+  });
+};
+
 // Logout API call (if needed)
 export const logoutApi = async () => {
   // Clear secure storage

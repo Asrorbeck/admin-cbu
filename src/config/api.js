@@ -9,6 +9,8 @@ export const API_CONFIG = {
     VACANCIES: "/vacancies/",
     APPEALS: "/Appeals/",
     TESTS: "/tests/",
+    FAQ_CATEGORIES: "/faq-categories/",
+    ORGANIZATIONS: "/organization/",
   },
 };
 

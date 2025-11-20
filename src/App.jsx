@@ -19,6 +19,8 @@ import KadrlarDashboard from "./pages/KadrlarDashboard";
 import Arizalar from "./pages/Arizalar";
 import Testlar from "./pages/Testlar";
 import NewTest from "./pages/NewTest";
+import FAQCategories from "./pages/FAQCategories";
+import Licenses from "./pages/Licenses";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -146,6 +148,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <NewTest />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/faq-categories"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FAQCategories />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/licenses"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Licenses />
             </Layout>
           </ProtectedRoute>
         }
