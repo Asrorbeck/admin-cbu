@@ -74,9 +74,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
                   ${
                     location.pathname === "/kadrlar" ||
-                    location.pathname === "/departments" ||
-                    location.pathname === "/" ||
-                    location.pathname.startsWith("/management")
+                    location.pathname === "/"
                       ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
                       : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                   }
@@ -98,10 +96,101 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </svg>
                 Kadrlar bo'limi
               </Link>
+
+              <Link
+                to="/departments"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/departments" ||
+                    location.pathname.startsWith("/management")
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"
+                  />
+                </svg>
+                Vakansiyalar boshqaruvi
+              </Link>
+
+              <Link
+                to="/arizalar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/arizalar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                Arizalar boshqaruvi
+              </Link>
+
+              <Link
+                to="/testlar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/testlar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
+                Testlar boshqaruvi
+              </Link>
             </div>
           </div>
 
-          {/* Boshqa bo'limlar */}
+          {/* Iste'molchi huquqlari */}
           <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
             Iste'molchi huquqlari
@@ -189,6 +278,70 @@ const Sidebar = ({ isOpen, onClose }) => {
                   />
                 </svg>
                 Litsenziyalar
+              </Link>
+            </div>
+          </div>
+
+          {/* Imloviy xatoliklar */}
+          <div className="px-6">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+            Imloviy xatoliklar
+            </h2>
+            <div className="space-y-1">
+              <Link
+                to="/imloviy-xatoliklar/murojaatlar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/imloviy-xatoliklar/murojaatlar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                Murojaatlar bo'limi
+              </Link>
+
+              <Link
+                to="/imloviy-xatoliklar/faq-categories"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/imloviy-xatoliklar/faq-categories"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                FAQ Kategoriyalari
               </Link>
             </div>
           </div>

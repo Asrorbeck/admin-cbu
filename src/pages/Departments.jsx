@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import DepartmentsTable from "../components/tables/DepartmentsTable";
+import QuickCreateVacancyModal from "../components/modals/QuickCreateVacancyModal";
 import {
   getDepartmentsApi,
   deleteDepartmentApi,
@@ -15,6 +16,7 @@ const Departments = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const navigate = useNavigate();
 
   // Fetch departments from API
@@ -200,6 +202,26 @@ const Departments = () => {
         </div>
 
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+          {/* Quick Create Vacancy Button */}
+          <button
+            onClick={() => setIsQuickCreateOpen(true)}
+            className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+          >
+            <svg
+              className="h-4 w-4 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            Tezkor vakansiya yaratish
+          </button>
           {/* Add Department Button */}
           <Link
             to="/departments/new"
@@ -358,6 +380,17 @@ const Departments = () => {
           );
         })()
       )}
+
+      {/* Quick Create Vacancy Modal */}
+      <QuickCreateVacancyModal
+        isOpen={isQuickCreateOpen}
+        onClose={() => setIsQuickCreateOpen(false)}
+        onSuccess={() => {
+          setIsQuickCreateOpen(false);
+          // Optionally refresh departments list
+          fetchDepartments();
+        }}
+      />
     </div>
   );
 };

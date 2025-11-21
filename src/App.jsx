@@ -21,6 +21,7 @@ import Testlar from "./pages/Testlar";
 import NewTest from "./pages/NewTest";
 import FAQCategories from "./pages/FAQCategories";
 import Licenses from "./pages/Licenses";
+import ImloviyXatoliklarMurojaatlar from "./pages/ImloviyXatoliklarMurojaatlar";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -168,6 +169,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Licenses />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/imloviy-xatoliklar/murojaatlar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ImloviyXatoliklarMurojaatlar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/imloviy-xatoliklar/faq-categories"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FAQCategories />
             </Layout>
           </ProtectedRoute>
         }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import QuickCreateVacancyModal from "../components/modals/QuickCreateVacancyModal";
 import {
   getDepartmentsApi,
   getManagementApi,
@@ -16,6 +16,7 @@ const KadrlarDashboard = () => {
     applications: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -83,6 +84,29 @@ const KadrlarDashboard = () => {
 
   return (
     <div className="space-y-8">
+      {/* Quick Action Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setIsQuickCreateOpen(true)}
+          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl"
+        >
+          <svg
+            className="h-5 w-5 mr-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
+          </svg>
+          Tezkor vakansiya yaratish
+        </button>
+      </div>
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Departments Card */}
@@ -196,195 +220,6 @@ const KadrlarDashboard = () => {
         </div>
       </div>
 
-      {/* Main Action Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Vakansiyalar Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 bg-blue-500 rounded-xl flex items-center justify-center">
-                <svg
-                  className="h-8 w-8 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Vakansiyalar boshqaruvi
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Bo'limlar va vakansiyalarni ko'rish va boshqarish
-                </p>
-                <div className="mt-3 flex items-center space-x-4">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {stats.departments} ta bo'lim
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {stats.vacancies} ta vakansiya
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <Link
-              to="/departments"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
-            >
-              <span>Vakansiyalarni ko'rish</span>
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Link>
-          </div>
-        </div>
-
-        {/* Arizalar Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 bg-blue-500 rounded-xl flex items-center justify-center">
-                <svg
-                  className="h-8 w-8 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Arizalar boshqaruvi
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Ishga ariza bergan nomzodlarni ko'rish va baholash
-                </p>
-                <div className="mt-3 flex items-center space-x-4">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {stats.applications} ta ariza
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Ko'rib chiqilmoqda
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <Link
-              to="/arizalar"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
-            >
-              <span>Arizalarni ko'rish</span>
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Link>
-          </div>
-        </div>
-
-        {/* Testlar Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 bg-blue-500 rounded-xl flex items-center justify-center">
-                <svg
-                  className="h-8 w-8 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Testlar boshqaruvi
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Nomzodlar uchun testlarni yaratish va boshqarish
-                </p>
-                <div className="mt-3 flex items-center space-x-4">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Testlar
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Boshqarish
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <Link
-              to="/testlar"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
-            >
-              <span>Testlarni ko'rish</span>
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* Recent Activity */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -416,6 +251,16 @@ const KadrlarDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Quick Create Vacancy Modal */}
+      <QuickCreateVacancyModal
+        isOpen={isQuickCreateOpen}
+        onClose={() => setIsQuickCreateOpen(false)}
+        onSuccess={() => {
+          setIsQuickCreateOpen(false);
+          fetchStats(); // Refresh stats after creation
+        }}
+      />
     </div>
   );
 };
