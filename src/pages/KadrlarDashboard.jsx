@@ -84,28 +84,7 @@ const KadrlarDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Quick Action Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setIsQuickCreateOpen(true)}
-          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl"
-        >
-          <svg
-            className="h-5 w-5 mr-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-          Tezkor vakansiya yaratish
-        </button>
-      </div>
+      
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -6,6 +6,7 @@ import {
   deleteOrganizationApi,
 } from "../utils/api";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 const Licenses = () => {
   // State
@@ -25,6 +26,11 @@ const Licenses = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [saving, setSaving] = useState(false);
+  
+  // Import Modal
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
   
   // Form
   const [formData, setFormData] = useState({
@@ -217,6 +223,178 @@ const Licenses = () => {
     }
   };
 
+  // Excel template yuklab olish
+  const downloadExcelTemplate = () => {
+    // Template ma'lumotlari
+    const templateData = [
+      {
+        inn: "123456789",
+        license_number: "LIC-001",
+        issuance_license: "2024-01-15",
+        name: "Namuna Tashkilot",
+        address: "Toshkent shahri, Chilonzor tumani",
+      },
+    ];
+
+    // Workbook yaratish
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(templateData);
+
+    // Ustun kengliklarini sozlash
+    ws["!cols"] = [
+      { wch: 15 }, // inn
+      { wch: 20 }, // license_number
+      { wch: 18 }, // issuance_license
+      { wch: 30 }, // name
+      { wch: 40 }, // address
+    ];
+
+    // Sheet qo'shish
+    XLSX.utils.book_append_sheet(wb, ws, "Litsenziyalar");
+
+    // Faylni yuklab olish
+    XLSX.writeFile(wb, "litsenziyalar_template.xlsx");
+    toast.success("Excel shablon yuklab olindi");
+  };
+
+  // Import modal ochish
+  const handleOpenImportModal = () => {
+    setIsImportModalOpen(true);
+    setImportFile(null);
+  };
+
+  // Import modal yopish
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportFile(null);
+  };
+
+  // Fayl tanlash
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Excel fayl ekanligini tekshirish
+      const validExtensions = [
+        ".xlsx",
+        ".xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+      ];
+      const fileExtension = file.name
+        .substring(file.name.lastIndexOf("."))
+        .toLowerCase();
+      const isValidType =
+        validExtensions.includes(fileExtension) ||
+        validExtensions.includes(file.type);
+
+      if (!isValidType) {
+        toast.error("Faqat Excel fayllar (.xlsx, .xls) qabul qilinadi");
+        return;
+      }
+
+      setImportFile(file);
+    }
+  };
+
+  // Excel faylni import qilish
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error("Iltimos, fayl tanlang");
+      return;
+    }
+
+    try {
+      setImporting(true);
+
+      // Excel faylni o'qish
+      const fileReader = new FileReader();
+      
+      fileReader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          
+          // Birinchi sheetni olish
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // JSON formatiga o'tkazish
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          if (jsonData.length === 0) {
+            toast.error("Excel fayl bo'sh");
+            setImporting(false);
+            return;
+          }
+
+          // Har bir qatorni alohida yuborish
+          let successCount = 0;
+          let errorCount = 0;
+          const errors = [];
+
+          for (let i = 0; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            
+            // Ma'lumotlarni tozalash va formatlash
+            const payload = {
+              inn: String(row.inn || row.INN || "").trim(),
+              license_number: String(row.license_number || row["license_number"] || row["Litsenziya raqami"] || "").trim(),
+              issuance_license: String(row.issuance_license || row["issuance_license"] || row["Berilgan sana"] || "").trim(),
+              name: String(row.name || row.NAME || row["Tashkilot nomi"] || "").trim(),
+              address: String(row.address || row.ADDRESS || row["Manzil"] || "").trim(),
+            };
+
+            // Validatsiya
+            if (!payload.inn || !payload.license_number || !payload.issuance_license || !payload.name || !payload.address) {
+              errorCount++;
+              errors.push(`Qator ${i + 2}: Barcha maydonlar to'ldirilishi shart`);
+              continue;
+            }
+
+            try {
+              await createOrganizationApi(payload);
+              successCount++;
+            } catch (error) {
+              errorCount++;
+              const errorMsg = error?.responseData?.detail || error?.message || "Xatolik yuz berdi";
+              errors.push(`Qator ${i + 2}: ${errorMsg}`);
+            }
+          }
+
+          // Natijalarni ko'rsatish
+          if (successCount > 0) {
+            toast.success(`${successCount} ta litsenziya muvaffaqiyatli qo'shildi`);
+          }
+          
+          if (errorCount > 0) {
+            toast.error(`${errorCount} ta qatorda xatolik yuz berdi`);
+            console.error("Import xatoliklari:", errors);
+          }
+
+          handleCloseImportModal();
+          loadData();
+        } catch (error) {
+          console.error("Excel o'qish xatosi:", error);
+          toast.error("Excel faylni o'qishda xatolik yuz berdi");
+        } finally {
+          setImporting(false);
+        }
+      };
+
+      fileReader.onerror = () => {
+        toast.error("Faylni o'qishda xatolik yuz berdi");
+        setImporting(false);
+      };
+
+      // Faylni array buffer sifatida o'qish
+      fileReader.readAsArrayBuffer(importFile);
+    } catch (error) {
+      console.error("Import error:", error);
+      toast.error("Import qilishda xatolik yuz berdi");
+      setImporting(false);
+    }
+  };
+
   // Loading skeleton
   if (loading) {
     return (
@@ -245,12 +423,33 @@ const Licenses = () => {
             Tashkilotlar litsenziyalarini boshqarish
           </p>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-        >
-          + Yangi litsenziya qo'shish
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleOpenImportModal}
+            className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+            Import qilish
+          </button>
+          <button
+            onClick={handleAddNew}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            + Yangi litsenziya qo'shish
+          </button>
+        </div>
       </div>
 
       {/* Xatolik */}
@@ -610,6 +809,145 @@ const Licenses = () => {
                   className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? "Saqlanmoqda..." : "Saqlash"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
+              onClick={handleCloseImportModal}
+            ></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
+              &#8203;
+            </span>
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Excel orqali import qilish
+                </h3>
+                <button
+                  onClick={handleCloseImportModal}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
+                    <strong>Eslatma:</strong> Excel fayl quyidagi formatda bo'lishi kerak:
+                  </p>
+                  <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
+                    <li>INN - INN raqami (majburiy)</li>
+                    <li>license_number - Litsenziya raqami (majburiy)</li>
+                    <li>issuance_license - Berilgan sana (YYYY-MM-DD formatida, majburiy)</li>
+                    <li>name - Tashkilot nomi (majburiy)</li>
+                    <li>address - Manzil (majburiy)</li>
+                  </ul>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={downloadExcelTemplate}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    Excel shablon yuklab olish
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Excel fayl tanlash
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+                    <div className="space-y-1 text-center">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                        <label
+                          htmlFor="file-upload"
+                          className="relative cursor-pointer bg-white dark:bg-gray-700 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                        >
+                          <span>Fayl tanlash</span>
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                            className="sr-only"
+                            onChange={handleFileChange}
+                          />
+                        </label>
+                        <p className="pl-1">yoki drag & drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        .xlsx, .xls fayllar qabul qilinadi
+                      </p>
+                      {importFile && (
+                        <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                          ✓ {importFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-end gap-3">
+                <button
+                  onClick={handleCloseImportModal}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-500"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importFile || importing}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                  {importing ? "Import qilinmoqda..." : "Import qilish"}
                 </button>
               </div>
             </div>
