@@ -371,8 +371,11 @@ export const deleteTestApi = async (id) => {
 };
 
 // FAQ Categories API calls
-export const getFaqCategoriesApi = async () => {
-  return apiRequest(API_CONFIG.ENDPOINTS.FAQ_CATEGORIES, {
+export const getFaqCategoriesApi = async (section = null) => {
+  const endpoint = section
+    ? `${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}?section=${section}`
+    : API_CONFIG.ENDPOINTS.FAQ_CATEGORIES;
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };
@@ -383,8 +386,11 @@ export const getFaqCategoryByIdApi = async (id) => {
   });
 };
 
-export const createFaqCategoryApi = async (data) => {
-  return apiRequest(API_CONFIG.ENDPOINTS.FAQ_CATEGORIES, {
+export const createFaqCategoryApi = async (data, section = null) => {
+  const endpoint = section
+    ? `${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}?section=${section}`
+    : API_CONFIG.ENDPOINTS.FAQ_CATEGORIES;
+  return apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -433,6 +439,26 @@ export const updateOrganizationApi = async (id, data) => {
 export const deleteOrganizationApi = async (id) => {
   return apiRequest(`${API_CONFIG.ENDPOINTS.ORGANIZATIONS}${id}/`, {
     method: "DELETE",
+  });
+};
+
+// Corruption Reports API calls
+export const getCorruptionReportsApi = async () => {
+  return apiRequest("/report/", {
+    method: "GET",
+  });
+};
+
+export const getCorruptionReportByIdApi = async (id) => {
+  return apiRequest(`/report/${id}/`, {
+    method: "GET",
+  });
+};
+
+export const updateCorruptionReportApi = async (id, data) => {
+  return apiRequest(`/report/${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 };
 

@@ -22,6 +22,9 @@ import NewTest from "./pages/NewTest";
 import FAQCategories from "./pages/FAQCategories";
 import Licenses from "./pages/Licenses";
 import ImloviyXatoliklarMurojaatlar from "./pages/ImloviyXatoliklarMurojaatlar";
+import ImloviyXatoliklarFAQCategories from "./pages/ImloviyXatoliklarFAQCategories";
+import KorrupsiyaMurojaatlar from "./pages/KorrupsiyaMurojaatlar";
+import KorrupsiyaFAQCategories from "./pages/KorrupsiyaFAQCategories";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -188,7 +191,27 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <FAQCategories />
+              <ImloviyXatoliklarFAQCategories />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/korrupsiya-murojaatlari/murojaatlar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <KorrupsiyaMurojaatlar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/korrupsiya-murojaatlari/faq-categories"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <KorrupsiyaFAQCategories />
             </Layout>
           </ProtectedRoute>
         }

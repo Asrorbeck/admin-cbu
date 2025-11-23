@@ -345,6 +345,70 @@ const Sidebar = ({ isOpen, onClose }) => {
               </Link>
             </div>
           </div>
+
+          {/* Korrupsiya murojaatlari */}
+          <div className="px-6">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+            Korrupsiya murojaatlari
+            </h2>
+            <div className="space-y-1">
+              <Link
+                to="/korrupsiya-murojaatlari/murojaatlar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/korrupsiya-murojaatlari/murojaatlar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                Murojaatlar bo'limi
+              </Link>
+
+              <Link
+                to="/korrupsiya-murojaatlari/faq-categories"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/korrupsiya-murojaatlari/faq-categories"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                FAQ Kategoriyalari
+              </Link>
+            </div>
+          </div>
         </nav>
       </div>
     </>
