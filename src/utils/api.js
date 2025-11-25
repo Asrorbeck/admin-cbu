@@ -337,6 +337,20 @@ export const updateAppealApi = async (id, data) => {
   });
 };
 
+// Spelling reports API calls
+export const getSpellingReportsApi = async () => {
+  return apiRequest(API_CONFIG.ENDPOINTS.SPELLING_REPORTS, {
+    method: "GET",
+  });
+};
+
+export const updateSpellingReportApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SPELLING_REPORTS}${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+};
+
 // Tests API calls
 export const getTestsApi = async () => {
   return apiRequest(API_CONFIG.ENDPOINTS.TESTS, {

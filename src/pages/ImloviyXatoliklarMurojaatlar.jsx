@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAppealsApi, updateAppealApi } from "../utils/api";
+import { getSpellingReportsApi, updateSpellingReportApi } from "../utils/api";
 import toast from "react-hot-toast";
 
 const ImloviyXatoliklarMurojaatlar = () => {
@@ -10,8 +10,16 @@ const ImloviyXatoliklarMurojaatlar = () => {
   const [pageSize, setPageSize] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppeal, setSelectedAppeal] = useState(null);
-  const [statusValue, setStatusValue] = useState("NEW");
+  const [statusValue, setStatusValue] = useState("new");
   const [savingStatus, setSavingStatus] = useState(false);
+
+  const STATUS_OPTIONS = [
+    { value: "new", label: "Yangi" },
+    { value: "pending", label: "Koʻrib chiqish kutilmoqda" },
+    { value: "in_progress", label: "Jarayonda" },
+    { value: "resolved", label: "Qanoatlantirildi" },
+    { value: "rejected", label: "Rad etildi" },
+  ];
 
   useEffect(() => {
     document.title = "Imloviy xatoliklar - Murojaatlar - Markaziy Bank Administratsiyasi";
@@ -22,7 +30,7 @@ const ImloviyXatoliklarMurojaatlar = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAppealsApi();
+      const data = await getSpellingReportsApi();
       setAppeals(Array.isArray(data) ? data : []);
       setPage(1);
     } catch (e) {
@@ -44,35 +52,49 @@ const ImloviyXatoliklarMurojaatlar = () => {
   };
 
   const getStatusBadge = (s) => {
-    const v = (s || "").toUpperCase();
-    if (v === "NEW" || v === "APPEAL_NEW")
+    const v = (s || "").toLowerCase();
+    if (v === "new" || v === "appeal_new")
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
           Yangi
         </span>
       );
-    if (v === "APPEAL_PENDING" || v === "PENDING")
+    if (v === "pending" || v === "appeal_pending")
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
           Koʻrib chiqish kutilmoqda
         </span>
       );
-    if (v === "APPEAL_IN_PROGRESS" || v === "IN_PROGRESS")
+    if (v === "in_progress" || v === "appeal_in_progress")
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
           Jarayonda
         </span>
       );
-    if (v === "APPEAL_CLOSED_ACCEPTED" || v === "CLOSED_ACCEPTED")
+    if (
+      v === "closed_accepted" ||
+      v === "appeal_closed_accepted" ||
+      v === "resolved"
+    )
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
           Qanoatlantirildi
         </span>
       );
-    if (v === "APPEAL_CLOSED_REJECTED" || v === "CLOSED_REJECTED")
+    if (
+      v === "closed_rejected" ||
+      v === "appeal_closed_rejected" ||
+      v === "rejected"
+    )
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
           Rad etildi
+        </span>
+      );
+    if (v === "thanks_sent")
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300">
+          Rahmat yuborildi
         </span>
       );
     return (
@@ -90,7 +112,7 @@ const ImloviyXatoliklarMurojaatlar = () => {
 
   const handleRowClick = (appeal) => {
     setSelectedAppeal(appeal);
-    setStatusValue(((appeal.status || "NEW") + "").toUpperCase());
+    setStatusValue(((appeal.status || "new") + "").toLowerCase());
     setIsModalOpen(true);
   };
 
@@ -98,7 +120,7 @@ const ImloviyXatoliklarMurojaatlar = () => {
     setIsModalOpen(false);
     setTimeout(() => {
       setSelectedAppeal(null);
-      setStatusValue("NEW");
+      setStatusValue("new");
     }, 200);
   };
 
@@ -107,29 +129,32 @@ const ImloviyXatoliklarMurojaatlar = () => {
     try {
       setSavingStatus(true);
       const payload = {
-        user_id: selectedAppeal.user_id,
-        is_anonymous: selectedAppeal.is_anonymous,
-        full_name: selectedAppeal.full_name,
-        phone_number: selectedAppeal.phone_number,
-        email: selectedAppeal.email,
-        subject: selectedAppeal.subject,
-        message: selectedAppeal.message,
-        attachment: selectedAppeal.attachment,
-        created_at: selectedAppeal.created_at,
-        status: statusValue.toUpperCase(),
+        status: (statusValue || "new").toLowerCase(),
       };
-      await toast.promise(updateAppealApi(selectedAppeal.id, payload), {
-        loading: "Saqlanmoqda...",
-        success: "Holat yangilandi",
-        error: (err) => err?.message || "Xatolik yuz berdi",
-      });
+      const updatedReport = await toast.promise(
+        updateSpellingReportApi(selectedAppeal.id, payload),
+        {
+          loading: "Saqlanmoqda...",
+          success: "Holat yangilandi",
+          error: (err) => err?.message || "Xatolik yuz berdi",
+        }
+      );
       setAppeals((prev) =>
         prev.map((ap) =>
-          ap.id === selectedAppeal.id ? { ...ap, status: payload.status } : ap
+          ap.id === selectedAppeal.id
+            ? {
+                ...ap,
+                ...(updatedReport || {}),
+                status: payload.status,
+              }
+            : ap
         )
       );
       closeModal();
-    } catch {
+    } catch (err) {
+      if (err?.message) {
+        toast.error(err.message);
+      }
     } finally {
       setSavingStatus(false);
     }
@@ -287,7 +312,10 @@ const ImloviyXatoliklarMurojaatlar = () => {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Batafsil ma'lumot
+                      Matn parcha
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Manba
                     </th>
                   </tr>
                 </thead>
@@ -310,7 +338,27 @@ const ImloviyXatoliklarMurojaatlar = () => {
                         {getStatusBadge(appeal.status)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                        {truncateText(appeal.message || appeal.subject || "-")}
+                        {truncateText(
+                          appeal.text_snippet ||
+                            appeal.description ||
+                            appeal.message ||
+                            "-"
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-blue-600 dark:text-blue-400">
+                        {appeal.source_url ? (
+                          <a
+                            href={appeal.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="underline"
+                          >
+                            Havola
+                          </a>
+                        ) : (
+                          "-"
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -404,15 +452,19 @@ const ImloviyXatoliklarMurojaatlar = () => {
                       Telefon raqami
                     </p>
                     <p className="text-sm text-gray-900 dark:text-white font-medium">
-                      {selectedAppeal.phone_number || "-"}
+                      {selectedAppeal.phone_number ||
+                        selectedAppeal.user?.phone_number ||
+                        "-"}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Email
+                      Telegram foydalanuvchisi
                     </p>
                     <p className="text-sm text-gray-900 dark:text-white font-medium">
-                      {selectedAppeal.email || "-"}
+                      {selectedAppeal.user?.username
+                        ? `@${selectedAppeal.user.username}`
+                        : "-"}
                     </p>
                   </div>
                   <div>
@@ -425,23 +477,41 @@ const ImloviyXatoliklarMurojaatlar = () => {
                   </div>
                 </div>
 
-                {selectedAppeal.subject && (
+                {selectedAppeal.text_snippet && (
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      Mavzu
+                      Matn parcha
                     </p>
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      {selectedAppeal.subject}
+                    <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap break-words">
+                      {selectedAppeal.text_snippet}
                     </p>
                   </div>
                 )}
 
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    Xabar
+                    Manba havola
+                  </p>
+                  {selectedAppeal.source_url ? (
+                    <a
+                      href={selectedAppeal.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 underline break-words"
+                    >
+                      {selectedAppeal.source_url}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-900 dark:text-white">-</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    Tavsif
                   </p>
                   <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap break-words">
-                    {selectedAppeal.message}
+                    {selectedAppeal.description || "-"}
                   </p>
                 </div>
 
@@ -471,11 +541,11 @@ const ImloviyXatoliklarMurojaatlar = () => {
                     disabled={savingStatus}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white disabled:opacity-50"
                   >
-                    <option value="NEW">Yangi</option>
-                    <option value="PENDING">Koʻrib chiqish kutilmoqda</option>
-                    <option value="IN_PROGRESS">Jarayonda</option>
-                    <option value="CLOSED_ACCEPTED">Qanoatlantirildi</option>
-                    <option value="CLOSED_REJECTED">Rad etildi</option>
+                    {STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
