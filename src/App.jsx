@@ -25,6 +25,8 @@ import ImloviyXatoliklarMurojaatlar from "./pages/ImloviyXatoliklarMurojaatlar";
 import ImloviyXatoliklarFAQCategories from "./pages/ImloviyXatoliklarFAQCategories";
 import KorrupsiyaMurojaatlar from "./pages/KorrupsiyaMurojaatlar";
 import KorrupsiyaFAQCategories from "./pages/KorrupsiyaFAQCategories";
+import Sorovnomalar from "./pages/Sorovnomalar";
+import SurveyDetails from "./pages/SurveyDetails";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -212,6 +214,43 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <KorrupsiyaFAQCategories />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sorovnomalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Sorovnomalar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sorovnomalar/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SurveyDetails />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sorovnomalar/javoblar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <div className="p-6">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  So'rovnoma javoblari
+                </h1>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  Bu sahifa keyinchalik to'ldiriladi
+                </p>
+              </div>
             </Layout>
           </ProtectedRoute>
         }

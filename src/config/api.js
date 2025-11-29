@@ -12,6 +12,8 @@ export const API_CONFIG = {
     FAQ_CATEGORIES: "/faq-categories/",
     ORGANIZATIONS: "/organization/",
     SPELLING_REPORTS: "https://b21b5a398785.ngrok-free.app/api/spelling/reports/",
+    SURVEYS: "/survey-admin/surveys/",
+    SURVEY_QUESTIONS: "/survey-admin/questions/",
   },
 };
 

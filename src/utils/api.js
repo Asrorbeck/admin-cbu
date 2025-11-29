@@ -476,6 +476,75 @@ export const updateCorruptionReportApi = async (id, data) => {
   });
 };
 
+// Surveys API calls
+export const getSurveysApi = async () => {
+  return apiRequest(API_CONFIG.ENDPOINTS.SURVEYS, {
+    method: "GET",
+  });
+};
+
+export const getSurveyByIdApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SURVEYS}${id}/`, {
+    method: "GET",
+  });
+};
+
+export const createSurveyApi = async (data) => {
+  return apiRequest(API_CONFIG.ENDPOINTS.SURVEYS, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateSurveyApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SURVEYS}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteSurveyApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SURVEYS}${id}/`, {
+    method: "DELETE",
+  });
+};
+
+// Survey Questions API calls
+export const getSurveyQuestionsApi = async (surveyId = null) => {
+  const endpoint = surveyId
+    ? `${API_CONFIG.ENDPOINTS.SURVEY_QUESTIONS}?survey=${surveyId}`
+    : API_CONFIG.ENDPOINTS.SURVEY_QUESTIONS;
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+export const getSurveyQuestionByIdApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SURVEY_QUESTIONS}${id}/`, {
+    method: "GET",
+  });
+};
+
+export const createSurveyQuestionApi = async (data) => {
+  return apiRequest(API_CONFIG.ENDPOINTS.SURVEY_QUESTIONS, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateSurveyQuestionApi = async (id, data) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SURVEY_QUESTIONS}${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteSurveyQuestionApi = async (id) => {
+  return apiRequest(`${API_CONFIG.ENDPOINTS.SURVEY_QUESTIONS}${id}/`, {
+    method: "DELETE",
+  });
+};
+
 // Logout API call (if needed)
 export const logoutApi = async () => {
   // Clear secure storage
