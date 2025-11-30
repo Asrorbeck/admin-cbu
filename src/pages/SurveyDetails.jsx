@@ -29,11 +29,18 @@ const SurveyDetails = () => {
 
       const [surveyData, questionsData] = await Promise.all([
         getSurveyByIdApi(id),
-        getSurveyQuestionsApi(id),
+        getSurveyQuestionsApi(), // Get all questions, then filter by survey ID
       ]);
 
       setSurvey(surveyData);
-      setQuestions(Array.isArray(questionsData) ? questionsData : []);
+      
+      // Filter questions by survey ID
+      const surveyId = parseInt(id, 10);
+      const filteredQuestions = Array.isArray(questionsData)
+        ? questionsData.filter((q) => q.survey === surveyId)
+        : [];
+      
+      setQuestions(filteredQuestions);
     } catch (error) {
       console.error("Error fetching data:", error);
       setError(error.message);

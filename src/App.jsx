@@ -27,6 +27,7 @@ import KorrupsiyaMurojaatlar from "./pages/KorrupsiyaMurojaatlar";
 import KorrupsiyaFAQCategories from "./pages/KorrupsiyaFAQCategories";
 import Sorovnomalar from "./pages/Sorovnomalar";
 import SurveyDetails from "./pages/SurveyDetails";
+import TestNatijalari from "./pages/TestNatijalari";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -154,6 +155,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <NewTest />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/test-natijalari"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TestNatijalari />
             </Layout>
           </ProtectedRoute>
         }
