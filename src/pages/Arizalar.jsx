@@ -696,6 +696,35 @@ const Arizalar = () => {
           </div>
         </div>
         <div className="mt-3 sm:mt-0 flex items-center gap-3">
+          {/* Duplicates alert (page-level) */}
+      {duplicateGroups.length > 0 && (
+        <div className="flex items-center justify-end ">
+          <button
+            type="button"
+            onClick={() => setDuplicatesOpen(true)}
+            className="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs sm:text-sm font-medium rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors"
+            title="Bir xillik aniqlanmoqda"
+          >
+            <svg
+              className="h-4 w-4 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+              />
+            </svg>
+            Bir xillik aniqlanmoqda
+            <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-amber-500 text-white text-[10px]">
+              {duplicateGroups.length}
+            </span>
+          </button>
+        </div>
+      )}
           <button
             type="button"
             onClick={() => setIsEvalModalOpen(true)}
@@ -741,35 +770,7 @@ const Arizalar = () => {
         </div>
       </div>
 
-      {/* Duplicates alert (page-level) */}
-      {duplicateGroups.length > 0 && (
-        <div className="flex items-center justify-end -mt-2">
-          <button
-            type="button"
-            onClick={() => setDuplicatesOpen(true)}
-            className="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs sm:text-sm font-medium rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors"
-            title="Bir xillik aniqlanmoqda"
-          >
-            <svg
-              className="h-4 w-4 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-              />
-            </svg>
-            Bir xillik aniqlanmoqda
-            <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-amber-500 text-white text-[10px]">
-              {duplicateGroups.length}
-            </span>
-          </button>
-        </div>
-      )}
+      
 
       {/* Bulk toolbar */}
       {selectedIds.size > 0 && (
