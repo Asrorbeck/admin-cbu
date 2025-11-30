@@ -28,6 +28,8 @@ import KorrupsiyaFAQCategories from "./pages/KorrupsiyaFAQCategories";
 import Sorovnomalar from "./pages/Sorovnomalar";
 import SurveyDetails from "./pages/SurveyDetails";
 import TestNatijalari from "./pages/TestNatijalari";
+import TilSuhbati from "./pages/TilSuhbati";
+import UmumiyNatijalar from "./pages/UmumiyNatijalar";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -43,17 +45,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <KadrlarDashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/kadrlar"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <KadrlarDashboard />
+              <Departments />
             </Layout>
           </ProtectedRoute>
         }
@@ -98,7 +90,6 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      {/* New management route removed: handled via modal in DepartmentDetails */}
       <Route
         path="/management/:id"
         element={
@@ -165,6 +156,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <TestNatijalari />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/til-suhbati"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TilSuhbati />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/umumiy-natijalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <UmumiyNatijalar />
             </Layout>
           </ProtectedRoute>
         }
