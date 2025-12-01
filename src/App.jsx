@@ -28,6 +28,7 @@ import KorrupsiyaFAQCategories from "./pages/KorrupsiyaFAQCategories";
 import Sorovnomalar from "./pages/Sorovnomalar";
 import SurveyDetails from "./pages/SurveyDetails";
 import TestNatijalari from "./pages/TestNatijalari";
+import TestdanOtaOlmaganlar from "./pages/TestdanOtaOlmaganlar";
 import TilSuhbati from "./pages/TilSuhbati";
 import UmumiyNatijalar from "./pages/UmumiyNatijalar";
 
@@ -156,6 +157,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <TestNatijalari />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/test-natijalari/ota-olmaganlar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TestdanOtaOlmaganlar />
             </Layout>
           </ProtectedRoute>
         }

@@ -188,6 +188,7 @@ const Arizalar = () => {
   const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -585,6 +586,24 @@ const Arizalar = () => {
 
   // Pagination + evaluation filter derived data
   const filteredApps = applications.filter((a) => {
+    // Search filter by name
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      const fullName = (a.full_name || "").toLowerCase();
+      if (!fullName.includes(query)) {
+        return false;
+      }
+    }
+    
+    // If evaluation rules are set (o'lchash rejimi qo'yilgan), filter by selected vacancy
+    const hasEvaluationRules = Object.keys(evaluationRules).length > 0;
+    if (hasEvaluationRules && a.job && a.job.id) {
+      // Only show applications for vacancies that have evaluation rules
+      if (!evaluationRules[a.job.id]) {
+        return false;
+      }
+    }
+    
     const evalResult = evaluateApplication(a);
     if (evaluationFilter === "good") return evalResult.status === "good";
     if (evaluationFilter === "bad") return evalResult.status === "bad";
@@ -770,7 +789,60 @@ const Arizalar = () => {
         </div>
       </div>
 
-      
+      {/* Search Bar */}
+      <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Qidirish: ism, familiya..."
+              className="w-full pr-10 pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <svg
+              className="h-4 w-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setPage(1);
+              }}
+              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              title="Tozalash"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Bulk toolbar */}
       {selectedIds.size > 0 && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
@@ -26,6 +26,8 @@ const TilSuhbati = () => {
   const [isSendLinkModalOpen, setIsSendLinkModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const selectAllCheckboxRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,7 +38,57 @@ const TilSuhbati = () => {
   useEffect(() => {
     // When date changes, refetch results
     fetchResults();
+    setSelectedUserIds([]); // Clear selections when date changes
   }, [selectedDate]);
+
+  // Set indeterminate state for select all checkbox
+  // This must be before early returns to follow Rules of Hooks
+  useEffect(() => {
+    if (selectAllCheckboxRef.current && !loading && !error) {
+      // Calculate filtered and paginated data here
+      const q = query.trim().toLowerCase();
+      const filtered = results.filter((result) => {
+        // Date filter (inline to avoid dependency issues)
+        if (selectedDate) {
+          const resultDate = result.interview_date || result.test_date;
+          if (resultDate) {
+            try {
+              const date = new Date(resultDate);
+              const selected = new Date(selectedDate);
+              if (
+                date.getFullYear() !== selected.getFullYear() ||
+                date.getMonth() !== selected.getMonth() ||
+                date.getDate() !== selected.getDate()
+              ) {
+                return false;
+              }
+            } catch {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        }
+        // Passed filter
+        if (showPassedOnly && !result.passed) return false;
+        // Search filter
+        if (q) {
+          const inUserName = result.user_name?.toLowerCase().includes(q);
+          const inVacancy = result.vacancy_title?.toLowerCase().includes(q);
+          if (!inUserName && !inVacancy) return false;
+        }
+        return true;
+      });
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginated = filtered.slice(startIndex, endIndex);
+      
+      const allSelected = paginated.length > 0 && paginated.every((r) => selectedUserIds.includes(r.id));
+      const someSelected = paginated.some((r) => selectedUserIds.includes(r.id));
+      
+      selectAllCheckboxRef.current.indeterminate = someSelected && !allSelected;
+    }
+  }, [selectedUserIds, results, query, showPassedOnly, selectedDate, page, pageSize, loading, error]);
 
   const fetchResults = async () => {
     try {
@@ -160,6 +212,35 @@ const TilSuhbati = () => {
     setIsEditModalOpen(false);
     setSelectedUser(null);
     toast.success("Til suhbati natijalari muvaffaqiyatli saqlandi");
+  };
+
+  // Handle user selection
+  const handleUserSelect = (userId) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  // Handle bulk reject (mark as didn't attend meeting)
+  const handleBulkReject = () => {
+    if (selectedUserIds.length === 0) {
+      toast.error("Hech qanday foydalanuvchi tanlanmagan");
+      return;
+    }
+
+    setResults((prev) =>
+      prev.map((r) =>
+        selectedUserIds.includes(r.id)
+          ? { ...r, meeting_attended: false }
+          : r
+      )
+    );
+    setSelectedUserIds([]);
+    toast.success(
+      `${selectedUserIds.length} ta foydalanuvchi "Rad etildi (Meetingga qatnashmadi)" deb belgilandi`
+    );
   };
 
   const handleSendLinkSuccess = (meetLinkData) => {
@@ -345,6 +426,20 @@ const TilSuhbati = () => {
   const showingEnd = Math.min(endIndex, total);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  // Handle select all (moved here to access paginated)
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedUserIds(paginated.map((r) => r.id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  };
+
+  // Check if all visible users are selected (moved here to access paginated)
+  // Calculate selection states (for use in render)
+  const allSelected = paginated.length > 0 && paginated.every((r) => selectedUserIds.includes(r.id));
+  const someSelected = paginated.some((r) => selectedUserIds.includes(r.id));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -407,6 +502,7 @@ const TilSuhbati = () => {
               onChange={(e) => {
                 setShowPassedOnly(e.target.checked);
                 setPage(1);
+                setSelectedUserIds([]); // Clear selections when filter changes
               }}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
@@ -426,6 +522,7 @@ const TilSuhbati = () => {
               onChange={(e) => {
                 setQuery(e.target.value);
                 setPage(1);
+                setSelectedUserIds([]); // Clear selections when search changes
               }}
               placeholder="Qidirish: foydalanuvchi, vakansiya..."
               className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
@@ -557,11 +654,51 @@ const TilSuhbati = () => {
         </div>
       ) : (
         <>
+          {/* Bulk Action Button */}
+          {selectedUserIds.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                  {selectedUserIds.length} ta foydalanuvchi tanlangan
+                </span>
+              </div>
+              <button
+                onClick={handleBulkReject}
+                className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
+              >
+                <svg
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                Rad etildi (Meetingga qatnashmadi)
+              </button>
+            </div>
+          )}
+
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        ref={selectAllCheckboxRef}
+                        checked={allSelected}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       T/r
                     </th>
@@ -592,6 +729,18 @@ const TilSuhbati = () => {
                       onClick={() => handleEditResults(result)}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
+                      <td
+                        className="px-6 py-4 whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedUserIds.includes(result.id)}
+                          onChange={() => handleUserSelect(result.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {startIndex + index + 1}
                       </td>
