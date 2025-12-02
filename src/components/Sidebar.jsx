@@ -22,24 +22,13 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <div className={sidebarClasses}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg
-                className="h-5 w-5 text-white"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                Markaziy Bank
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Administratsiya
-              </p>
-            </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+              Markaziy Bank
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Administratsiya
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -270,6 +259,34 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </svg>
                 Umumiy natijalar
               </Link>
+
+              <Link
+                to="/kadrlar-statistikalar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/kadrlar-statistikalar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Statistikalar
+              </Link>
             </div>
           </div>
 
@@ -362,6 +379,34 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </svg>
                 Litsenziyalar
               </Link>
+
+              <Link
+                to="/istemolchi-huquqlari-statistikalar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/istemolchi-huquqlari-statistikalar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Statistikalar
+              </Link>
             </div>
           </div>
 
@@ -426,6 +471,34 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </svg>
                 FAQ Kategoriyalari
               </Link>
+
+              <Link
+                to="/imloviy-xatoliklar/statistikalar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/imloviy-xatoliklar/statistikalar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Statistikalar
+              </Link>
             </div>
           </div>
 
@@ -489,6 +562,34 @@ const Sidebar = ({ isOpen, onClose }) => {
                   />
                 </svg>
                 FAQ Kategoriyalari
+              </Link>
+
+              <Link
+                to="/korrupsiya-murojaatlari/statistikalar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/korrupsiya-murojaatlari/statistikalar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Statistikalar
               </Link>
             </div>
           </div>

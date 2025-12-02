@@ -31,6 +31,10 @@ import TestNatijalari from "./pages/TestNatijalari";
 import TestdanOtaOlmaganlar from "./pages/TestdanOtaOlmaganlar";
 import TilSuhbati from "./pages/TilSuhbati";
 import UmumiyNatijalar from "./pages/UmumiyNatijalar";
+import KadrlarStatistikalar from "./pages/KadrlarStatistikalar";
+import IstemolchiHuquqlariStatistikalar from "./pages/IstemolchiHuquqlariStatistikalar";
+import ImloviyXatoliklarStatistikalar from "./pages/ImloviyXatoliklarStatistikalar";
+import KorrupsiyaStatistikalar from "./pages/KorrupsiyaStatistikalar";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -192,6 +196,26 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/kadrlar-statistikalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <KadrlarStatistikalar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/istemolchi-huquqlari-statistikalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <IstemolchiHuquqlariStatistikalar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/faq-categories"
         element={
           <ProtectedRoute>
@@ -222,6 +246,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/imloviy-xatoliklar/statistikalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ImloviyXatoliklarStatistikalar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/imloviy-xatoliklar/faq-categories"
         element={
           <ProtectedRoute>
@@ -237,6 +271,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <KorrupsiyaMurojaatlar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/korrupsiya-murojaatlari/statistikalar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <KorrupsiyaStatistikalar />
             </Layout>
           </ProtectedRoute>
         }

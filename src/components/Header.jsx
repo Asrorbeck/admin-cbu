@@ -10,6 +10,7 @@ const Header = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [hasDuplicates, setHasDuplicates] = useState(false);
   const [duplicateCount, setDuplicateCount] = useState(0);
+  const [logoExists, setLogoExists] = useState(false);
   const location = useLocation();
 
   // Get current section title based on pathname
@@ -31,6 +32,14 @@ const Header = () => {
       return "Markaziy Bank Administratsiyasi";
     }
   };
+
+  // Check if logo exists
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setLogoExists(true);
+    img.onerror = () => setLogoExists(false);
+    img.src = "/logo.png";
+  }, []);
 
   // Load theme from localStorage on component mount
   useEffect(() => {
@@ -88,14 +97,24 @@ const Header = () => {
         {/* Left side - Breadcrumb or title */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg
-                className="h-5 w-5 text-white"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
+            <div className="h-10 w-10 flex items-center justify-center">
+              {logoExists ? (
+                <img
+                  src="/logo.png"
+                  alt="Logo"
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="h-6 w-6 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                </div>
+              )}
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
