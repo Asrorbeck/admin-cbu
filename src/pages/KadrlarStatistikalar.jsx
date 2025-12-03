@@ -67,26 +67,41 @@ const KadrlarStatistikalar = () => {
         getVacanciesApi(),
       ]);
 
-      setApplications(applicationsData || []);
-      setVacancies(vacanciesData || []);
+      // Ensure data is an array
+      const applicationsArray = Array.isArray(applicationsData) 
+        ? applicationsData 
+        : (applicationsData?.data || []);
+      const vacanciesArray = Array.isArray(vacanciesData) 
+        ? vacanciesData 
+        : (vacanciesData?.data || []);
+
+      setApplications(applicationsArray);
+      setVacancies(vacanciesArray);
 
       // Calculate statistics
-      calculateStats(applicationsData || [], vacanciesData || []);
+      calculateStats(applicationsArray, vacanciesArray);
     } catch (error) {
       console.error("Error fetching statistics:", error);
       toast.error("Statistikalarni yuklashda xatolik yuz berdi");
+      // Set empty arrays on error
+      setApplications([]);
+      setVacancies([]);
     } finally {
       setLoading(false);
     }
   };
 
   const calculateStats = (apps, vacs) => {
+    // Ensure apps and vacs are arrays
+    const safeApps = Array.isArray(apps) ? apps : [];
+    const safeVacs = Array.isArray(vacs) ? vacs : [];
+    
     const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999); // End of day
 
     // Filter applications by date range
-    const filteredApps = apps.filter((app) => {
+    const filteredApps = safeApps.filter((app) => {
       const appDate = new Date(app.created_at || app.date_created);
       return appDate >= startDate && appDate <= endDate;
     });
@@ -118,8 +133,8 @@ const KadrlarStatistikalar = () => {
     const testsFailed = testsTaken - testsPassed;
 
     // Vacancy statistics (not filtered by date as they're current state)
-    const totalVacancies = vacs.length;
-    const activeVacancies = vacs.filter(
+    const totalVacancies = safeVacs.length;
+    const activeVacancies = safeVacs.filter(
       (vac) => vac.is_active !== false && vac.status !== "closed"
     ).length;
     const inactiveVacancies = totalVacancies - activeVacancies;
@@ -138,6 +153,10 @@ const KadrlarStatistikalar = () => {
   };
 
   const prepareChartData = (apps, vacs, startDate, endDate, testsPassed, testsFailed) => {
+    // Ensure apps and vacs are arrays
+    const safeApps = Array.isArray(apps) ? apps : [];
+    const safeVacs = Array.isArray(vacs) ? vacs : [];
+    
     // Daily applications data
     const dailyDataMap = new Map();
     const currentDate = new Date(startDate);
@@ -156,7 +175,7 @@ const KadrlarStatistikalar = () => {
     }
 
     // Count applications per day
-    apps.forEach((app) => {
+    safeApps.forEach((app) => {
       const appDate = new Date(app.created_at || app.date_created);
       const dateKey = appDate.toISOString().split('T')[0];
       if (dailyDataMap.has(dateKey)) {
@@ -174,14 +193,14 @@ const KadrlarStatistikalar = () => {
 
     // Vacancy status pie chart data
     const vacancyStatus = [
-      { name: "Faol", value: vacs.filter(v => v.is_active !== false && v.status !== "closed").length, color: "#14b8a6" },
-      { name: "Faol emas", value: vacs.filter(v => v.is_active === false || v.status === "closed").length, color: "#6b7280" },
+      { name: "Faol", value: safeVacs.filter(v => v.is_active !== false && v.status !== "closed").length, color: "#14b8a6" },
+      { name: "Faol emas", value: safeVacs.filter(v => v.is_active === false || v.status === "closed").length, color: "#6b7280" },
     ];
 
     // Test comparison bar chart data
     const testComparison = [
-      { name: "Arizalar", arizalar: apps.length, test: 0 },
-      { name: "Test topshirganlar", arizalar: 0, test: apps.filter(a => a.status === "test_scheduled" || a.status === "TEST_SCHEDULED" || a.test_date || a.test_scheduled_at).length },
+      { name: "Arizalar", arizalar: safeApps.length, test: 0 },
+      { name: "Test topshirganlar", arizalar: 0, test: safeApps.filter(a => a.status === "test_scheduled" || a.status === "TEST_SCHEDULED" || a.test_date || a.test_scheduled_at).length },
       { name: "Testdan o'tganlar", arizalar: 0, test: testsPassed },
     ];
 

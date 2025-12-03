@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import SendMeetLinkModal from "../components/modals/SendMeetLinkModal";
@@ -29,10 +29,20 @@ const TilSuhbati = () => {
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const selectAllCheckboxRef = useRef(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
+  // Check URL params for date on mount and when URL changes
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam && dateParam !== selectedDate) {
+      setSelectedDate(dateParam);
+    }
+    document.title = "Til suhbati - Markaziy Bank Administratsiyasi";
+  }, [searchParams]);
+
+  // Initial fetch on mount
   useEffect(() => {
     fetchResults();
-    document.title = "Til suhbati - Markaziy Bank Administratsiyasi";
   }, []);
 
   useEffect(() => {
@@ -149,6 +159,7 @@ const TilSuhbati = () => {
         interview_date: date || selectedDate,
         meet_link: null,
         meet_link_sent: false,
+        meet_interview_date: null, // Google Meet link yuborilgan sana (yuborilgandan keyin to'ldiriladi)
         meeting_attended: null, // Boshida aniqlanmagan (true/false/null)
         russian_level: null, // Boshida tanlanmagan
         english_level: null, // Boshida tanlanmagan
@@ -257,7 +268,7 @@ const TilSuhbati = () => {
               ...r,
               meet_link: meetLinkData.meet_link,
               meet_link_sent: true,
-              interview_date: meetLinkData.interview_date,
+              meet_interview_date: meetLinkData.interview_date, // Google Meet link yuborilgan sana
               interview_time: meetLinkData.interview_time,
             };
           }
@@ -270,6 +281,11 @@ const TilSuhbati = () => {
     }
     setIsSendLinkModalOpen(false);
     setSelectedUser(null);
+    
+    // Navigate to /til-suhbati with the selected date as URL parameter (testdan o'tgan sana)
+    if (meetLinkData && selectedDate) {
+      setSearchParams({ date: selectedDate });
+    }
   };
 
   // Export to Excel
@@ -333,6 +349,23 @@ const TilSuhbati = () => {
         hour: "2-digit",
         minute: "2-digit",
       }).format(date);
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Format date for notification badge (short format)
+  const formatDateShort = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate();
+      const monthNames = [
+        "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+        "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+      ];
+      const month = monthNames[date.getMonth()];
+      return `${day} ${month}`;
     } catch {
       return dateString;
     }
@@ -440,6 +473,13 @@ const TilSuhbati = () => {
   const allSelected = paginated.length > 0 && paginated.every((r) => selectedUserIds.includes(r.id));
   const someSelected = paginated.some((r) => selectedUserIds.includes(r.id));
 
+  // Get unique Google Meet interview dates from filtered results
+  const meetInterviewDates = [...new Set(
+    filtered
+      .filter((r) => r.meet_interview_date && r.meet_link_sent)
+      .map((r) => r.meet_interview_date)
+  )].sort();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -486,12 +526,42 @@ const TilSuhbati = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => {
-                setSelectedDate(e.target.value);
+                const newDate = e.target.value;
+                setSelectedDate(newDate);
                 setPage(1);
+                // Update URL parameter when date changes
+                setSearchParams({ date: newDate });
               }}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Google Meet Link Sent Date Badge */}
+          {meetInterviewDates.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {meetInterviewDates.map((meetDate) => (
+                <div
+                  key={meetDate}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium"
+                >
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                    />
+                  </svg>
+                  <span>Google Meet: {formatDateShort(meetDate)}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Passed Only Filter */}
           <div className="flex items-center gap-2">

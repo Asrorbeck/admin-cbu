@@ -57,23 +57,33 @@ const ImloviyXatoliklarStatistikalar = () => {
       const reportsData = await getSpellingReportsApi();
       setReports(reportsData || []);
 
+      // Ensure data is an array
+      const reportsArray = Array.isArray(reportsData) 
+        ? reportsData 
+        : (reportsData?.data || []);
+
       // Calculate statistics
-      calculateStats(reportsData || []);
+      calculateStats(reportsArray);
     } catch (error) {
       console.error("Error fetching statistics:", error);
       toast.error("Statistikalarni yuklashda xatolik yuz berdi");
+      // Set empty array on error
+      setReports([]);
     } finally {
       setLoading(false);
     }
   };
 
   const calculateStats = (reps) => {
+    // Ensure reps is an array
+    const safeReps = Array.isArray(reps) ? reps : [];
+    
     const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999); // End of day
 
     // Filter reports by date range
-    const filteredReports = reps.filter((rep) => {
+    const filteredReports = safeReps.filter((rep) => {
       const repDate = new Date(rep.created_at || rep.date_created);
       return repDate >= startDate && repDate <= endDate;
     });

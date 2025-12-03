@@ -22,12 +22,16 @@ const Testlar = () => {
       setLoading(true);
       setError(null);
       const data = await getTestsApi();
-      setTests(data);
+      // Ensure data is an array
+      const testsArray = Array.isArray(data) ? data : (data?.data || []);
+      setTests(testsArray);
       setPage(1);
     } catch (error) {
       console.error("Error fetching tests:", error);
       setError(error.message);
       toast.error("Testlarni yuklashda xatolik yuz berdi");
+      // Set empty array on error to prevent filter errors
+      setTests([]);
     } finally {
       setLoading(false);
     }
@@ -101,8 +105,9 @@ const Testlar = () => {
   }
 
   // Filter and paginate tests
+  const safeTests = Array.isArray(tests) ? tests : [];
   const q = query.trim().toLowerCase();
-  const filtered = tests.filter((test) => {
+  const filtered = safeTests.filter((test) => {
     // Search filter
     if (q) {
       const inTitle = test.title?.toLowerCase().includes(q);
@@ -227,7 +232,7 @@ const Testlar = () => {
       </div>
 
       {/* Table */}
-      {tests.length === 0 ? (
+      {!Array.isArray(tests) || tests.length === 0 ? (
         <div className="text-center py-12">
           <svg
             className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"

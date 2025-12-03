@@ -41,12 +41,16 @@ const Departments = () => {
       setLoading(true);
       setError(null);
       const data = await getDepartmentsApi();
-      setDepartmentsData(data);
+      // Ensure data is an array
+      const departmentsArray = Array.isArray(data) ? data : (data?.data || []);
+      setDepartmentsData(departmentsArray);
       setPage(1);
     } catch (error) {
       console.error("Error fetching departments:", error);
       setError(error.message);
       toast.error("Bo'limlarni yuklashda xatolik yuz berdi");
+      // Set empty array on error to prevent filter errors
+      setDepartmentsData([]);
     } finally {
       setLoading(false);
     }
@@ -63,11 +67,17 @@ const Departments = () => {
           getApplicationsApi(),
         ]);
 
+      // Ensure all responses are arrays
+      const departmentsArray = Array.isArray(departments) ? departments : (departments?.data || []);
+      const managementArray = Array.isArray(management) ? management : (management?.data || []);
+      const vacanciesArray = Array.isArray(vacancies) ? vacancies : (vacancies?.data || []);
+      const applicationsArray = Array.isArray(applications) ? applications : (applications?.data || []);
+
       setStats({
-        departments: departments.length,
-        management: management.length,
-        vacancies: vacancies.length,
-        applications: applications.length,
+        departments: departmentsArray.length,
+        management: managementArray.length,
+        vacancies: vacanciesArray.length,
+        applications: applicationsArray.length,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -456,7 +466,7 @@ const Departments = () => {
       </div>
 
       {/* Content */}
-      {departmentsData.length === 0 ? (
+      {!Array.isArray(departmentsData) || departmentsData.length === 0 ? (
         <div className="text-center py-12">
           <svg
             className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"
@@ -480,8 +490,10 @@ const Departments = () => {
         </div>
       ) : (
         (() => {
+          // Ensure departmentsData is an array before filtering
+          const safeDepartmentsData = Array.isArray(departmentsData) ? departmentsData : [];
           const q = query.trim().toLowerCase();
-          const filtered = departmentsData.filter((d) => {
+          const filtered = safeDepartmentsData.filter((d) => {
             if (!q) return true;
             const inName = d.name?.toLowerCase().includes(q);
             const inDesc = d.description?.toLowerCase().includes(q);

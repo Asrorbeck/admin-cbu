@@ -66,26 +66,41 @@ const IstemolchiHuquqlariStatistikalar = () => {
         getOrganizationsApi(),
       ]);
 
-      setAppeals(appealsData || []);
-      setOrganizations(organizationsData || []);
+      // Ensure data is an array
+      const appealsArray = Array.isArray(appealsData) 
+        ? appealsData 
+        : (appealsData?.data || []);
+      const organizationsArray = Array.isArray(organizationsData) 
+        ? organizationsData 
+        : (organizationsData?.data || []);
+
+      setAppeals(appealsArray);
+      setOrganizations(organizationsArray);
 
       // Calculate statistics
-      calculateStats(appealsData || [], organizationsData || []);
+      calculateStats(appealsArray, organizationsArray);
     } catch (error) {
       console.error("Error fetching statistics:", error);
       toast.error("Statistikalarni yuklashda xatolik yuz berdi");
+      // Set empty arrays on error
+      setAppeals([]);
+      setOrganizations([]);
     } finally {
       setLoading(false);
     }
   };
 
   const calculateStats = (apps, orgs) => {
+    // Ensure apps and orgs are arrays
+    const safeApps = Array.isArray(apps) ? apps : [];
+    const safeOrgs = Array.isArray(orgs) ? orgs : [];
+    
     const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999); // End of day
 
     // Filter appeals by date range
-    const filteredApps = apps.filter((app) => {
+    const filteredApps = safeApps.filter((app) => {
       const appDate = new Date(app.created_at || app.date_created);
       return appDate >= startDate && appDate <= endDate;
     });
@@ -183,7 +198,7 @@ const IstemolchiHuquqlariStatistikalar = () => {
       const text = `${app.subject || ""} ${app.message || ""}`.toLowerCase();
       
       // Check each organization
-      orgs.forEach((org) => {
+      safeOrgs.forEach((org) => {
         const orgName = (org.name || "").toLowerCase();
         const licenseNumber = (org.license_number || "").toLowerCase();
         const inn = (org.inn || "").toLowerCase();
@@ -201,7 +216,7 @@ const IstemolchiHuquqlariStatistikalar = () => {
     // Convert to array and sort by count
     const topSearched = Array.from(orgSearchMap.entries())
       .map(([orgId, count]) => {
-        const org = orgs.find(o => o.id === orgId);
+        const org = safeOrgs.find(o => o.id === orgId);
         return {
           name: org ? (org.name || `Litsenziya ${org.license_number || orgId}`) : `ID: ${orgId}`,
           qidiruvlar: count,

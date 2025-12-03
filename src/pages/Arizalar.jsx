@@ -228,13 +228,17 @@ const Arizalar = () => {
       setError(null);
 
       const applicationsData = await getApplicationsApi();
-      setApplications(applicationsData);
+      // Ensure data is an array
+      const applicationsArray = Array.isArray(applicationsData) ? applicationsData : (applicationsData?.data || []);
+      setApplications(applicationsArray);
       setSelectedIds(new Set());
       setPage(1);
     } catch (error) {
       console.error("Error fetching applications:", error);
       setError(error.message);
       toast.error("Arizalarni yuklashda xatolik yuz berdi");
+      // Set empty array on error to prevent forEach errors
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -418,8 +422,10 @@ const Arizalar = () => {
   };
 
   const duplicateGroups = (() => {
+    // Ensure applications is an array before using forEach
+    const safeApplications = Array.isArray(applications) ? applications : [];
     const byDob = new Map();
-    applications.forEach((a) => {
+    safeApplications.forEach((a) => {
       const dob = a.data_of_birth || "";
       if (!byDob.has(dob)) byDob.set(dob, []);
       byDob.get(dob).push(a);
@@ -548,7 +554,8 @@ const Arizalar = () => {
     if (selectedIds.size === 0) return;
     try {
       setIsBulkUpdating(true);
-      const selectedApps = applications.filter((a) => selectedIds.has(a.id));
+      const safeApplications = Array.isArray(applications) ? applications : [];
+      const selectedApps = safeApplications.filter((a) => selectedIds.has(a.id));
       const jobsMap = new Map(selectedApps.map((a) => [a.id, a.job]));
       await toast.promise(
         Promise.all(
@@ -585,7 +592,8 @@ const Arizalar = () => {
   };
 
   // Pagination + evaluation filter derived data
-  const filteredApps = applications.filter((a) => {
+  const safeApplications = Array.isArray(applications) ? applications : [];
+  const filteredApps = safeApplications.filter((a) => {
     // Search filter by name
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
