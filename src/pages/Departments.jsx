@@ -41,8 +41,25 @@ const Departments = () => {
       setLoading(true);
       setError(null);
       const data = await getDepartmentsApi();
-      // Ensure data is an array
-      const departmentsArray = Array.isArray(data) ? data : (data?.data || []);
+      console.log("Departments API response:", data);
+      
+      // Handle different response formats
+      let departmentsArray = [];
+      if (Array.isArray(data)) {
+        departmentsArray = data;
+      } else if (data && Array.isArray(data.results)) {
+        // Paginated response format: { results: [...], count: ... }
+        departmentsArray = data.results;
+      } else if (data && Array.isArray(data.data)) {
+        // Wrapped response format: { data: [...] }
+        departmentsArray = data.data;
+      } else if (data && typeof data === 'object') {
+        // Single object or other format - try to extract array
+        console.warn("Unexpected departments response format:", data);
+        departmentsArray = [];
+      }
+      
+      console.log("Processed departments array:", departmentsArray);
       setDepartmentsData(departmentsArray);
       setPage(1);
     } catch (error) {
@@ -67,11 +84,19 @@ const Departments = () => {
           getApplicationsApi(),
         ]);
 
-      // Ensure all responses are arrays
-      const departmentsArray = Array.isArray(departments) ? departments : (departments?.data || []);
-      const managementArray = Array.isArray(management) ? management : (management?.data || []);
-      const vacanciesArray = Array.isArray(vacancies) ? vacancies : (vacancies?.data || []);
-      const applicationsArray = Array.isArray(applications) ? applications : (applications?.data || []);
+      // Ensure all responses are arrays - handle paginated format { results: [...], count: ... }
+      const departmentsArray = Array.isArray(departments) 
+        ? departments 
+        : (departments?.results || departments?.data || []);
+      const managementArray = Array.isArray(management) 
+        ? management 
+        : (management?.results || management?.data || []);
+      const vacanciesArray = Array.isArray(vacancies) 
+        ? vacancies 
+        : (vacancies?.results || vacancies?.data || []);
+      const applicationsArray = Array.isArray(applications) 
+        ? applications 
+        : (applications?.results || applications?.data || []);
 
       setStats({
         departments: departmentsArray.length,
@@ -283,7 +308,10 @@ const Departments = () => {
         </div>
 
         {/* Vacancies Card */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div 
+          onClick={() => navigate("/vacancies")}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">Vakansiyalar</p>
@@ -342,24 +370,6 @@ const Departments = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate("/kadrlar")}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Bo'limlar

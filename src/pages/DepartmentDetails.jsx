@@ -53,7 +53,11 @@ const DepartmentDetails = () => {
 
       // Fetch management data filtered by department ID
       const filteredManagement = await getManagementApi(id);
-      setManagement(filteredManagement);
+      // Handle paginated response format: { results: [...], count: ... }
+      const managementArray = Array.isArray(filteredManagement) 
+        ? filteredManagement 
+        : (filteredManagement?.results || filteredManagement?.data || []);
+      setManagement(managementArray);
     } catch (error) {
       console.error("Error fetching data:", error);
       setError(error.message);

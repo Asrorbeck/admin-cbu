@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTestsApi } from "../utils/api";
+import { getTestsApi, getTestByIdApi, deleteTestApi } from "../utils/api";
 import toast from "react-hot-toast";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 const Testlar = () => {
   const [tests, setTests] = useState([]);
@@ -10,6 +11,12 @@ const Testlar = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
+  const [selectedTest, setSelectedTest] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [testToDelete, setTestToDelete] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,8 +29,11 @@ const Testlar = () => {
       setLoading(true);
       setError(null);
       const data = await getTestsApi();
-      // Ensure data is an array
-      const testsArray = Array.isArray(data) ? data : (data?.data || []);
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const testsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
       setTests(testsArray);
       setPage(1);
     } catch (error) {
@@ -40,6 +50,54 @@ const Testlar = () => {
   const formatDuration = (durationMinutes) => {
     if (!durationMinutes && durationMinutes !== 0) return "Ma'lumot yo'q";
     return `${durationMinutes} daqiqa`;
+  };
+
+  const handleViewTest = async (testId) => {
+    try {
+      setViewLoading(true);
+      setIsViewModalOpen(true);
+      const testData = await getTestByIdApi(testId);
+      setSelectedTest(testData);
+    } catch (error) {
+      console.error("Error fetching test details:", error);
+      toast.error("Test ma'lumotlarini yuklashda xatolik yuz berdi");
+      setIsViewModalOpen(false);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const handleEditTest = (testId) => {
+    navigate(`/testlar/edit/${testId}`);
+  };
+
+  const handleDeleteClick = (test) => {
+    setTestToDelete(test);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!testToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await deleteTestApi(testToDelete.id);
+      toast.success("Test muvaffaqiyatli o'chirildi");
+      setIsDeleteDialogOpen(false);
+      setTestToDelete(null);
+      // Refresh the list
+      fetchTests();
+    } catch (error) {
+      console.error("Error deleting test:", error);
+      toast.error("Testni o'chirishda xatolik yuz berdi");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+    setTimeout(() => setSelectedTest(null), 300);
   };
 
   if (loading) {
@@ -276,6 +334,9 @@ const Testlar = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Savollar soni
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Amallar
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -306,6 +367,82 @@ const Testlar = () => {
                         test.total_questions !== null
                           ? test.total_questions
                           : test.questions?.length || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewTest(test.id);
+                            }}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                            title="To'liq ko'rish"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditTest(test.id);
+                            }}
+                            className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+                            title="Tahrirlash"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(test);
+                            }}
+                            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                            title="O'chirish"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -343,6 +480,195 @@ const Testlar = () => {
           </div>
         </>
       )}
+
+      {/* View Test Modal */}
+      {isViewModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
+              onClick={closeViewModal}
+            ></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
+              &#8203;
+            </span>
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Test tafsilotlari
+                  </h3>
+                  <button
+                    onClick={closeViewModal}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 py-5 space-y-5 max-h-[calc(100vh-250px)] overflow-y-auto">
+                {viewLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex items-center space-x-2">
+                      <svg
+                        className="animate-spin h-8 w-8 text-blue-600"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Yuklanmoqda...
+                      </span>
+                    </div>
+                  </div>
+                ) : selectedTest ? (
+                  <>
+                    {/* Basic Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Test nomi
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {selectedTest.title || "Ma'lumot yo'q"}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Vaqt
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {formatDuration(selectedTest.duration_minutes)}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Maksimal buzilishlar
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {selectedTest.max_violations !== undefined &&
+                          selectedTest.max_violations !== null
+                            ? selectedTest.max_violations
+                            : "Ma'lumot yo'q"}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Savollar soni
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {selectedTest.total_questions !== undefined &&
+                          selectedTest.total_questions !== null
+                            ? selectedTest.total_questions
+                            : selectedTest.questions?.length || 0}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Questions */}
+                    {selectedTest.questions && selectedTest.questions.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          Savollar
+                        </h4>
+                        <div className="space-y-4">
+                          {selectedTest.questions.map((question, qIndex) => (
+                            <div
+                              key={question.id || qIndex}
+                              className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/40"
+                            >
+                              <div className="flex items-start space-x-3 mb-3">
+                                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                                  {qIndex + 1}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {question.text || "Ma'lumot yo'q"}
+                                  </p>
+                                </div>
+                              </div>
+                              {question.choices && question.choices.length > 0 && (
+                                <div className="ml-11 space-y-2">
+                                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                                    Variantlar:
+                                  </p>
+                                  {question.choices.map((choice, cIndex) => (
+                                    <div
+                                      key={choice.id || cIndex}
+                                      className="flex items-center space-x-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600"
+                                    >
+                                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        {cIndex + 1}.
+                                      </span>
+                                      <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+                                        {choice.text || "Ma'lumot yo'q"}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-end gap-3">
+                <button
+                  onClick={closeViewModal}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                >
+                  Yopish
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title="Testni o'chirish"
+        description={`"${testToDelete?.title || "Bu test"}" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi.`}
+        confirmText={deleting ? "O'chirilmoqda..." : "O'chirish"}
+        cancelText="Bekor qilish"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setIsDeleteDialogOpen(false);
+          setTestToDelete(null);
+        }}
+      />
     </div>
   );
 };

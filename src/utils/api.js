@@ -384,6 +384,27 @@ export const deleteTestApi = async (id) => {
   });
 };
 
+// Test Attempts API calls
+export const getAttemptsApi = async (params = {}) => {
+  // Build query string from params
+  const queryParams = new URLSearchParams();
+  
+  if (params.page) queryParams.append("page", params.page);
+  if (params.page_size) queryParams.append("page_size", params.page_size);
+  if (params.end_time) queryParams.append("end_time", params.end_time);
+  if (params.status) queryParams.append("status", params.status);
+  if (params.is_passed !== undefined && params.is_passed !== null) {
+    queryParams.append("is_passed", params.is_passed);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/attempts/?${queryString}` : "/attempts/";
+  
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
 // FAQ Categories API calls
 export const getFaqCategoriesApi = async (section = null) => {
   const endpoint = section

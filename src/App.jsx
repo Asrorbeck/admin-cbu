@@ -19,6 +19,7 @@ import KadrlarDashboard from "./pages/KadrlarDashboard";
 import Arizalar from "./pages/Arizalar";
 import Testlar from "./pages/Testlar";
 import NewTest from "./pages/NewTest";
+import EditTest from "./pages/EditTest";
 import FAQCategories from "./pages/FAQCategories";
 import Licenses from "./pages/Licenses";
 import ImloviyXatoliklarMurojaatlar from "./pages/ImloviyXatoliklarMurojaatlar";
@@ -35,6 +36,7 @@ import KadrlarStatistikalar from "./pages/KadrlarStatistikalar";
 import IstemolchiHuquqlariStatistikalar from "./pages/IstemolchiHuquqlariStatistikalar";
 import ImloviyXatoliklarStatistikalar from "./pages/ImloviyXatoliklarStatistikalar";
 import KorrupsiyaStatistikalar from "./pages/KorrupsiyaStatistikalar";
+import Vacancies from "./pages/Vacancies";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -96,6 +98,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/vacancies"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Vacancies />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/management/:id"
         element={
           <ProtectedRoute>
@@ -151,6 +163,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <NewTest />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/testlar/edit/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EditTest />
             </Layout>
           </ProtectedRoute>
         }

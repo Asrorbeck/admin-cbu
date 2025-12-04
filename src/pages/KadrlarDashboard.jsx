@@ -36,11 +36,25 @@ const KadrlarDashboard = () => {
           getApplicationsApi(),
         ]);
 
+      // Handle paginated response format: { results: [...], count: ... }
+      const departmentsArray = Array.isArray(departments) 
+        ? departments 
+        : (departments?.results || departments?.data || []);
+      const managementArray = Array.isArray(management) 
+        ? management 
+        : (management?.results || management?.data || []);
+      const vacanciesArray = Array.isArray(vacancies) 
+        ? vacancies 
+        : (vacancies?.results || vacancies?.data || []);
+      const applicationsArray = Array.isArray(applications) 
+        ? applications 
+        : (applications?.results || applications?.data || []);
+
       setStats({
-        departments: departments.length,
-        management: management.length,
-        vacancies: vacancies.length,
-        applications: applications.length,
+        departments: departmentsArray.length,
+        management: managementArray.length,
+        vacancies: vacanciesArray.length,
+        applications: applicationsArray.length,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);

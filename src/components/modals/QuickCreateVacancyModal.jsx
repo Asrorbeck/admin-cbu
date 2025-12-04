@@ -76,10 +76,15 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       setLoadingDepartments(true);
       const data = await getDepartmentsApi();
-      setDepartments(data);
+      // Handle paginated response format: { results: [...], count: ... }
+      const departmentsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setDepartments(departmentsArray);
     } catch (error) {
       console.error("Error fetching departments:", error);
       toast.error("Bo'limlarni yuklashda xatolik");
+      setDepartments([]);
     } finally {
       setLoadingDepartments(false);
     }
@@ -89,10 +94,15 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       setLoadingManagements(true);
       const data = await getManagementApi(departmentId);
-      setManagements(data);
+      // Handle paginated response format: { results: [...], count: ... }
+      const managementsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setManagements(managementsArray);
     } catch (error) {
       console.error("Error fetching managements:", error);
       toast.error("Boshqarmalarni yuklashda xatolik");
+      setManagements([]);
     } finally {
       setLoadingManagements(false);
     }
@@ -404,7 +414,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
                   >
                     <option value="">Bo'limni tanlang...</option>
-                    {departments.map((dept) => (
+                    {Array.isArray(departments) && departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>
@@ -532,7 +542,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
                   >
                     <option value="">Boshqarmani tanlang...</option>
-                    {managements.map((mgmt) => (
+                    {Array.isArray(managements) && managements.map((mgmt) => (
                       <option key={mgmt.id} value={mgmt.id}>
                         {mgmt.name}
                       </option>

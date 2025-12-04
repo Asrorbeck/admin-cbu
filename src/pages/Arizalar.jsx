@@ -178,10 +178,10 @@ const Arizalar = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
-  const [statusValue, setStatusValue] = useState("pending");
+  const [statusValue, setStatusValue] = useState("NEW");
   const [savingStatus, setSavingStatus] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [bulkStatus, setBulkStatus] = useState("pending");
+  const [bulkStatus, setBulkStatus] = useState("NEW");
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [evaluationRules, setEvaluationRules] = useState({});
   const [evaluationFilter, setEvaluationFilter] = useState("all");
@@ -228,8 +228,11 @@ const Arizalar = () => {
       setError(null);
 
       const applicationsData = await getApplicationsApi();
-      // Ensure data is an array
-      const applicationsArray = Array.isArray(applicationsData) ? applicationsData : (applicationsData?.data || []);
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const applicationsArray = Array.isArray(applicationsData) 
+        ? applicationsData 
+        : (applicationsData?.results || applicationsData?.data || []);
       setApplications(applicationsArray);
       setSelectedIds(new Set());
       setPage(1);
@@ -339,14 +342,14 @@ const Arizalar = () => {
         </span>
       );
     }
-    if (s === "rejected_docs") {
+    if (s === "rejected_docs" || s === "rejected") {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
           Rad etildi
         </span>
       );
     }
-    if (s === "pending") {
+    if (s === "pending" || s === "new" || s === "reviewing") {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
           Kutilmoqda
@@ -437,7 +440,7 @@ const Arizalar = () => {
         let placed = false;
         for (const g of local) {
           if (
-            g.some((m) => nameSimilarity(m.full_name, item.full_name) >= 0.7)
+            g.some((m) => nameSimilarity(m.user?.full_name || m.full_name || "", item.user?.full_name || item.full_name || "") >= 0.7)
           ) {
             g.push(item);
             placed = true;
@@ -475,7 +478,9 @@ const Arizalar = () => {
       setModalLoading(true);
       const fullData = await getApplicationByIdApi(applicationId);
       setSelectedApplication(fullData);
-      setStatusValue((fullData?.status || "pending").toLowerCase());
+      // Handle status mapping: backend returns "NEW" but we need to normalize it
+      const normalizedStatus = (fullData?.status || "NEW").toUpperCase();
+      setStatusValue(normalizedStatus === "PENDING" ? "REVIEWING" : normalizedStatus);
     } catch (error) {
       console.error("Error fetching applications:", error);
       toast.error("Ariza ma'lumotlarini yuklashda xatolik yuz berdi");
@@ -495,11 +500,11 @@ const Arizalar = () => {
     try {
       setSavingStatus(true);
       const fullPayload = {
-        user_id: selectedApplication.user_id,
+        user_id: selectedApplication.user?.user_id || selectedApplication.user_id,
         job: selectedApplication.job?.id || selectedApplication.job,
-        full_name: selectedApplication.full_name,
+        full_name: selectedApplication.user?.full_name || selectedApplication.full_name,
         data_of_birth: selectedApplication.data_of_birth,
-        phone: selectedApplication.phone,
+        phone: selectedApplication.user?.phone_number || selectedApplication.phone,
         additional_information: selectedApplication.additional_information,
         graduations: selectedApplication.graduations || [],
         employments: selectedApplication.employments || [],
@@ -523,6 +528,9 @@ const Arizalar = () => {
         )
       );
       setSelectedApplication((prev) => ({ ...prev, status: statusValue }));
+      
+      // Close modal after successful save
+      closeModal();
     } finally {
       setSavingStatus(false);
     }
@@ -561,11 +569,11 @@ const Arizalar = () => {
         Promise.all(
           selectedApps.map((a) =>
             updateApplicationApi(a.id, {
-              user_id: a.user_id,
+              user_id: a.user?.user_id || a.user_id,
               job: jobsMap.get(a.id)?.id || a.job?.id || a.job,
-              full_name: a.full_name,
+              full_name: a.user?.full_name || a.full_name,
               data_of_birth: a.data_of_birth,
-              phone: a.phone,
+              phone: a.user?.phone_number || a.phone,
               additional_information: a.additional_information,
               graduations: a.graduations || [],
               employments: a.employments || [],
@@ -597,7 +605,7 @@ const Arizalar = () => {
     // Search filter by name
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
-      const fullName = (a.full_name || "").toLowerCase();
+      const fullName = (a.user?.full_name || a.full_name || "").toLowerCase();
       if (!fullName.includes(query)) {
         return false;
       }
@@ -864,6 +872,7 @@ const Arizalar = () => {
               onChange={(e) => setBulkStatus(e.target.value)}
               className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
             >
+              <option value="NEW">Yangi</option>
               <option value="REVIEWING">Kutilmoqda</option>
               <option value="TEST_SCHEDULED">Qabul qilindi</option>
               <option value="REJECTED_DOCS">Rad etildi</option>
@@ -956,7 +965,7 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {application.full_name}
+                        {application.user?.full_name || application.full_name || "Ma'lumot yo'q"}
                       </div>
                       {isDuplicate(application) && (
                         <span
@@ -1003,7 +1012,7 @@ const Arizalar = () => {
                     })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {application.phone}
+                    {application.user?.phone_number || application.phone || "Ma'lumot yo'q"}
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-gray-300">
@@ -1199,7 +1208,7 @@ const Arizalar = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {items[0]?.full_name} — {items[0]?.data_of_birth}
+                            {items[0]?.user?.full_name || items[0]?.full_name || "Ma'lumot yo'q"} — {items[0]?.data_of_birth}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             {items.length} ta ariza
@@ -1212,12 +1221,12 @@ const Arizalar = () => {
                             key={a.id}
                             className="bg-gray-50 dark:bg-gray-700/40 rounded p-3 text-sm text-gray-800 dark:text-gray-200"
                           >
-                            <div className="font-semibold">{a.full_name}</div>
+                            <div className="font-semibold">{a.user?.full_name || a.full_name || "Ma'lumot yo'q"}</div>
                             <div className="text-xs text-gray-500">
                               {a.data_of_birth}
                             </div>
                             <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-                              {a.phone}
+                              {a.user?.phone_number || a.phone || "Ma'lumot yo'q"}
                             </div>
                             <div className="mt-2">
                               <button
@@ -1345,7 +1354,7 @@ const Arizalar = () => {
                           To'liq ism
                         </h4>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedApplication.full_name}
+                          {selectedApplication.user?.full_name || selectedApplication.full_name || "Ma'lumot yo'q"}
                         </p>
                       </div>
                       <div>
@@ -1368,7 +1377,7 @@ const Arizalar = () => {
                           Telefon
                         </h4>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedApplication.phone}
+                          {selectedApplication.user?.phone_number || selectedApplication.phone || "Ma'lumot yo'q"}
                         </p>
                       </div>
                       <div className="md:col-span-2">
@@ -1485,15 +1494,16 @@ const Arizalar = () => {
                         Holatni o'zgartirish
                       </h4>
                       <div className="flex items-center gap-3">
-                        <select
-                          value={statusValue}
-                          onChange={(e) => setStatusValue(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
-                        >
-                          <option value="REVIEWING">Kutilmoqda</option>
-                          <option value="TEST_SCHEDULED">Qabul qilindi</option>
-                          <option value="REJECTED_DOCS">Rad etildi</option>
-                        </select>
+                      <select
+                        value={statusValue}
+                        onChange={(e) => setStatusValue(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                      >
+                        <option value="NEW">Yangi</option>
+                        <option value="REVIEWING">Kutilmoqda</option>
+                        <option value="TEST_SCHEDULED">Qabul qilindi</option>
+                        <option value="REJECTED_DOCS">Rad etildi</option>
+                      </select>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           Joriy: {getStatusBadge(selectedApplication.status)}
                         </span>

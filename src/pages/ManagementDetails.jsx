@@ -64,7 +64,11 @@ const ManagementDetails = () => {
       // Try to fetch vacancies data filtered by management ID
       try {
         const vacanciesData = await getVacanciesApi(id);
-        setVacancies(vacanciesData);
+        // Handle paginated response format: { results: [...], count: ... }
+        const vacanciesArray = Array.isArray(vacanciesData) 
+          ? vacanciesData 
+          : (vacanciesData?.results || vacanciesData?.data || []);
+        setVacancies(vacanciesArray);
       } catch (vacancyError) {
         console.warn("Vacancies API not available:", vacancyError);
         // If vacancies API fails, just set empty array and continue

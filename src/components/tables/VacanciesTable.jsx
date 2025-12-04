@@ -8,6 +8,9 @@ const VacanciesTable = ({
   onEdit,
   onDelete,
   onViewDetails,
+  selectedIds = new Set(),
+  onToggleAll,
+  onToggleOne,
 }) => {
   const navigate = useNavigate();
 
@@ -40,6 +43,21 @@ const VacanciesTable = ({
     return new Date(dateString).toLocaleDateString("uz-UZ");
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "Ma'lumot yo'q";
+    const date = new Date(dateString);
+    const months = [
+      "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+      "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"
+    ];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day} ${month} ${year}, ${hours}:${minutes}`;
+  };
+
   const getStatusBadge = (isActive) => {
     if (isActive) {
       return (
@@ -55,6 +73,15 @@ const VacanciesTable = ({
     );
   };
 
+  const getBranchTypeBadge = (branchTypeDisplay, branchType) => {
+    const displayText = branchTypeDisplay || branchType || "Ma'lumot yo'q";
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+        {displayText}
+      </span>
+    );
+  };
+
   return (
     <>
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -63,19 +90,40 @@ const VacanciesTable = ({
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <input
+                  type="checkbox"
+                  checked={
+                    vacancies.length > 0 &&
+                    vacancies.every((v) => selectedIds.has(v.id))
+                  }
+                  onChange={(e) => {
+                    if (onToggleAll) {
+                      onToggleAll(e.target.checked);
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 T/r
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Vakansiya nomi
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Tavsif
+                Departament
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Filial turi
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Holati
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Muddati
+                Test topshirish sanasi
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Qabul sanasi
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Amallar
@@ -83,11 +131,23 @@ const VacanciesTable = ({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {vacancies.map((item, index) => (
+            {Array.isArray(vacancies) && vacancies.map((item, index) => (
               <tr
                 key={item.id}
                 className="hover:bg-gray-50 dark:hover:bg-gray-700"
               >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(item.id)}
+                    onChange={(e) => {
+                      if (onToggleOne) {
+                        onToggleOne(item.id, e.target.checked);
+                      }
+                    }}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {index + 1}
                 </td>
@@ -96,13 +156,19 @@ const VacanciesTable = ({
                     {item.title}
                   </div>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900 dark:text-gray-300 max-w-xs">
-                    <p className="line-clamp-2">{item.description}</p>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-gray-100">
+                    {item.management_details?.name || "Ma'lumot yo'q"}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  {getBranchTypeBadge(item.branch_type_display, item.branch_type)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(item.is_active)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  {formatDateTime(item.test_scheduled_at)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {formatDate(item.application_deadline)}
