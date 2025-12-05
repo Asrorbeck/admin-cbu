@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 import Departments from "./pages/Departments";
 import DepartmentDetails from "./pages/DepartmentDetails";
 import NewDepartment from "./pages/NewDepartment";
@@ -37,6 +38,8 @@ import IstemolchiHuquqlariStatistikalar from "./pages/IstemolchiHuquqlariStatist
 import ImloviyXatoliklarStatistikalar from "./pages/ImloviyXatoliklarStatistikalar";
 import KorrupsiyaStatistikalar from "./pages/KorrupsiyaStatistikalar";
 import Vacancies from "./pages/Vacancies";
+import Regions from "./pages/Regions";
+import RegionVacancies from "./pages/RegionVacancies";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -52,7 +55,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <Departments />
+              <Dashboard />
             </Layout>
           </ProtectedRoute>
         }
@@ -61,8 +64,36 @@ function AppRoutes() {
         path="/departments"
         element={
           <ProtectedRoute>
+            <Navigate to="/central/departments" replace />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/central/departments"
+        element={
+          <ProtectedRoute>
             <Layout>
               <Departments />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/region"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Regions />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/region/:region_name"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <RegionVacancies />
             </Layout>
           </ProtectedRoute>
         }

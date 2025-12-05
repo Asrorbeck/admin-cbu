@@ -11,6 +11,7 @@ const VacanciesTable = ({
   selectedIds = new Set(),
   onToggleAll,
   onToggleOne,
+  hideDepartmentColumn = false,
 }) => {
   const navigate = useNavigate();
 
@@ -110,9 +111,11 @@ const VacanciesTable = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Vakansiya nomi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Departament
-              </th>
+              {!hideDepartmentColumn && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Departament
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Filial turi
               </th>
@@ -156,11 +159,13 @@ const VacanciesTable = ({
                     {item.title}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-gray-100">
-                    {item.management_details?.name || "Ma'lumot yo'q"}
-                  </div>
-                </td>
+                {!hideDepartmentColumn && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
+                      {item.management_details?.name || "Ma'lumot yo'q"}
+                    </div>
+                  </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getBranchTypeBadge(item.branch_type_display, item.branch_type)}
                 </td>

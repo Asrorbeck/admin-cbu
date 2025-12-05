@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import { getAttemptsApi } from "../utils/api";
 
 const TestdanOtaOlmaganlar = () => {
   const [results, setResults] = useState([]);
@@ -21,62 +22,73 @@ const TestdanOtaOlmaganlar = () => {
     try {
       setLoading(true);
       setError(null);
-      // TODO: Replace with actual API call when endpoint is available
-      // const data = await getFailedTestTakersApi();
-      // For now, using mock data
-      const mockData = generateMockData();
-      setResults(mockData);
+      
+      // Fetch failed attempts from API
+      const response = await getAttemptsApi({ is_passed: false });
+      
+      // Handle paginated response format: { results: [...], count: ... }
+      const attempts = Array.isArray(response) 
+        ? response 
+        : (response?.results || response?.data || []);
+      
+      // Map API response to component format
+      const mappedResults = attempts.map((attempt) => {
+        const endTime = attempt.end_time ? new Date(attempt.end_time) : new Date();
+        
+        // Calculate if 3 months have passed since the test was completed
+        const threeMonthsLater = new Date(endTime);
+        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+        const canRetake = new Date() >= threeMonthsLater;
+        const daysUntilRetake = canRetake 
+          ? 0 
+          : Math.ceil((threeMonthsLater - new Date()) / (1000 * 60 * 60 * 24));
+        
+        // Calculate max_score and percentage
+        // If test has pass_score, estimate max_score (typically pass_score is 50% of max)
+        // Otherwise use total_questions * 10 as estimate, or default to 100
+        let maxScore = 100; // Default max score
+        if (attempt.test?.pass_score) {
+          // Typically pass_score is 50% of max, so max is approximately 2x pass_score
+          maxScore = attempt.test.pass_score * 2;
+        } else if (attempt.test?.total_questions) {
+          // Estimate: 10 points per question
+          maxScore = attempt.test.total_questions * 10;
+        }
+        
+        const percentage = maxScore > 0 
+          ? Math.round((attempt.score / maxScore) * 100) 
+          : 0;
+        
+        // Use username instead of email (backend doesn't provide email)
+        const username = attempt.chat?.username || "Ma'lumot yo'q";
+        
+        return {
+          id: attempt.id,
+          user_name: attempt.chat?.full_name || attempt.chat?.username || "Ma'lumot yo'q",
+          user_email: username, // Store username in user_email field for backward compatibility
+          phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
+          test_title: attempt.test?.title || "Ma'lumot yo'q",
+          test_id: attempt.test?.id || null,
+          failed_date: attempt.end_time || attempt.start_time || new Date().toISOString(),
+          score: attempt.score || 0,
+          max_score: maxScore,
+          percentage: percentage,
+          can_retake: canRetake,
+          days_until_retake: daysUntilRetake,
+          admin_override: false, // Admin tomonidan cheklov bekor qilinganmi
+          attempt_data: attempt, // Store original data for potential future use
+        };
+      });
+      
+      setResults(mappedResults);
       setPage(1);
     } catch (error) {
       console.error("Error fetching failed test takers:", error);
-      setError(error.message);
+      setError(error.message || "Xatolik yuz berdi");
       toast.error("Testdan o'ta olmaganlar ro'yxatini yuklashda xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock data for testing
-  const generateMockData = () => {
-    const names = [
-      "Ali Valiyev",
-      "Dilshod Karimov",
-      "Malika Toshmatova",
-      "Javohir Rahimov",
-      "Gulnoza Yusupova",
-      "Bahodir Qodirov",
-      "Sevara Alimova",
-      "Temur Bekov",
-    ];
-
-    return names.map((name, index) => {
-      const failedDate = new Date();
-      failedDate.setDate(failedDate.getDate() - (index * 10 + 5)); // Different dates
-      
-      // Calculate if 3 months have passed
-      const threeMonthsLater = new Date(failedDate);
-      threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
-      const canRetake = new Date() >= threeMonthsLater;
-      const daysUntilRetake = canRetake 
-        ? 0 
-        : Math.ceil((threeMonthsLater - new Date()) / (1000 * 60 * 60 * 24));
-
-      return {
-        id: index + 1,
-        user_name: name,
-        user_email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-        phone_number: `+998${Math.floor(Math.random() * 90000000) + 10000000}`,
-        test_title: `Test ${(index % 3) + 1}`,
-        test_id: (index % 3) + 1,
-        failed_date: failedDate.toISOString(),
-        score: Math.floor(Math.random() * 40) + 30, // 30-70 range
-        max_score: 100,
-        percentage: Math.floor(Math.random() * 40) + 30,
-        can_retake: canRetake,
-        days_until_retake: daysUntilRetake,
-        admin_override: false, // Admin tomonidan cheklov bekor qilinganmi
-      };
-    });
   };
 
   // Allow admin to override the 3-month restriction
@@ -110,7 +122,7 @@ const TestdanOtaOlmaganlar = () => {
     const excelData = filtered.map((result, index) => ({
       "T/r": index + 1,
       "Foydalanuvchi": result.user_name || "Ma'lumot yo'q",
-      "Email": result.user_email || "Ma'lumot yo'q",
+      "Telegram username": result.user_email || "Ma'lumot yo'q",
       "Telefon": result.phone_number || "Ma'lumot yo'q",
       "Test nomi": result.test_title || "Ma'lumot yo'q",
       "Ball": `${result.score} / ${result.max_score}`,
@@ -134,13 +146,28 @@ const TestdanOtaOlmaganlar = () => {
     if (!dateString) return "Ma'lumot yo'q";
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat("uz-UZ", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
+      const months = [
+        "Yanvar",
+        "Fevral",
+        "Mart",
+        "Aprel",
+        "May",
+        "Iyun",
+        "Iyul",
+        "Avgust",
+        "Sentabr",
+        "Oktabr",
+        "Noyabr",
+        "Dekabr",
+      ];
+      
+      const day = date.getDate();
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      
+      return `${day} ${month} ${year}, ${hours}:${minutes}`;
     } catch {
       return dateString;
     }
@@ -213,9 +240,9 @@ const TestdanOtaOlmaganlar = () => {
   const filtered = results.filter((result) => {
     if (q) {
       const inUserName = result.user_name?.toLowerCase().includes(q);
-      const inEmail = result.user_email?.toLowerCase().includes(q);
+      const inUsername = result.user_email?.toLowerCase().includes(q); // user_email contains username
       const inTestTitle = result.test_title?.toLowerCase().includes(q);
-      if (!inUserName && !inEmail && !inTestTitle) return false;
+      if (!inUserName && !inUsername && !inTestTitle) return false;
     }
     return true;
   });
@@ -299,7 +326,7 @@ const TestdanOtaOlmaganlar = () => {
                 setQuery(e.target.value);
                 setPage(1);
               }}
-              placeholder="Qidirish: foydalanuvchi, email, test nomi..."
+              placeholder="Qidirish: foydalanuvchi, username, test nomi..."
               className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
             />
             <svg

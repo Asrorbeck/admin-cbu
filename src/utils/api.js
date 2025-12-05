@@ -261,9 +261,24 @@ export const deleteManagementApi = async (id) => {
 };
 
 // Vacancy API calls
-export const getVacanciesApi = async (managementId = null) => {
-  const endpoint = managementId
-    ? `${API_CONFIG.ENDPOINTS.VACANCIES}?management_id=${managementId}`
+export const getVacanciesApi = async (managementId = null, params = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  if (managementId) {
+    queryParams.append("management_id", managementId);
+  }
+  
+  // Add region and branch_type params if provided
+  if (params.region) {
+    queryParams.append("region", params.region);
+  }
+  if (params.branch_type) {
+    queryParams.append("branch_type", params.branch_type);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString 
+    ? `${API_CONFIG.ENDPOINTS.VACANCIES}?${queryString}`
     : API_CONFIG.ENDPOINTS.VACANCIES;
 
   return apiRequest(endpoint, {

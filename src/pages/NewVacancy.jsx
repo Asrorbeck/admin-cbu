@@ -16,6 +16,8 @@ const NewVacancy = () => {
     application_deadline: "",
     test_scheduled_at: "",
     management: parseInt(id),
+    branch_type: "",
+    region: "",
   });
 
   useEffect(() => {
@@ -24,10 +26,17 @@ const NewVacancy = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+      // If branch_type changes to "central", reset region to empty
+      if (name === "branch_type" && value === "central") {
+        newData.region = "";
+      }
+      return newData;
+    });
   };
 
   // Helper function to format datetime-local value with GMT+5 timezone
@@ -67,6 +76,16 @@ const NewVacancy = () => {
       return;
     }
 
+    if (!formData.branch_type) {
+      toast.error("Filial turini tanlash shart");
+      return;
+    }
+
+    if (formData.branch_type === "regional" && !formData.region) {
+      toast.error("Hududni tanlash shart");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -78,6 +97,8 @@ const NewVacancy = () => {
         is_active: formData.is_active,
         application_deadline: formData.application_deadline,
         management_id: formData.management,
+        branch_type: formData.branch_type,
+        region: formData.branch_type === "central" ? null : formData.region,
         ...(formData.test_scheduled_at && {
           test_scheduled_at: formatDateTimeWithTimezone(
             formData.test_scheduled_at
@@ -265,6 +286,65 @@ const NewVacancy = () => {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
             />
           </div>
+
+          {/* Branch Type */}
+          <div>
+            <label
+              htmlFor="branch_type"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Filial turi *
+            </label>
+            <select
+              id="branch_type"
+              name="branch_type"
+              value={formData.branch_type}
+              onChange={handleChange}
+              disabled={loading}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+              required
+            >
+              <option value="">Filial turini tanlang</option>
+              <option value="central">Markaziy Apparat</option>
+              <option value="regional">Hududiy Boshqarma</option>
+            </select>
+          </div>
+
+          {/* Region - only show if branch_type is regional */}
+          {formData.branch_type === "regional" && (
+            <div>
+              <label
+                htmlFor="region"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Hudud *
+              </label>
+              <select
+                id="region"
+                name="region"
+                value={formData.region}
+                onChange={handleChange}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                required
+              >
+                <option value="">Hududni tanlang</option>
+                <option value="toshkent">Toshkent</option>
+                <option value="qashqadaryo">Qashqadaryo</option>
+                <option value="samarqand">Samarqand</option>
+                <option value="navoiy">Navoiy</option>
+                <option value="andijon">Andijon</option>
+                <option value="fargona">Farg'ona</option>
+                <option value="namangan">Namangan</option>
+                <option value="surxondaryo">Surxondaryo</option>
+                <option value="sirdaryo">Sirdaryo</option>
+                <option value="jizzax">Jizzax</option>
+                <option value="buxoro">Buxoro</option>
+                <option value="xorazm">Xorazm</option>
+                <option value="qoraqalpogiston">Qoraqalpog'iston Respublikasi</option>
+              </select>
+            </div>
+          )}
 
           {/* Is Active */}
           <div className="flex items-center">

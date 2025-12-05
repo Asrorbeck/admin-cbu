@@ -8,7 +8,7 @@ import {
 } from "../../utils/api";
 import toast from "react-hot-toast";
 
-const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
+const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType = null, initialRegion = null }) => {
   const [step, setStep] = useState(1); // 1: Department, 2: Management, 3: Vacancy
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
@@ -40,37 +40,57 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
     is_active: true,
     application_deadline: "",
     test_scheduled_at: "",
+    branch_type: "",
+    region: "",
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchDepartments();
-      // Reset form when modal opens
-      setStep(1);
-      setDepartmentData({
-        selectedId: "",
-        createNew: false,
-        name: "",
-        description: "",
-        department_tasks: [{ task: "" }],
-      });
-      setManagementData({
-        selectedId: "",
-        createNew: false,
-        name: "",
-        management_functions: "",
-      });
-      setVacancyData({
-        title: "",
-        description: "",
-        requirements: "",
-        job_tasks: "",
-        is_active: true,
-        application_deadline: "",
-        test_scheduled_at: "",
-      });
+      // If regional branch type, skip to step 3 (vacancy form)
+      if (initialBranchType === "regional") {
+        setStep(3);
+        setVacancyData({
+          title: "",
+          description: "",
+          requirements: "",
+          job_tasks: "",
+          is_active: true,
+          application_deadline: "",
+          test_scheduled_at: "",
+          branch_type: initialBranchType || "",
+          region: initialRegion || "",
+        });
+      } else {
+        fetchDepartments();
+        // Reset form when modal opens
+        setStep(1);
+        setDepartmentData({
+          selectedId: "",
+          createNew: false,
+          name: "",
+          description: "",
+          department_tasks: [{ task: "" }],
+        });
+        setManagementData({
+          selectedId: "",
+          createNew: false,
+          name: "",
+          management_functions: "",
+        });
+        setVacancyData({
+          title: "",
+          description: "",
+          requirements: "",
+          job_tasks: "",
+          is_active: true,
+          application_deadline: "",
+          test_scheduled_at: "",
+          branch_type: initialBranchType || "",
+          region: initialRegion || "",
+        });
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialBranchType, initialRegion]);
 
   const fetchDepartments = async () => {
     try {
@@ -281,6 +301,16 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
       return;
     }
 
+    if (!vacancyData.branch_type) {
+      toast.error("Filial turini tanlash shart");
+      return;
+    }
+
+    if (vacancyData.branch_type === "regional" && !vacancyData.region) {
+      toast.error("Hududni tanlash shart");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -291,7 +321,12 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
         job_tasks: vacancyData.job_tasks.trim(),
         is_active: vacancyData.is_active,
         application_deadline: vacancyData.application_deadline,
-        management_id: parseInt(managementData.selectedId),
+        branch_type: vacancyData.branch_type,
+        region: vacancyData.branch_type === "central" ? null : vacancyData.region,
+        // Only include management_id for central branch type
+        ...(vacancyData.branch_type === "central" && {
+          management_id: parseInt(managementData.selectedId),
+        }),
         ...(vacancyData.test_scheduled_at && {
           test_scheduled_at: formatDateTimeWithTimezone(
             vacancyData.test_scheduled_at
@@ -324,9 +359,11 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
                 Tezkor vakansiya yaratish
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {step === 1 && "1/3 - Bo'limni tanlang yoki yarating"}
-                {step === 2 && "2/3 - Boshqarmani tanlang yoki yarating"}
-                {step === 3 && "3/3 - Vakansiya ma'lumotlarini kiriting"}
+                {initialBranchType === "regional" 
+                  ? "Hududiy vakansiya yaratish"
+                  : step === 1 && "1/3 - Bo'limni tanlang yoki yarating"
+                  || step === 2 && "2/3 - Boshqarmani tanlang yoki yarating"
+                  || step === 3 && "3/3 - Vakansiya ma'lumotlarini kiriting"}
               </p>
             </div>
             <button
@@ -350,47 +387,49 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
             </button>
           </div>
 
-          {/* Progress Steps */}
-          <div className="mt-4 flex items-center">
-            {[1, 2, 3].map((s) => (
-              <div key={s} className="flex items-center flex-1">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                    step >= s
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-                  }`}
-                >
-                  {step > s ? (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  ) : (
-                    s
+          {/* Progress Steps - Only show if not regional */}
+          {initialBranchType !== "regional" && (
+            <div className="mt-4 flex items-center">
+              {[1, 2, 3].map((s) => (
+                <div key={s} className="flex items-center flex-1">
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                      step >= s
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
+                    {step > s ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    ) : (
+                      s
+                    )}
+                  </div>
+                  {s < 3 && (
+                    <div
+                      className={`flex-1 h-1 mx-2 ${
+                        step > s
+                          ? "bg-blue-600"
+                          : "bg-gray-200 dark:bg-gray-700"
+                      }`}
+                    />
                   )}
                 </div>
-                {s < 3 && (
-                  <div
-                    className={`flex-1 h-1 mx-2 ${
-                      step > s
-                        ? "bg-blue-600"
-                        : "bg-gray-200 dark:bg-gray-700"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -720,6 +759,77 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess }) => {
                     />
                   </div>
                 </div>
+
+                {/* Branch Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Filial turi *
+                  </label>
+                  <select
+                    value={vacancyData.branch_type}
+                    onChange={(e) =>
+                      setVacancyData((prev) => ({
+                        ...prev,
+                        branch_type: e.target.value,
+                        // Reset region if branch_type changes to central
+                        region: e.target.value === "central" ? "" : prev.region,
+                      }))
+                    }
+                    disabled={loading || !!initialBranchType}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                  >
+                    <option value="">Filial turini tanlang</option>
+                    <option value="central">Markaziy Apparat</option>
+                    <option value="regional">Hududiy Boshqarma</option>
+                  </select>
+                  {initialBranchType && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Filial turi avtomatik tanlangan
+                    </p>
+                  )}
+                </div>
+
+                {/* Region - only show if branch_type is regional */}
+                {vacancyData.branch_type === "regional" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Hudud *
+                    </label>
+                    <select
+                      value={vacancyData.region}
+                      onChange={(e) =>
+                        setVacancyData((prev) => ({
+                          ...prev,
+                          region: e.target.value,
+                        }))
+                      }
+                      disabled={loading || !!initialRegion}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      required
+                    >
+                      <option value="">Hududni tanlang</option>
+                      <option value="toshkent">Toshkent</option>
+                      <option value="qashqadaryo">Qashqadaryo</option>
+                      <option value="samarqand">Samarqand</option>
+                      <option value="navoiy">Navoiy</option>
+                      <option value="andijon">Andijon</option>
+                      <option value="fargona">Farg'ona</option>
+                      <option value="namangan">Namangan</option>
+                      <option value="surxondaryo">Surxondaryo</option>
+                      <option value="sirdaryo">Sirdaryo</option>
+                      <option value="jizzax">Jizzax</option>
+                      <option value="buxoro">Buxoro</option>
+                      <option value="xorazm">Xorazm</option>
+                      <option value="qoraqalpogiston">Qoraqalpog'iston Respublikasi</option>
+                    </select>
+                    {initialRegion && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Hudud avtomatik tanlangan
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center">
                   <input

@@ -1,28 +1,43 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import EditManagementModal from "../components/modals/EditManagementModal";
+import { useParams, useNavigate } from "react-router-dom";
 import VacanciesTable from "../components/tables/VacanciesTable";
-import {
-  getManagementByIdApi,
-  getVacanciesApi,
-  getVacancyByIdApi,
-  updateVacancyApi,
-  deleteVacancyApi,
-} from "../utils/api";
+import QuickCreateVacancyModal from "../components/modals/QuickCreateVacancyModal";
+import { getVacanciesApi, getVacancyByIdApi, updateVacancyApi, deleteVacancyApi } from "../utils/api";
 import toast from "react-hot-toast";
 
-const ManagementDetails = () => {
-  const { id } = useParams();
+// Regions data with display names
+const REGIONS = [
+  { value: "toshkent", label: "Toshkent" },
+  { value: "qashqadaryo", label: "Qashqadaryo" },
+  { value: "samarqand", label: "Samarqand" },
+  { value: "navoiy", label: "Navoiy" },
+  { value: "andijon", label: "Andijon" },
+  { value: "fargona", label: "Farg'ona" },
+  { value: "namangan", label: "Namangan" },
+  { value: "surxondaryo", label: "Surxondaryo" },
+  { value: "sirdaryo", label: "Sirdaryo" },
+  { value: "jizzax", label: "Jizzax" },
+  { value: "buxoro", label: "Buxoro" },
+  { value: "xorazm", label: "Xorazm" },
+  { value: "qoraqalpogiston", label: "Qoraqalpog'iston Respublikasi" },
+];
+
+const RegionVacancies = () => {
+  const { region_name } = useParams();
   const navigate = useNavigate();
-  const [management, setManagement] = useState(null);
   const [vacancies, setVacancies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [query, setQuery] = useState("");
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
+  
+  // View details modal
   const [selectedVacancy, setSelectedVacancy] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
-  const [isMgmtEditOpen, setIsMgmtEditOpen] = useState(false);
-
+  
   // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingVacancy, setEditingVacancy] = useState(null);
@@ -34,157 +49,92 @@ const ManagementDetails = () => {
     application_deadline: "",
     test_scheduled_at: "",
     is_active: true,
-    branch_type: "",
-    region: "",
+    branch_type: "regional",
+    region: region_name || "",
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
-  // Helper function to format datetime-local value with GMT+5 timezone
-  const formatDateTimeWithTimezone = (datetimeLocal) => {
-    if (!datetimeLocal) return null;
-    // datetime-local format: "YYYY-MM-DDTHH:mm"
-    // Convert to ISO format with GMT+5 offset: "YYYY-MM-DDTHH:mm:ss+05:00"
-    const [datePart, timePart] = datetimeLocal.split("T");
-    return `${datePart}T${timePart}:00+05:00`;
-  };
+  const region = REGIONS.find((r) => r.value === region_name);
+  const regionLabel = region ? region.label : region_name;
 
   useEffect(() => {
-    fetchManagementAndVacancies();
-    document.title = "Boshqarma tafsilotlari - Markaziy Bank Administratsiyasi";
-  }, [id]);
+    if (region_name) {
+      fetchRegionalVacancies();
+      document.title = `${regionLabel} - Hududiy vakansiyalar - Markaziy Bank Administratsiyasi`;
+    }
+  }, [region_name]);
 
-  const fetchManagementAndVacancies = async () => {
+  const fetchRegionalVacancies = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Fetch management data
-      const managementData = await getManagementByIdApi(id);
-      setManagement(managementData);
-
-      // Try to fetch vacancies data filtered by management ID
-      try {
-        const vacanciesData = await getVacanciesApi(id);
-        // Handle paginated response format: { results: [...], count: ... }
-        const vacanciesArray = Array.isArray(vacanciesData) 
-          ? vacanciesData 
-          : (vacanciesData?.results || vacanciesData?.data || []);
-        setVacancies(vacanciesArray);
-      } catch (vacancyError) {
-        console.warn("Vacancies API not available:", vacancyError);
-        // If vacancies API fails, just set empty array and continue
-        setVacancies([]);
-      }
+      const data = await getVacanciesApi(null, {
+        region: region_name,
+        branch_type: "regional",
+      });
+      
+      console.log("Regional vacancies API response:", data);
+      
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      const vacanciesArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      
+      setVacancies(vacanciesArray);
+      setPage(1);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching regional vacancies:", error);
       setError(error.message);
-      toast.error("Ma'lumotlarni yuklashda xatolik yuz berdi");
+      toast.error("Hududiy vakansiyalarni yuklashda xatolik yuz berdi");
+      setVacancies([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="flex items-center space-x-2">
-          <svg
-            className="animate-spin h-8 w-8 text-blue-600"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          <span className="text-gray-600 dark:text-gray-400">
-            Yuklanmoqda...
-          </span>
-        </div>
-      </div>
-    );
-  }
+  // Helper function to format datetime-local value with GMT+5 timezone
+  const formatDateTimeWithTimezone = (datetimeLocal) => {
+    if (!datetimeLocal) return null;
+    const [datePart, timePart] = datetimeLocal.split("T");
+    return `${datePart}T${timePart}:00+05:00`;
+  };
 
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <svg
-          className="mx-auto h-12 w-12 text-red-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-          Xatolik yuz berdi
-        </h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error}</p>
-        <button
-          onClick={fetchManagementAndVacancies}
-          className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Qayta urinish
-        </button>
-      </div>
-    );
-  }
-
-  if (!management) {
-    navigate("/departments");
-    return null;
-  }
+  // Helper function to convert ISO datetime to datetime-local format
+  const isoToDateTimeLocal = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
   const handleEditVacancy = async (vacancyItem) => {
     try {
       setIsEditModalOpen(true);
       setEditLoading(true);
-
       // Fetch full vacancy details from API
       const fullVacancyData = await getVacancyByIdApi(vacancyItem.id);
       setEditingVacancy(fullVacancyData);
-
-      // Set form data
-      // Convert ISO datetime to datetime-local format if exists
-      let testScheduledAtValue = "";
-      if (fullVacancyData.test_scheduled_at) {
-        const date = new Date(fullVacancyData.test_scheduled_at);
-        // Convert to local datetime string in format YYYY-MM-DDTHH:mm
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const hours = String(date.getHours()).padStart(2, "0");
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-        testScheduledAtValue = `${year}-${month}-${day}T${hours}:${minutes}`;
-      }
-
+      
+      // Convert ISO dates to datetime-local format
       setEditFormData({
         title: fullVacancyData.title || "",
         description: fullVacancyData.description || "",
         requirements: fullVacancyData.requirements || "",
         job_tasks: fullVacancyData.job_tasks || "",
-        application_deadline: fullVacancyData.application_deadline || "",
-        test_scheduled_at: testScheduledAtValue,
+        application_deadline: fullVacancyData.application_deadline 
+          ? fullVacancyData.application_deadline.split("T")[0] 
+          : "",
+        test_scheduled_at: fullVacancyData.test_scheduled_at 
+          ? isoToDateTimeLocal(fullVacancyData.test_scheduled_at) 
+          : "",
         is_active: fullVacancyData.is_active ?? true,
-        branch_type: fullVacancyData.branch_type || "",
-        region: fullVacancyData.region || "",
+        branch_type: fullVacancyData.branch_type || "regional",
+        region: fullVacancyData.region || region_name || "",
       });
     } catch (error) {
       console.error("Error fetching vacancy details:", error);
@@ -197,17 +147,10 @@ const ManagementDetails = () => {
 
   const handleEditFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setEditFormData((prev) => {
-      const newData = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
-      // If branch_type changes to "central", reset region to empty
-      if (name === "branch_type" && value === "central") {
-        newData.region = "";
-      }
-      return newData;
-    });
+    setEditFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleEditFormSubmit = async (e) => {
@@ -221,13 +164,16 @@ const ManagementDetails = () => {
     try {
       setEditSaving(true);
 
-      // Prepare payload with management_id
+      // Prepare payload for regional vacancy (no management_id)
       const payload = {
-        ...editFormData,
-        management_id: editingVacancy.management_details?.id || parseInt(id),
-        branch_type: editFormData.branch_type,
-        region: editFormData.branch_type === "central" ? null : editFormData.region,
-        // Convert datetime-local to ISO format with GMT+5 timezone if exists
+        title: editFormData.title.trim(),
+        description: editFormData.description.trim(),
+        requirements: editFormData.requirements.trim(),
+        job_tasks: editFormData.job_tasks.trim(),
+        is_active: editFormData.is_active,
+        application_deadline: editFormData.application_deadline,
+        branch_type: "regional",
+        region: editFormData.region || region_name,
         ...(editFormData.test_scheduled_at && {
           test_scheduled_at: formatDateTimeWithTimezone(
             editFormData.test_scheduled_at
@@ -265,8 +211,8 @@ const ManagementDetails = () => {
         application_deadline: "",
         test_scheduled_at: "",
         is_active: true,
-        branch_type: "",
-        region: "",
+        branch_type: "regional",
+        region: region_name || "",
       });
     }, 300);
   };
@@ -289,7 +235,6 @@ const ManagementDetails = () => {
     try {
       setIsModalOpen(true);
       setModalLoading(true);
-
       // Fetch full vacancy details from API
       const fullVacancyData = await getVacancyByIdApi(vacancy.id);
       setSelectedVacancy(fullVacancyData);
@@ -306,102 +251,135 @@ const ManagementDetails = () => {
     setIsModalOpen(false);
     setTimeout(() => {
       setSelectedVacancy(null);
-    }, 300); // Wait for modal close animation
+    }, 300);
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return "Ma'lumot yo'q";
-
     const date = new Date(dateString);
     const months = [
-      "Yanvar",
-      "Fevral",
-      "Mart",
-      "Aprel",
-      "May",
-      "Iyun",
-      "Iyul",
-      "Avgust",
-      "Sentabr",
-      "Oktabr",
-      "Noyabr",
-      "Dekabr",
+      "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+      "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"
     ];
-
     const day = date.getDate();
     const month = months[date.getMonth()];
     const year = date.getFullYear();
-
     return `${day} ${month} ${year}`;
   };
 
   const formatDateTime = (dateString) => {
     if (!dateString) return "Ma'lumot yo'q";
-
     const date = new Date(dateString);
     const months = [
-      "Yanvar",
-      "Fevral",
-      "Mart",
-      "Aprel",
-      "May",
-      "Iyun",
-      "Iyul",
-      "Avgust",
-      "Sentabr",
-      "Oktabr",
-      "Noyabr",
-      "Dekabr",
+      "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+      "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"
     ];
-
     const day = date.getDate();
     const month = months[date.getMonth()];
     const year = date.getFullYear();
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
-
     return `${day} ${month} ${year}, ${hours}:${minutes}`;
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="flex items-center space-x-2">
+          <svg
+            className="animate-spin h-8 w-8 text-blue-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <span className="text-gray-600 dark:text-gray-400">
+            Yuklanmoqda...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <svg
+          className="mx-auto h-12 w-12 text-red-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+          Xatolik yuz berdi
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error}</p>
+        <button
+          onClick={fetchRegionalVacancies}
+          className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Qayta urinish
+        </button>
+      </div>
+    );
+  }
+
+  // Filter vacancies
+  const q = query.trim().toLowerCase();
+  const filtered = vacancies.filter((v) => {
+    if (!q) return true;
+    const inTitle = v.title?.toLowerCase().includes(q);
+    const inDesc = v.description?.toLowerCase().includes(q);
+    const inManagement = v.management_details?.name?.toLowerCase().includes(q);
+    return inTitle || inDesc || inManagement;
+  });
+
+  const total = filtered.length;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginated = filtered.slice(startIndex, endIndex);
+  const showingStart = total === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(endIndex, total);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Boshqarma: {management.name}
-            </h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Boshqarma tafsilotlari va ma'lumotlari
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {regionLabel} - Vakansiyalar
+          </h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Hududiy boshqarma vakansiyalari
+          </p>
         </div>
-
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-          {/* Edit Management Button - styled like DepartmentDetails */}
           <button
-            type="button"
-            onClick={() => setIsMgmtEditOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600"
+            onClick={() => setIsQuickCreateOpen(true)}
+            className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
           >
             <svg
               className="h-4 w-4 mr-2"
@@ -413,104 +391,159 @@ const ManagementDetails = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                d="M12 4v16m8-8H4"
               />
             </svg>
-            Tahrirlash
+            Yangi vakansiya qo'shish
+          </button>
+          <button
+            onClick={() => navigate("/region")}
+            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+          >
+            <svg
+              className="h-4 w-4 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Hududlar ro'yxatiga qaytish
           </button>
         </div>
       </div>
 
-      {/* Management Info */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="space-y-6">
-          {/* Management Name */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Boshqarma nomi:
-            </h3>
-            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {management.name}
-            </p>
+      {/* Filters Row: Search (left) and Page Size (right) */}
+      <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex-1 sm:max-w-sm flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Qidirish: nomi, tavsifi yoki boshqarma..."
+              className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
+            />
+            <svg
+              className="h-3.5 w-3.5 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-4.35-4.35m1.35-4.65a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
           </div>
-
-          {/* Management Functions */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Boshqarma vazifalari:
-            </h3>
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-              <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
-                {management.management_functions}
-              </p>
-            </div>
-          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <label className="text-sm text-gray-600 dark:text-gray-400">
+            Sahifa hajmi:
+          </label>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              const size = Number(e.target.value);
+              setPageSize(size);
+              setPage(1);
+            }}
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+          >
+            {[5, 10, 20, 50].map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Related Data Section */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Vakansiyalar
-          </h2>
-          <div className="mt-2 sm:mt-0">
-            <Link
-              to={`/management/${id}/new-vacancy`}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-            >
-              <svg
-                className="h-4 w-4 mr-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Yangi vakansiya qo'shish
-            </Link>
-          </div>
+      {/* Content */}
+      {!Array.isArray(vacancies) || vacancies.length === 0 ? (
+        <div className="text-center py-12">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+            Vakansiyalar yo'q
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Bu hudud uchun hozircha vakansiyalar mavjud emas.
+          </p>
         </div>
-
-        {vacancies.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.8}
-                  d="M8.25 6.75V6A2.25 2.25 0 0 1 10.5 3.75h3a2.25 2.25 0 0 1 2.25 2.25v.75m-9.75 0h12.75m-14.25 0h15.75v10.5A2.25 2.25 0 0 1 19.5 19.5H6A2.25 2.25 0 0 1 3.75 17.25V6.75z"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                Vakansiyalar yo'q
-              </h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Bu boshqarma uchun hozircha vakansiyalar mavjud emas.
-              </p>
-            </div>
-          </div>
-        ) : (
+      ) : (
+        <>
           <VacanciesTable
-            vacancies={vacancies}
-            managementId={id}
+            vacancies={paginated}
             onEdit={handleEditVacancy}
             onDelete={handleDeleteVacancy}
             onViewDetails={handleViewVacancyDetails}
+            selectedIds={new Set()}
+            hideDepartmentColumn={true}
           />
-        )}
-      </div>
+
+          {/* Pagination controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${total}`}
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50"
+              >
+                Oldingi
+              </button>
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                {`Sahifa ${page} / ${totalPages}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50"
+                disabled={page >= totalPages}
+              >
+                Keyingi
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Quick Create Vacancy Modal */}
+      <QuickCreateVacancyModal
+        isOpen={isQuickCreateOpen}
+        onClose={() => setIsQuickCreateOpen(false)}
+        onSuccess={() => {
+          setIsQuickCreateOpen(false);
+          fetchRegionalVacancies();
+        }}
+        initialBranchType="regional"
+        initialRegion={region_name}
+      />
 
       {/* Vacancy Details Modal */}
       {isModalOpen && (
@@ -594,9 +627,10 @@ const ManagementDetails = () => {
                         <h4 className="text-xl font-bold text-gray-900 dark:text-white">
                           {selectedVacancy.title}
                         </h4>
-                        {selectedVacancy.management_details && (
+                        {selectedVacancy.branch_type_display && (
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {selectedVacancy.management_details.name}
+                            {selectedVacancy.branch_type_display}
+                            {selectedVacancy.region && ` - ${REGIONS.find(r => r.value === selectedVacancy.region)?.label || selectedVacancy.region}`}
                           </p>
                         )}
                       </div>
@@ -861,54 +895,21 @@ const ManagementDetails = () => {
                         </div>
                       </div>
 
-                      {/* Branch Type */}
+                      {/* Region - read-only for regional vacancies */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Filial turi <span className="text-red-500">*</span>
+                          Hudud
                         </label>
-                        <select
-                          name="branch_type"
-                          value={editFormData.branch_type}
-                          onChange={handleEditFormChange}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        >
-                          <option value="">Filial turini tanlang</option>
-                          <option value="central">Markaziy Apparat</option>
-                          <option value="regional">Hududiy Boshqarma</option>
-                        </select>
+                        <input
+                          type="text"
+                          value={REGIONS.find(r => r.value === editFormData.region)?.label || editFormData.region}
+                          disabled
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Hudud o'zgartirib bo'lmaydi
+                        </p>
                       </div>
-
-                      {/* Region - only show if branch_type is regional */}
-                      {editFormData.branch_type === "regional" && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Hudud <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            name="region"
-                            value={editFormData.region}
-                            onChange={handleEditFormChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                          >
-                            <option value="">Hududni tanlang</option>
-                            <option value="toshkent">Toshkent</option>
-                            <option value="qashqadaryo">Qashqadaryo</option>
-                            <option value="samarqand">Samarqand</option>
-                            <option value="navoiy">Navoiy</option>
-                            <option value="andijon">Andijon</option>
-                            <option value="fargona">Farg'ona</option>
-                            <option value="namangan">Namangan</option>
-                            <option value="surxondaryo">Surxondaryo</option>
-                            <option value="sirdaryo">Sirdaryo</option>
-                            <option value="jizzax">Jizzax</option>
-                            <option value="buxoro">Buxoro</option>
-                            <option value="xorazm">Xorazm</option>
-                            <option value="qoraqalpogiston">Qoraqalpog'iston Respublikasi</option>
-                          </select>
-                        </div>
-                      )}
 
                       {/* Is Active */}
                       <div className="flex items-center">
@@ -927,18 +928,6 @@ const ManagementDetails = () => {
                           Vakansiya faol
                         </label>
                       </div>
-
-                      {/* Management Info (read-only) */}
-                      {editingVacancy.management_details && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            Boshqarma
-                          </p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {editingVacancy.management_details.name}
-                          </p>
-                        </div>
-                      )}
                     </>
                   ) : null}
                 </div>
@@ -992,30 +981,9 @@ const ManagementDetails = () => {
           </div>
         </div>
       )}
-
-      {/* Edit Management Modal (like DepartmentDetails) */}
-      <EditManagementModal
-        isOpen={isMgmtEditOpen}
-        onClose={() => setIsMgmtEditOpen(false)}
-        management={{
-          id: management.id,
-          name: management.name,
-          management_functions: management.management_functions,
-          department:
-            management.department || management.department_id || undefined,
-        }}
-        onSuccess={(updated) => {
-          setManagement((prev) => ({
-            ...prev,
-            name: updated.name ?? prev.name,
-            management_functions:
-              updated.management_functions ?? prev.management_functions,
-          }));
-          setIsMgmtEditOpen(false);
-        }}
-      />
     </div>
   );
 };
 
-export default ManagementDetails;
+export default RegionVacancies;
+
