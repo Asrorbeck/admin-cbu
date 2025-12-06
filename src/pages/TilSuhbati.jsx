@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import SendMeetLinkModal from "../components/modals/SendMeetLinkModal";
 import EditLanguageInterviewModal from "../components/modals/EditLanguageInterviewModal";
+import { getAttemptsApi } from "../utils/api";
 
 const TilSuhbati = () => {
   // Get today's date in YYYY-MM-DD format
@@ -104,74 +105,74 @@ const TilSuhbati = () => {
     try {
       setLoading(true);
       setError(null);
-      // TODO: Replace with actual API call when endpoint is available
-      // For now, using mock data
-      const mockData = generateMockData(selectedDate);
-      setResults(mockData);
+      
+      if (!selectedDate) {
+        setResults([]);
+        setPage(1);
+        return;
+      }
+
+      // Call API with end_time (test date) and is_passed=true
+      const response = await getAttemptsApi({
+        end_time: selectedDate,
+        is_passed: true,
+      });
+
+      // Handle paginated response
+      const attempts = Array.isArray(response)
+        ? response
+        : response?.results || response?.data || [];
+
+      // Map API response to component's expected structure
+      const mappedResults = attempts.map((attempt) => {
+        // Get vacancy title from application if available, otherwise use test title
+        const vacancyTitle = attempt.application?.job?.title || 
+                            attempt.application?.vacancy?.title ||
+                            attempt.test?.title || 
+                            "Ma'lumot yo'q";
+
+        // Get required language levels from vacancy if available
+        // For now, we'll set them as null and they'll be filled during interview
+        const requiredRussianLevel = attempt.application?.job?.required_russian_level ||
+                                    attempt.application?.vacancy?.required_russian_level ||
+                                    null;
+        const requiredEnglishLevel = attempt.application?.job?.required_english_level ||
+                                    attempt.application?.vacancy?.required_english_level ||
+                                    null;
+
+        return {
+          id: attempt.id,
+          user_name: attempt.chat?.full_name || attempt.chat?.username || "Ma'lumot yo'q",
+          phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
+          vacancy_title: vacancyTitle,
+          test_passed: attempt.is_passed || false,
+          test_date: attempt.start_time || attempt.end_time || new Date().toISOString(),
+          interview_date: selectedDate, // Use selected date as interview date
+          meet_link: null, // Will be set when meet link is sent
+          meet_link_sent: false, // Will be updated when link is sent
+          meet_interview_date: null, // Will be set when meet link is sent
+          meeting_attended: null, // Will be set during interview
+          russian_level: null, // Will be set during interview
+          english_level: null, // Will be set during interview
+          required_russian_level: requiredRussianLevel,
+          required_english_level: requiredEnglishLevel,
+          passed: null, // Will be set after interview
+          status: null, // Will be set after interview
+          created_at: attempt.start_time || attempt.end_time || new Date().toISOString(),
+          attempt_data: attempt, // Store original attempt data for reference
+        };
+      });
+
+      setResults(mappedResults);
       setPage(1);
     } catch (error) {
       console.error("Error fetching language interview results:", error);
-      setError(error.message);
+      setError(error.message || "Xatolik yuz berdi");
       toast.error("Til suhbati natijalarini yuklashda xatolik yuz berdi");
+      setResults([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock data for testing
-  const generateMockData = (date) => {
-    const levels = ["A1", "A2", "B1", "B2", "C1", "C2"];
-    const names = [
-      "Ali Valiyev",
-      "Dilshod Karimov",
-      "Malika Toshmatova",
-      "Javohir Rahimov",
-      "Gulnoza Yusupova",
-      "Bahodir Qodirov",
-      "Sevara Alimova",
-      "Temur Bekov",
-      "Nigora Xasanova",
-      "Rustam Ismoilov",
-    ];
-    const vacancies = [
-      "Moliya mutaxassisi",
-      "IT mutaxassisi",
-      "Xodimlar bo'limi mutaxassisi",
-      "Audit mutaxassisi",
-      "Marketing mutaxassisi",
-    ];
-
-    return names.map((name, index) => {
-      // Talab qilinadigan darajalar vakansiyadan keladi (mock datada har xil)
-      const requiredRus = ["B1", "B2", "B1", "C1", "B1"][index % 5];
-      const requiredEng = ["B1", "B1", "B2", "B1", "C1"][index % 5];
-
-      // Boshida til darajalari tanlanmagan
-      return {
-        id: index + 1,
-        user_name: name,
-        phone_number: `+998${Math.floor(Math.random() * 90000000) + 10000000}`, // +998XXXXXXXXX format
-        vacancy_title: vacancies[index % vacancies.length],
-        test_passed: true,
-        test_date: new Date(
-          Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        interview_date: date || selectedDate,
-        meet_link: null,
-        meet_link_sent: false,
-        meet_interview_date: null, // Google Meet link yuborilgan sana (yuborilgandan keyin to'ldiriladi)
-        meeting_attended: null, // Boshida aniqlanmagan (true/false/null)
-        russian_level: null, // Boshida tanlanmagan
-        english_level: null, // Boshida tanlanmagan
-        required_russian_level: requiredRus, // Vakansiyadan keladi
-        required_english_level: requiredEng, // Vakansiyadan keladi
-        passed: null, // Boshida aniqlanmagan
-        status: null, // Boshida aniqlanmagan
-        created_at: new Date(
-          Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-      };
-    });
   };
 
   // Compare language levels (A1 < A2 < B1 < B2 < C1 < C2)
