@@ -20,8 +20,8 @@ const Sidebar = ({ isOpen, onClose }) => {
       )}
 
       {/* Sidebar */}
-      <div className={sidebarClasses}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
+      <div className={`${sidebarClasses} flex flex-col`}>
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div>
             <h1 className="text-lg font-bold text-gray-900 dark:text-white">
               Markaziy Bank
@@ -50,7 +50,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <nav className="mt-6 space-y-6">
+        <nav className="mt-6 space-y-6 overflow-y-auto flex-1 pb-6">
           {/* Kadrlar bo'limi */}
           <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
