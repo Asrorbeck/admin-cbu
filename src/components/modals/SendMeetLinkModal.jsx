@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { sendMeetLinkInviteApi } from "../../utils/api";
 
 const SendMeetLinkModal = ({ isOpen, onClose, users, selectedDate, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -8,6 +9,28 @@ const SendMeetLinkModal = ({ isOpen, onClose, users, selectedDate, onSuccess }) 
     interview_time: "",
   });
   const [loading, setLoading] = useState(false);
+
+  // Initialize form with existing meeting details if available
+  useEffect(() => {
+    if (isOpen && users && users.length > 0) {
+      // Check if all users have the same meeting details (for bulk send)
+      const firstUser = users[0];
+      if (firstUser.meeting_details) {
+        setFormData({
+          meet_link: firstUser.meeting_details.meet_link || "",
+          interview_date: firstUser.meeting_details.meet_date || selectedDate || "",
+          interview_time: firstUser.meeting_details.meet_time || "",
+        });
+      } else {
+        // Reset to default if no meeting details
+        setFormData({
+          meet_link: "",
+          interview_date: selectedDate || "",
+          interview_time: "",
+        });
+      }
+    }
+  }, [isOpen, users, selectedDate]);
 
   if (!isOpen) return null;
 
@@ -40,23 +63,17 @@ const SendMeetLinkModal = ({ isOpen, onClose, users, selectedDate, onSuccess }) 
     try {
       setLoading(true);
       
-      // TODO: Replace with actual API call when endpoint is available
-      // await sendMeetLinkApi({
-      //   users: users.map(u => u.id),
-      //   meet_link: formData.meet_link,
-      //   interview_date: formData.interview_date,
-      //   interview_time: formData.interview_time,
-      // });
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call API to send meet link invite
+      await sendMeetLinkInviteApi({
+        attempt_ids: users.map(u => u.id),
+        meet_link: formData.meet_link,
+        meet_date: formData.interview_date,
+        meet_time: formData.interview_time,
+      });
 
       toast.success(
         `${users.length} ta foydalanuvchiga Google Meet link muvaffaqiyatli yuborildi`
       );
-      
-      // TODO: Send Telegram notifications
-      // await sendTelegramNotifications(users);
 
       // Pass meet link data to parent component
       onSuccess && onSuccess({
@@ -68,7 +85,11 @@ const SendMeetLinkModal = ({ isOpen, onClose, users, selectedDate, onSuccess }) 
       onClose();
     } catch (error) {
       console.error("Error sending meet link:", error);
-      toast.error("Meet link yuborishda xatolik yuz berdi");
+      const errorMessage = error.responseData?.detail || 
+                          error.responseData?.message || 
+                          error.message || 
+                          "Meet link yuborishda xatolik yuz berdi";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -111,6 +132,26 @@ const SendMeetLinkModal = ({ isOpen, onClose, users, selectedDate, onSuccess }) 
               Foydalanuvchilar Telegram orqali bildirishnoma oladi.
             </p>
           </div>
+
+          {/* Show existing meeting details if available */}
+          {users && users.length > 0 && users[0].meeting_details && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                Mavjud meeting ma'lumotlari:
+              </p>
+              <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                <p>
+                  <strong>Link:</strong> {users[0].meeting_details.meet_link || "Ma'lumot yo'q"}
+                </p>
+                <p>
+                  <strong>Sana:</strong> {users[0].meeting_details.meet_date || "Ma'lumot yo'q"}
+                </p>
+                <p>
+                  <strong>Vaqt:</strong> {users[0].meeting_details.meet_time || "Ma'lumot yo'q"}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div>
             <label

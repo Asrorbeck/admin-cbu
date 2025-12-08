@@ -420,6 +420,18 @@ export const getAttemptsApi = async (params = {}) => {
   });
 };
 
+export const sendMeetLinkInviteApi = async (data) => {
+  return apiRequest("/attempts/send-invite/", {
+    method: "POST",
+    body: JSON.stringify({
+      attempt_ids: data.attempt_ids,
+      meet_link: data.meet_link,
+      meet_date: data.meet_date,
+      meet_time: data.meet_time,
+    }),
+  });
+};
+
 // FAQ Categories API calls
 export const getFaqCategoriesApi = async (section = null) => {
   const endpoint = section

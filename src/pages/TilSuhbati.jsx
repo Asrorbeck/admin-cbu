@@ -140,6 +140,10 @@ const TilSuhbati = () => {
                                     attempt.application?.vacancy?.required_english_level ||
                                     null;
 
+        // Extract meeting details from API response
+        const meetingDetails = attempt.meeting_details || null;
+        const meetLinkSent = meetingDetails !== null;
+
         return {
           id: attempt.id,
           user_name: attempt.chat?.full_name || attempt.chat?.username || "Ma'lumot yo'q",
@@ -148,9 +152,11 @@ const TilSuhbati = () => {
           test_passed: attempt.is_passed || false,
           test_date: attempt.start_time || attempt.end_time || new Date().toISOString(),
           interview_date: selectedDate, // Use selected date as interview date
-          meet_link: null, // Will be set when meet link is sent
-          meet_link_sent: false, // Will be updated when link is sent
-          meet_interview_date: null, // Will be set when meet link is sent
+          meet_link: meetingDetails?.meet_link || null,
+          meet_link_sent: meetLinkSent,
+          meet_interview_date: meetingDetails?.meet_date || null,
+          meet_interview_time: meetingDetails?.meet_time || null,
+          meeting_details: meetingDetails, // Store full meeting details
           meeting_attended: null, // Will be set during interview
           russian_level: null, // Will be set during interview
           english_level: null, // Will be set during interview
@@ -269,8 +275,13 @@ const TilSuhbati = () => {
               ...r,
               meet_link: meetLinkData.meet_link,
               meet_link_sent: true,
-              meet_interview_date: meetLinkData.interview_date, // Google Meet link yuborilgan sana
-              interview_time: meetLinkData.interview_time,
+              meet_interview_date: meetLinkData.interview_date,
+              meet_interview_time: meetLinkData.interview_time,
+              meeting_details: {
+                meet_link: meetLinkData.meet_link,
+                meet_date: meetLinkData.interview_date,
+                meet_time: meetLinkData.interview_time,
+              },
             };
           }
           return r;
@@ -343,13 +354,40 @@ const TilSuhbati = () => {
     if (!dateString) return "Ma'lumot yo'q";
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat("uz-UZ", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
+      // Check if it's just a date (YYYY-MM-DD) or includes time
+      if (dateString.includes('T') || dateString.includes(' ')) {
+        return new Intl.DateTimeFormat("uz-UZ", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(date);
+      } else {
+        // Just date format (YYYY-MM-DD)
+        return new Intl.DateTimeFormat("uz-UZ", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }).format(date);
+      }
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Format date for meeting date column (simpler format)
+  const formatMeetingDate = (dateString) => {
+    if (!dateString) return "Ma'lumot yo'q";
+    try {
+      // Parse YYYY-MM-DD format
+      const [year, month, day] = dateString.split('-');
+      const monthNames = [
+        "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+        "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+      ];
+      const monthIndex = parseInt(month, 10) - 1;
+      return `${parseInt(day, 10)} ${monthNames[monthIndex]}, ${year}`;
     } catch {
       return dateString;
     }
@@ -477,8 +515,8 @@ const TilSuhbati = () => {
   // Get unique Google Meet interview dates from filtered results
   const meetInterviewDates = [...new Set(
     filtered
-      .filter((r) => r.meet_interview_date && r.meet_link_sent)
-      .map((r) => r.meet_interview_date)
+      .filter((r) => r.meeting_details && r.meeting_details.meet_date)
+      .map((r) => r.meeting_details.meet_date)
   )].sort();
 
   return (
@@ -626,7 +664,7 @@ const TilSuhbati = () => {
                   (r.passed === null || r.passed === undefined) &&
                   (r.meeting_attended === null ||
                     r.meeting_attended === undefined) &&
-                  !r.meet_link_sent
+                  !r.meeting_details
                 );
               });
 
@@ -789,6 +827,12 @@ const TilSuhbati = () => {
                       Holat
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Meet link holati
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Meeting vaqti
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Amallar
                     </th>
                   </tr>
@@ -869,6 +913,35 @@ const TilSuhbati = () => {
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
                             Kutilmoqda
                           </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {result.meeting_details ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Yuborilgan
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                            Yuborilmagan
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {result.meeting_details ? (
+                          <div>
+                            <div className="font-medium">
+                              {result.meet_interview_date ? formatMeetingDate(result.meet_interview_date) : "Ma'lumot yo'q"}
+                            </div>
+                            {result.meet_interview_time && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {result.meet_interview_time.length > 5 
+                                  ? result.meet_interview_time.substring(0, 5) 
+                                  : result.meet_interview_time}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">Ma'lumot yo'q</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -953,7 +1026,7 @@ const TilSuhbati = () => {
                     (r.passed === null || r.passed === undefined) &&
                     (r.meeting_attended === null ||
                       r.meeting_attended === undefined) &&
-                    !r.meet_link_sent
+                    !r.meeting_details
                   );
                 })
           }
