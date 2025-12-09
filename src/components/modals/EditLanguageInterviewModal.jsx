@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { updateAttemptApi } from "../../utils/api";
 
 const EditLanguageInterviewModal = ({ isOpen, onClose, user, onSave }) => {
   const languageLevels = ["A1", "A2", "B1", "B2", "C1", "C2"];
@@ -14,9 +15,11 @@ const EditLanguageInterviewModal = ({ isOpen, onClose, user, onSave }) => {
   useEffect(() => {
     if (isOpen && user) {
       setFormData({
-        russian_level: user.russian_level || "",
-        english_level: user.english_level || "",
-        meeting_attended: user.meeting_attended !== null ? user.meeting_attended : true,
+        russian_level: user.russian_level || user.actual_russian_level || "",
+        english_level: user.english_level || user.actual_english_level || "",
+        meeting_attended: user.meeting_attended !== null && user.meeting_attended !== undefined 
+          ? user.meeting_attended 
+          : (user.attend !== null && user.attend !== undefined ? user.attend : true),
       });
     }
   }, [isOpen, user]);
@@ -61,69 +64,89 @@ const EditLanguageInterviewModal = ({ isOpen, onClose, user, onSave }) => {
     }
 
     // Talab qilinadigan darajalar vakansiyadan keladi (user obyektida)
-    if (!user.required_russian_level || !user.required_english_level) {
-      toast.error("Vakansiya talablari topilmadi");
-      return;
+    // Agar "not_required" bo'lsa, talab yo'q deb hisoblanadi
+    // Lekin agar ikkala til ham "not_required" bo'lsa, xatolik ko'rsatmaymiz
+    const hasRussianRequirement = user.required_russian_level && user.required_russian_level !== "not_required";
+    const hasEnglishRequirement = user.required_english_level && user.required_english_level !== "not_required";
+    
+    // Agar meetingga kirgan bo'lsa va talablar mavjud bo'lsa, tekshiramiz
+    if (formData.meeting_attended && (hasRussianRequirement || hasEnglishRequirement)) {
+      if (hasRussianRequirement && !formData.russian_level) {
+        toast.error("Rus tili darajasi tanlanishi shart");
+        return;
+      }
+      if (hasEnglishRequirement && !formData.english_level) {
+        toast.error("Ingliz tili darajasi tanlanishi shart");
+        return;
+      }
     }
 
     try {
       setLoading(true);
 
-      // Agar meetingga kirmagan bo'lsa, avtomatik rad etiladi
+      // Calculate overall_result based on language requirements
+      let overallResult = false;
+      
       if (!formData.meeting_attended) {
-        const updatedUser = {
-          ...user,
-          meeting_attended: false,
-          russian_level: formData.russian_level,
-          english_level: formData.english_level,
-          passed: false,
-          status: "rejected",
-        };
-
-        // TODO: Replace with actual API call when endpoint is available
-        // await updateLanguageInterviewApi(user.id, updatedUser);
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        onSave && onSave(updatedUser);
-        onClose();
-        return;
+        // Agar meetingga kirmagan bo'lsa, avtomatik false
+        overallResult = false;
+      } else {
+        // Meetingga kirgan bo'lsa, talablarga javob berishini tekshiramiz
+        const hasRussianRequirement = user.required_russian_level && user.required_russian_level !== "not_required";
+        const hasEnglishRequirement = user.required_english_level && user.required_english_level !== "not_required";
+        
+        let rusPassed = true; // Agar talab yo'q bo'lsa, true
+        let engPassed = true; // Agar talab yo'q bo'lsa, true
+        
+        if (hasRussianRequirement) {
+          rusPassed = formData.russian_level && 
+            compareLevel(formData.russian_level, user.required_russian_level) >= 0;
+        }
+        
+        if (hasEnglishRequirement) {
+          engPassed = formData.english_level && 
+            compareLevel(formData.english_level, user.required_english_level) >= 0;
+        }
+        
+        // Ikkala til ham talabga javob berishi kerak
+        overallResult = rusPassed && engPassed;
       }
 
-      // Check if passed (faqat meetingga kirganlar uchun)
-      const rusPassed =
-        formData.russian_level &&
-        compareLevel(formData.russian_level, user.required_russian_level) >= 0;
-      const engPassed =
-        formData.english_level &&
-        compareLevel(
-          formData.english_level,
-          user.required_english_level
-        ) >= 0;
-      const passed = rusPassed && engPassed;
-
-      const updatedUser = {
-        ...user,
-        meeting_attended: true,
-        russian_level: formData.russian_level,
-        english_level: formData.english_level,
-        // required darajalar o'zgarmaydi, ular vakansiyadan keladi
-        passed: passed,
-        status: passed ? "passed" : "rejected",
+      // Prepare API payload
+      const apiPayload = {
+        actual_russian_level: formData.russian_level || null,
+        actual_english_level: formData.english_level || null,
+        overall_result: overallResult,
+        attend: formData.meeting_attended,
       };
 
-      // TODO: Replace with actual API call when endpoint is available
-      // await updateLanguageInterviewApi(user.id, updatedUser);
+      // Call API to update attempt
+      await updateAttemptApi(user.id, apiPayload);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Update local state
+      const updatedUser = {
+        ...user,
+        meeting_attended: formData.meeting_attended,
+        attend: formData.meeting_attended,
+        russian_level: formData.russian_level,
+        actual_russian_level: formData.russian_level,
+        english_level: formData.english_level,
+        actual_english_level: formData.english_level,
+        overall_result: overallResult,
+        passed: overallResult,
+        status: overallResult ? "passed" : "rejected",
+      };
 
       onSave && onSave(updatedUser);
+      toast.success("Til suhbati natijalari muvaffaqiyatli saqlandi");
       onClose();
     } catch (error) {
       console.error("Error saving language interview results:", error);
-      toast.error("Natijalarni saqlashda xatolik yuz berdi");
+      const errorMessage = error.responseData?.detail || 
+                          error.responseData?.message || 
+                          error.message || 
+                          "Natijalarni saqlashda xatolik yuz berdi";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -432,6 +432,13 @@ export const sendMeetLinkInviteApi = async (data) => {
   });
 };
 
+export const updateAttemptApi = async (id, data) => {
+  return apiRequest(`/attempts/${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
 // FAQ Categories API calls
 export const getFaqCategoriesApi = async (section = null) => {
   const endpoint = section

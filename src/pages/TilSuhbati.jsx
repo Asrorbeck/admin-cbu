@@ -22,29 +22,34 @@ const TilSuhbati = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize selectedDate from URL params or use today's date
+  const getInitialDate = () => {
+    const dateParam = searchParams.get("date");
+    return dateParam || getTodayDate();
+  };
+  
+  const [selectedDate, setSelectedDate] = useState(getInitialDate());
   const [showPassedOnly, setShowPassedOnly] = useState(false);
   const [isSendLinkModalOpen, setIsSendLinkModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const selectAllCheckboxRef = useRef(null);
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
   // Check URL params for date on mount and when URL changes
   useEffect(() => {
     const dateParam = searchParams.get("date");
     if (dateParam && dateParam !== selectedDate) {
       setSelectedDate(dateParam);
+    } else if (!dateParam && selectedDate !== getTodayDate()) {
+      // If URL param is removed, reset to today's date
+      setSelectedDate(getTodayDate());
     }
     document.title = "Til suhbati - Markaziy Bank Administratsiyasi";
   }, [searchParams]);
-
-  // Initial fetch on mount
-  useEffect(() => {
-    fetchResults();
-  }, []);
 
   useEffect(() => {
     // When date changes, refetch results
@@ -131,14 +136,14 @@ const TilSuhbati = () => {
                             attempt.test?.title || 
                             "Ma'lumot yo'q";
 
-        // Get required language levels from vacancy if available
-        // For now, we'll set them as null and they'll be filled during interview
-        const requiredRussianLevel = attempt.application?.job?.required_russian_level ||
-                                    attempt.application?.vacancy?.required_russian_level ||
-                                    null;
-        const requiredEnglishLevel = attempt.application?.job?.required_english_level ||
-                                    attempt.application?.vacancy?.required_english_level ||
-                                    null;
+        // Get required language levels from vacancy (requirements_ru and requirements_en)
+        // These can be "not_required" or actual levels like "A1", "A2", etc.
+        const requirementsRu = attempt.application?.vacancy?.requirements_ru;
+        const requirementsEn = attempt.application?.vacancy?.requirements_en;
+        
+        // Convert "not_required" to null, otherwise use the level
+        const requiredRussianLevel = requirementsRu && requirementsRu !== "not_required" ? requirementsRu : null;
+        const requiredEnglishLevel = requirementsEn && requirementsEn !== "not_required" ? requirementsEn : null;
 
         // Extract meeting details from API response
         const meetingDetails = attempt.meeting_details || null;
@@ -157,13 +162,16 @@ const TilSuhbati = () => {
           meet_interview_date: meetingDetails?.meet_date || null,
           meet_interview_time: meetingDetails?.meet_time || null,
           meeting_details: meetingDetails, // Store full meeting details
-          meeting_attended: null, // Will be set during interview
-          russian_level: null, // Will be set during interview
-          english_level: null, // Will be set during interview
+          meeting_attended: attempt.attend !== null ? attempt.attend : null, // From API
+          russian_level: attempt.actual_russian_level || null, // From API
+          english_level: attempt.actual_english_level || null, // From API
           required_russian_level: requiredRussianLevel,
           required_english_level: requiredEnglishLevel,
-          passed: null, // Will be set after interview
-          status: null, // Will be set after interview
+          overall_result: attempt.overall_result !== null ? attempt.overall_result : null, // From API
+          passed: attempt.overall_result !== null ? attempt.overall_result : null, // Use overall_result as passed
+          status: attempt.overall_result !== null 
+            ? (attempt.overall_result ? "passed" : "rejected")
+            : null,
           created_at: attempt.start_time || attempt.end_time || new Date().toISOString(),
           attempt_data: attempt, // Store original attempt data for reference
         };

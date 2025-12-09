@@ -4,8 +4,10 @@ import {
   getApplicationsApi,
   getApplicationByIdApi,
   updateApplicationApi,
+  deleteApplicationApi,
 } from "../utils/api";
 import toast from "react-hot-toast";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 const EvalRulesModalContent = ({
   applications,
@@ -189,6 +191,9 @@ const Arizalar = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingApplicationId, setDeletingApplicationId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -250,6 +255,30 @@ const Arizalar = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "Ma'lumot yo'q";
     return new Date(dateString).toLocaleDateString("uz-UZ");
+  };
+
+  const formatDateYearMonth = (dateString) => {
+    if (!dateString) return "Ma'lumot yo'q";
+    const date = parseDateSafe(dateString);
+    if (!date) return "Ma'lumot yo'q";
+    
+    const year = date.getFullYear();
+    const monthNames = [
+      "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+      "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+    ];
+    const month = monthNames[date.getMonth()];
+    return `${year}-yil, ${month}`;
+  };
+
+  const translateLanguageDegree = (degree) => {
+    if (!degree) return degree;
+    const lower = degree.toLowerCase();
+    if (lower === "excellent") return "A'lo";
+    if (lower === "beginner") return "Boshlang'ich";
+    if (lower === "intermediate") return "O'rta";
+    if (lower === "advanced") return "Yuqori";
+    return degree;
   };
 
   const truncateText = (text, maxLength = 60) => {
@@ -506,6 +535,8 @@ const Arizalar = () => {
         data_of_birth: selectedApplication.data_of_birth,
         phone: selectedApplication.user?.phone_number || selectedApplication.phone,
         additional_information: selectedApplication.additional_information,
+        jshshir: selectedApplication.jshshir,
+        monthly_salary: selectedApplication.monthly_salary,
         graduations: selectedApplication.graduations || [],
         employments: selectedApplication.employments || [],
         languages: selectedApplication.languages || [],
@@ -575,6 +606,8 @@ const Arizalar = () => {
               data_of_birth: a.data_of_birth,
               phone: a.user?.phone_number || a.phone,
               additional_information: a.additional_information,
+              jshshir: a.jshshir,
+              monthly_salary: a.monthly_salary,
               graduations: a.graduations || [],
               employments: a.employments || [],
               languages: a.languages || [],
@@ -597,6 +630,43 @@ const Arizalar = () => {
     } finally {
       setIsBulkUpdating(false);
     }
+  };
+
+  // Delete application
+  const handleDeleteClick = (applicationId, e) => {
+    e.stopPropagation();
+    setDeletingApplicationId(applicationId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingApplicationId) return;
+    try {
+      setIsDeleting(true);
+      await toast.promise(
+        deleteApplicationApi(deletingApplicationId),
+        {
+          loading: "O'chirilmoqda...",
+          success: "Ariza muvaffaqiyatli o'chirildi",
+          error: (err) =>
+            err?.message || "Arizani o'chirishda xatolik yuz berdi",
+        }
+      );
+      setApplications((prev) =>
+        prev.filter((a) => a.id !== deletingApplicationId)
+      );
+      setDeleteConfirmOpen(false);
+      setDeletingApplicationId(null);
+    } catch (error) {
+      console.error("Error deleting application:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+    setDeletingApplicationId(null);
   };
 
   // Pagination + evaluation filter derived data
@@ -926,6 +996,9 @@ const Arizalar = () => {
                   Telefon
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  JSHSHIR
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Ta'lim
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -1014,6 +1087,9 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {application.user?.phone_number || application.phone || "Ma'lumot yo'q"}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {application.jshshir || "Ma'lumot yo'q"}
+                  </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-gray-300">
                       {application.graduations &&
@@ -1097,6 +1173,25 @@ const Arizalar = () => {
                             strokeLinejoin="round"
                             strokeWidth={2}
                             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteClick(application.id, e)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                        title="O'chirish"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                           />
                         </svg>
                       </button>
@@ -1428,8 +1523,8 @@ const Arizalar = () => {
                                 {g.specialization}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {formatDate(g.date_from)} —{" "}
-                                {formatDate(g.date_to)}
+                                {formatDateYearMonth(g.date_from)} —{" "}
+                                {formatDateYearMonth(g.date_to)}
                               </div>
                             </div>
                           ))}
@@ -1457,8 +1552,8 @@ const Arizalar = () => {
                                 {e.position}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {formatDate(e.date_from)} —{" "}
-                                {formatDate(e.date_to)}
+                                {formatDateYearMonth(e.date_from)} —{" "}
+                                {formatDateYearMonth(e.date_to)}
                               </div>
                             </div>
                           ))}
@@ -1479,13 +1574,24 @@ const Arizalar = () => {
                               key={l.id}
                               className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                             >
-                              {l.language_name} — {l.degree}
+                              {l.language_name} — {translateLanguageDegree(l.degree)}
                             </span>
                           ))}
                         </div>
                       ) : (
                         <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
                       )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Oylik maosh
+                      </h4>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {selectedApplication.monthly_salary 
+                          ? new Intl.NumberFormat('uz-UZ').format(selectedApplication.monthly_salary) + " so'm"
+                          : "Ma'lumot yo'q"}
+                      </p>
                     </div>
 
                     {/* Status Editor (placed after languages) */}
@@ -1533,6 +1639,17 @@ const Arizalar = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Arizani o'chirish"
+        description="Bu arizani o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi."
+        confirmText="Ha, o'chirish"
+        cancelText="Bekor qilish"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 };
