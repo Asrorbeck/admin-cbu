@@ -219,7 +219,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/test-natijalari/ota-olmaganlar"
+        path="/cheklov-ornatilganlar"
         element={
           <ProtectedRoute>
             <Layout>

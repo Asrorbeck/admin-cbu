@@ -313,8 +313,25 @@ export const deleteVacancyApi = async (id) => {
 };
 
 // Applications API calls
-export const getApplicationsApi = async () => {
-  return apiRequest("/apply-jobs/", {
+export const getApplicationsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.application_deadline) {
+    queryParams.append("application_deadline", params.application_deadline);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString 
+    ? `/apply-jobs/?${queryString}`
+    : "/apply-jobs/";
+  
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+export const getDeadlineArchivesApi = async () => {
+  return apiRequest("/deadline-archives/", {
     method: "GET",
   });
 };
@@ -417,6 +434,37 @@ export const getAttemptsApi = async (params = {}) => {
   
   return apiRequest(endpoint, {
     method: "GET",
+  });
+};
+
+// Restrictions API calls
+export const getRestrictionsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.page) queryParams.append("page", params.page);
+  if (params.page_size) queryParams.append("page_size", params.page_size);
+  // if (params.is_active !== undefined && params.is_active !== null) {
+  //   queryParams.append("is_active", params.is_active);
+  // }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/restrictions/?${queryString}` : "/restrictions/";
+  
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+export const deleteRestrictionApi = async (id) => {
+  return apiRequest(`/restrictions/${id}/`, {
+    method: "DELETE",
+  });
+};
+
+export const updateRestrictionApi = async (id, data) => {
+  return apiRequest(`/restrictions/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
 };
 

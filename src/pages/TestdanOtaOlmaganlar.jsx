@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { getAttemptsApi } from "../utils/api";
+import { getRestrictionsApi, deleteRestrictionApi, updateRestrictionApi } from "../utils/api";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 const TestdanOtaOlmaganlar = () => {
   const [results, setResults] = useState([]);
@@ -11,11 +12,14 @@ const TestdanOtaOlmaganlar = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingRestrictionId, setDeletingRestrictionId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchResults();
-    document.title = "Testdan o'ta olmaganlar - Markaziy Bank Administratsiyasi";
+    document.title = "Cheklov o'rnatilganlar - Markaziy Bank Administratsiyasi";
   }, []);
 
   const fetchResults = async () => {
@@ -23,93 +27,142 @@ const TestdanOtaOlmaganlar = () => {
       setLoading(true);
       setError(null);
       
-      // Fetch failed attempts from API
-      const response = await getAttemptsApi({ is_passed: false });
+      // Fetch restrictions from API (all restrictions, not just active ones)
+      const response = await getRestrictionsApi();
       
       // Handle paginated response format: { results: [...], count: ... }
-      const attempts = Array.isArray(response) 
+      const restrictions = Array.isArray(response) 
         ? response 
         : (response?.results || response?.data || []);
       
       // Map API response to component format
-      const mappedResults = attempts.map((attempt) => {
-        const endTime = attempt.end_time ? new Date(attempt.end_time) : new Date();
-        
-        // Calculate if 3 months have passed since the test was completed
-        const threeMonthsLater = new Date(endTime);
-        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
-        const canRetake = new Date() >= threeMonthsLater;
-        const daysUntilRetake = canRetake 
-          ? 0 
-          : Math.ceil((threeMonthsLater - new Date()) / (1000 * 60 * 60 * 24));
-        
-        // Calculate max_score and percentage
-        // If test has pass_score, estimate max_score (typically pass_score is 50% of max)
-        // Otherwise use total_questions * 10 as estimate, or default to 100
-        let maxScore = 100; // Default max score
-        if (attempt.test?.pass_score) {
-          // Typically pass_score is 50% of max, so max is approximately 2x pass_score
-          maxScore = attempt.test.pass_score * 2;
-        } else if (attempt.test?.total_questions) {
-          // Estimate: 10 points per question
-          maxScore = attempt.test.total_questions * 10;
-        }
-        
-        const percentage = maxScore > 0 
-          ? Math.round((attempt.score / maxScore) * 100) 
-          : 0;
-        
-        // Use username instead of email (backend doesn't provide email)
-        const username = attempt.chat?.username || "Ma'lumot yo'q";
+      const mappedResults = restrictions.map((restriction) => {
+        const canRetake = restriction.days_remaining <= 0;
+        const daysUntilRetake = restriction.days_remaining || 0;
         
         return {
-          id: attempt.id,
-          user_name: attempt.chat?.full_name || attempt.chat?.username || "Ma'lumot yo'q",
-          user_email: username, // Store username in user_email field for backward compatibility
-          phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
-          test_title: attempt.test?.title || "Ma'lumot yo'q",
-          test_id: attempt.test?.id || null,
-          failed_date: attempt.end_time || attempt.start_time || new Date().toISOString(),
-          score: attempt.score || 0,
-          max_score: maxScore,
-          percentage: percentage,
+          id: restriction.id,
+          jshshir: restriction.jshshir || "Ma'lumot yo'q",
+          user_name: restriction.application_info?.job_title ? `Ariza: ${restriction.application_info.job_title}` : "Ma'lumot yo'q",
+          user_email: restriction.jshshir || "Ma'lumot yo'q",
+          phone_number: restriction.jshshir || "Ma'lumot yo'q",
+          test_title: restriction.application_info?.job_title || "Ma'lumot yo'q",
+          test_id: restriction.related_application || null,
+          failed_date: restriction.last_failed_test_date || new Date().toISOString(),
+          score: restriction.test_score || 0,
+          max_score: 100, // Default, can be adjusted if needed
+          percentage: restriction.test_score || 0,
           can_retake: canRetake,
           days_until_retake: daysUntilRetake,
-          admin_override: false, // Admin tomonidan cheklov bekor qilinganmi
-          attempt_data: attempt, // Store original data for potential future use
+          admin_override: !restriction.is_active, // If not active, admin has overridden
+          can_apply_after: restriction.can_apply_after,
+          application_id: restriction.related_application,
+          application_info: restriction.application_info,
+          is_active: restriction.is_active,
+          restriction_data: restriction, // Store original data
         };
       });
       
       setResults(mappedResults);
       setPage(1);
     } catch (error) {
-      console.error("Error fetching failed test takers:", error);
+      console.error("Error fetching restrictions:", error);
       setError(error.message || "Xatolik yuz berdi");
-      toast.error("Testdan o'ta olmaganlar ro'yxatini yuklashda xatolik yuz berdi");
+      toast.error("Cheklov o'rnatilganlar ro'yxatini yuklashda xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
   };
 
-  // Allow admin to override the 3-month restriction
+  // Allow admin to override the restriction (deactivate)
   const handleAllowRetake = async (result) => {
     try {
-      // TODO: Replace with actual API call when endpoint is available
-      // await allowTestRetakeApi(result.id);
+      // Deactivate the restriction
+      await toast.promise(
+        updateRestrictionApi(result.id, { is_active: false }),
+        {
+          loading: "Cheklov bekor qilinmoqda...",
+          success: "Cheklov muvaffaqiyatli bekor qilindi",
+          error: "Cheklovni bekor qilishda xatolik yuz berdi",
+        }
+      );
       
-      // Update local state
+      // Update local state - mark as inactive
       setResults((prev) =>
         prev.map((r) =>
-          r.id === result.id
-            ? { ...r, admin_override: true, can_retake: true, days_until_retake: 0 }
-            : r
+          r.id === result.id ? { ...r, is_active: false } : r
         )
       );
-      toast.success(`${result.user_name} uchun test qayta topshirish imkoniyati ochildi`);
+      
+      toast.success(`JSHSHIR: ${result.jshshir} uchun cheklov bekor qilindi`);
     } catch (error) {
-      console.error("Error allowing retake:", error);
+      console.error("Error removing restriction:", error);
       toast.error("Xatolik yuz berdi");
     }
+  };
+
+  // Activate the restriction
+  const handleActivateRestriction = async (result) => {
+    try {
+      // Activate the restriction
+      await toast.promise(
+        updateRestrictionApi(result.id, { is_active: true }),
+        {
+          loading: "Cheklov aktivlashtirilmoqda...",
+          success: "Cheklov muvaffaqiyatli aktivlashtirildi",
+          error: "Cheklovni aktivlashtirishda xatolik yuz berdi",
+        }
+      );
+      
+      // Update local state - mark as active
+      setResults((prev) =>
+        prev.map((r) =>
+          r.id === result.id ? { ...r, is_active: true } : r
+        )
+      );
+      
+      toast.success(`JSHSHIR: ${result.jshshir} uchun cheklov aktivlashtirildi`);
+    } catch (error) {
+      console.error("Error activating restriction:", error);
+      toast.error("Xatolik yuz berdi");
+    }
+  };
+
+  // Delete restriction
+  const handleDeleteClick = (restrictionId, e) => {
+    if (e) e.stopPropagation();
+    setDeletingRestrictionId(restrictionId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingRestrictionId) return;
+    try {
+      setIsDeleting(true);
+      await toast.promise(
+        deleteRestrictionApi(deletingRestrictionId),
+        {
+          loading: "O'chirilmoqda...",
+          success: "Cheklov muvaffaqiyatli o'chirildi",
+          error: (err) =>
+            err?.message || "Cheklovni o'chirishda xatolik yuz berdi",
+        }
+      );
+      setResults((prev) =>
+        prev.filter((r) => r.id !== deletingRestrictionId)
+      );
+      setDeleteConfirmOpen(false);
+      setDeletingRestrictionId(null);
+    } catch (error) {
+      console.error("Error deleting restriction:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+    setDeletingRestrictionId(null);
   };
 
   // Export to Excel
@@ -121,23 +174,21 @@ const TestdanOtaOlmaganlar = () => {
 
     const excelData = filtered.map((result, index) => ({
       "T/r": index + 1,
-      "Foydalanuvchi": result.user_name || "Ma'lumot yo'q",
-      "Telegram username": result.user_email || "Ma'lumot yo'q",
-      "Telefon": result.phone_number || "Ma'lumot yo'q",
-      "Test nomi": result.test_title || "Ma'lumot yo'q",
-      "Ball": `${result.score} / ${result.max_score}`,
-      "Foiz": `${result.percentage}%`,
+      "JSHSHIR": result.jshshir || "Ma'lumot yo'q",
+      "Ish o'rni": result.test_title || "Ma'lumot yo'q",
+      "Test balli": result.score || 0,
       "O'tkazilmagan sana": formatDate(result.failed_date),
       "Qayta topshirish mumkin": result.can_retake ? "Ha" : "Yo'q",
       "Qayta topshirishga qolgan kunlar": result.can_retake ? 0 : result.days_until_retake,
-      "Admin tomonidan ochilgan": result.admin_override ? "Ha" : "Yo'q",
+      "Qayta ariza berish mumkin": result.can_apply_after ? formatDate(result.can_apply_after) : "Ma'lumot yo'q",
+      "Ariza holati": result.application_info?.status || "Ma'lumot yo'q",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Testdan o'ta olmaganlar");
+    XLSX.utils.book_append_sheet(wb, ws, "Cheklov o'rnatilganlar");
 
-    const filename = `testdan-ota-olmaganlar.xlsx`;
+    const filename = `cheklov-ornatilganlar.xlsx`;
     XLSX.writeFile(wb, filename);
     toast.success("Excel fayl muvaffaqiyatli yuklab olindi");
   };
@@ -239,10 +290,10 @@ const TestdanOtaOlmaganlar = () => {
   const q = query.trim().toLowerCase();
   const filtered = results.filter((result) => {
     if (q) {
-      const inUserName = result.user_name?.toLowerCase().includes(q);
-      const inUsername = result.user_email?.toLowerCase().includes(q); // user_email contains username
+      const inJshshir = result.jshshir?.toLowerCase().includes(q);
       const inTestTitle = result.test_title?.toLowerCase().includes(q);
-      if (!inUserName && !inUsername && !inTestTitle) return false;
+      const inJobTitle = result.application_info?.job_title?.toLowerCase().includes(q);
+      if (!inJshshir && !inTestTitle && !inJobTitle) return false;
     }
     return true;
   });
@@ -260,30 +311,12 @@ const TestdanOtaOlmaganlar = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate("/kadrlar")}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Testdan o'ta olmaganlar
+              Cheklov o'rnatilganlar
             </h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Testdan o'ta olmagan foydalanuvchilar ro'yxati va qayta topshirish imkoniyatini boshqarish
+              Cheklov o'rnatilgan nomzodlar ro'yxati va cheklovlarni boshqarish
             </p>
           </div>
         </div>
@@ -307,7 +340,7 @@ const TestdanOtaOlmaganlar = () => {
           </svg>
           <div className="flex-1">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Eslatma:</strong> Testdan o'ta olmagan foydalanuvchilar keyingi 3 oy ichida testni qayta topshira olmaydi. 
+              <strong>Eslatma:</strong> Cheklov o'rnatilgan nomzodlar ma'lum muddatgacha yangi ariza bera olmaydi. 
               Admin tomonidan cheklov bekor qilinishi mumkin.
             </p>
           </div>
@@ -326,7 +359,7 @@ const TestdanOtaOlmaganlar = () => {
                 setQuery(e.target.value);
                 setPage(1);
               }}
-              placeholder="Qidirish: foydalanuvchi, username, test nomi..."
+              placeholder="Qidirish: JSHSHIR, ish o'rni..."
               className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
             />
             <svg
@@ -405,10 +438,10 @@ const TestdanOtaOlmaganlar = () => {
             />
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-            Testdan o'ta olmaganlar yo'q
+            Cheklovlar yo'q
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Hozircha testdan o'ta olmagan foydalanuvchilar mavjud emas.
+            Hozircha faol cheklovlar mavjud emas.
           </p>
         </div>
       ) : (
@@ -422,16 +455,19 @@ const TestdanOtaOlmaganlar = () => {
                       T/r
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Foydalanuvchi
+                      JSHSHIR
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Test nomi
+                      Ish o'rni
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Ball
+                      Test balli
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       O'tkazilmagan sana
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Qayta ariza berish mumkin
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Holat
@@ -450,27 +486,20 @@ const TestdanOtaOlmaganlar = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {startIndex + index + 1}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {result.user_name || "Ma'lumot yo'q"}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {result.user_email || "Ma'lumot yo'q"}
-                        </div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">
-                          {result.phone_number || "Ma'lumot yo'q"}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {result.jshshir || "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.test_title || "Ma'lumot yo'q"}
+                        {result.test_title || result.application_info?.job_title || "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.score !== undefined && result.max_score !== undefined
-                          ? `${result.score} / ${result.max_score} (${result.percentage}%)`
-                          : "Ma'lumot yo'q"}
+                        {result.score !== undefined ? result.score : "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {formatDate(result.failed_date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {result.can_apply_after ? formatDate(result.can_apply_after) : "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {result.can_retake || result.admin_override ? (
@@ -486,11 +515,52 @@ const TestdanOtaOlmaganlar = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {!result.can_retake && !result.admin_override && (
+                        <div className="flex items-center space-x-2">
+                          {result.is_active ? (
+                            <button
+                              onClick={() => handleAllowRetake(result)}
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                              title="Cheklovni bekor qilish"
+                            >
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleActivateRestriction(result)}
+                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                              title="Cheklovni aktivlashtirish"
+                            >
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                                />
+                              </svg>
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleAllowRetake(result)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                            title="Qayta topshirish imkoniyatini ochish"
+                            onClick={(e) => handleDeleteClick(result.id, e)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            title="Cheklovni o'chirish"
                           >
                             <svg
                               className="h-5 w-5"
@@ -502,11 +572,11 @@ const TestdanOtaOlmaganlar = () => {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -544,6 +614,17 @@ const TestdanOtaOlmaganlar = () => {
           </div>
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Cheklovni o'chirish"
+        description="Bu cheklovni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi."
+        confirmText="Ha, o'chirish"
+        cancelText="Bekor qilish"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 };

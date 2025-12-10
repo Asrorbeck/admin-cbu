@@ -5,6 +5,7 @@ import {
   getApplicationByIdApi,
   updateApplicationApi,
   deleteApplicationApi,
+  getDeadlineArchivesApi,
 } from "../utils/api";
 import toast from "react-hot-toast";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
@@ -191,15 +192,22 @@ const Arizalar = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [availableDates, setAvailableDates] = useState([]);
+  const [loadingDates, setLoadingDates] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingApplicationId, setDeletingApplicationId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchApplications();
+    fetchDeadlineArchives();
     document.title = "Arizalar - Markaziy Bank Administratsiyasi";
   }, []);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [selectedDate]);
 
   // Load / persist evaluation rules in localStorage
   useEffect(() => {
@@ -227,12 +235,41 @@ const Arizalar = () => {
     }
   }, [evaluationRules]);
 
+  const fetchDeadlineArchives = async () => {
+    try {
+      setLoadingDates(true);
+      const archivesData = await getDeadlineArchivesApi();
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const archivesArray = Array.isArray(archivesData) 
+        ? archivesData 
+        : (archivesData?.results || archivesData?.data || []);
+      
+      // Extract unique dates from the archives
+      const dates = [...new Set(archivesArray.map(archive => archive.application_deadline))];
+      // Sort dates in descending order (newest first)
+      dates.sort((a, b) => new Date(b) - new Date(a));
+      setAvailableDates(dates);
+    } catch (error) {
+      console.error("Error fetching deadline archives:", error);
+      toast.error("Muddatiy sanalarni yuklashda xatolik yuz berdi");
+      setAvailableDates([]);
+    } finally {
+      setLoadingDates(false);
+    }
+  };
+
   const fetchApplications = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const applicationsData = await getApplicationsApi();
+      const params = {};
+      if (selectedDate) {
+        params.application_deadline = selectedDate;
+      }
+
+      const applicationsData = await getApplicationsApi(params);
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
       const applicationsArray = Array.isArray(applicationsData) 
@@ -255,6 +292,20 @@ const Arizalar = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "Ma'lumot yo'q";
     return new Date(dateString).toLocaleDateString("uz-UZ");
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "Ma'lumot yo'q";
+    const date = parseDateSafe(dateString);
+    if (!date) return "Ma'lumot yo'q";
+    
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
   };
 
   const formatDateYearMonth = (dateString) => {
@@ -875,9 +926,70 @@ const Arizalar = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Date Filter and Search Bar */}
       <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Ariza muddati:
+            </label>
+            {loadingDates ? (
+              <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                Yuklanmoqda...
+              </div>
+            ) : (
+              <select
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  setPage(1);
+                }}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Barcha sanalar</option>
+                {availableDates.map((date) => {
+                  const dateObj = new Date(date + "T00:00:00");
+                  const day = dateObj.getDate();
+                  const monthNames = [
+                    "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+                    "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+                  ];
+                  const month = monthNames[dateObj.getMonth()];
+                  const year = dateObj.getFullYear();
+                  const formattedDate = `${day} ${month}, ${year}`;
+                  return (
+                    <option key={date} value={date}>
+                      {formattedDate}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+            {selectedDate && !loadingDates && (
+              <button
+                onClick={() => {
+                  setSelectedDate("");
+                  setPage(1);
+                }}
+                className="px-2 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                title="Tozalash"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="relative flex-1">
             <input
               type="text"
@@ -1009,6 +1121,9 @@ const Arizalar = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Holati
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Ariza vaqti
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Amallar
@@ -1147,6 +1262,9 @@ const Arizalar = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {getStatusBadge(application.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {formatDateTime(application.created_at)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
