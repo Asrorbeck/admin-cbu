@@ -42,6 +42,8 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     test_scheduled_at: "",
     branch_type: "",
     region: "",
+    requirements_eng: "",
+    requirements_ru: "",
   });
 
   useEffect(() => {
@@ -59,6 +61,8 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           test_scheduled_at: "",
           branch_type: initialBranchType || "",
           region: initialRegion || "",
+          requirements_eng: "",
+          requirements_ru: "",
         });
       } else {
         fetchDepartments();
@@ -87,6 +91,8 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           test_scheduled_at: "",
           branch_type: initialBranchType || "",
           region: initialRegion || "",
+          requirements_eng: "",
+          requirements_ru: "",
         });
       }
     }
@@ -331,6 +337,12 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           test_scheduled_at: formatDateTimeWithTimezone(
             vacancyData.test_scheduled_at
           ),
+        }),
+        ...(vacancyData.requirements_eng && {
+          requirements_eng: vacancyData.requirements_eng,
+        }),
+        ...(vacancyData.requirements_ru && {
+          requirements_ru: vacancyData.requirements_ru,
         }),
       };
 
@@ -830,6 +842,59 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                     )}
                   </div>
                 )}
+
+                {/* Language Requirements */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Talab qilinadigan ingliz tili
+                    </label>
+                    <select
+                      value={vacancyData.requirements_eng}
+                      onChange={(e) =>
+                        setVacancyData((prev) => ({
+                          ...prev,
+                          requirements_eng: e.target.value,
+                        }))
+                      }
+                      disabled={loading}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="">Tanlang</option>
+                      <option value="A1">A1</option>
+                      <option value="A2">A2</option>
+                      <option value="B1">B1</option>
+                      <option value="B2">B2</option>
+                      <option value="C1">C1</option>
+                      <option value="C2">C2</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Talab qilinadigan rus tili
+                    </label>
+                    <select
+                      value={vacancyData.requirements_ru}
+                      onChange={(e) =>
+                        setVacancyData((prev) => ({
+                          ...prev,
+                          requirements_ru: e.target.value,
+                        }))
+                      }
+                      disabled={loading}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="">Tanlang</option>
+                      <option value="A1">A1</option>
+                      <option value="A2">A2</option>
+                      <option value="B1">B1</option>
+                      <option value="B2">B2</option>
+                      <option value="C1">C1</option>
+                      <option value="C2">C2</option>
+                    </select>
+                  </div>
+                </div>
 
                 <div className="flex items-center">
                   <input

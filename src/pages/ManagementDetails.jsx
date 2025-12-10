@@ -36,6 +36,8 @@ const ManagementDetails = () => {
     is_active: true,
     branch_type: "",
     region: "",
+    requirements_eng: "",
+    requirements_ru: "",
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -185,6 +187,8 @@ const ManagementDetails = () => {
         is_active: fullVacancyData.is_active ?? true,
         branch_type: fullVacancyData.branch_type || "",
         region: fullVacancyData.region || "",
+        requirements_eng: fullVacancyData.requirements_eng || "",
+        requirements_ru: fullVacancyData.requirements_ru || "",
       });
     } catch (error) {
       console.error("Error fetching vacancy details:", error);
@@ -267,6 +271,8 @@ const ManagementDetails = () => {
         is_active: true,
         branch_type: "",
         region: "",
+        requirements_eng: "",
+        requirements_ru: "",
       });
     }, 300);
   };
@@ -909,6 +915,49 @@ const ManagementDetails = () => {
                           </select>
                         </div>
                       )}
+
+                      {/* Language Requirements */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Talab qilinadigan ingliz tili
+                          </label>
+                          <select
+                            name="requirements_eng"
+                            value={editFormData.requirements_eng}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          >
+                            <option value="">Tanlang</option>
+                            <option value="A1">A1</option>
+                            <option value="A2">A2</option>
+                            <option value="B1">B1</option>
+                            <option value="B2">B2</option>
+                            <option value="C1">C1</option>
+                            <option value="C2">C2</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Talab qilinadigan rus tili
+                          </label>
+                          <select
+                            name="requirements_ru"
+                            value={editFormData.requirements_ru}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          >
+                            <option value="">Tanlang</option>
+                            <option value="A1">A1</option>
+                            <option value="A2">A2</option>
+                            <option value="B1">B1</option>
+                            <option value="B2">B2</option>
+                            <option value="C1">C1</option>
+                            <option value="C2">C2</option>
+                          </select>
+                        </div>
+                      </div>
 
                       {/* Is Active */}
                       <div className="flex items-center">

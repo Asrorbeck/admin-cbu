@@ -22,6 +22,26 @@ const Vacancies = () => {
     application_deadline: "",
   });
   const [bulkEditLoading, setBulkEditLoading] = useState(false);
+  
+  // Edit modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingVacancy, setEditingVacancy] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    description: "",
+    requirements: "",
+    job_tasks: "",
+    application_deadline: "",
+    test_scheduled_at: "",
+    is_active: true,
+    branch_type: "",
+    region: "",
+    requirements_eng: "",
+    requirements_ru: "",
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -155,10 +175,139 @@ const Vacancies = () => {
     return `${day} ${month} ${year}, ${hours}:${minutes}`;
   };
 
-  const handleEdit = (vacancy) => {
-    // Navigate to edit page if exists
-    // For now, just show a message
-    toast("Tahrirlash funksiyasi tez orada qo'shiladi", { icon: "ℹ️" });
+  // Helper function to format datetime-local value with GMT+5 timezone
+  const formatDateTimeWithTimezone = (datetimeLocal) => {
+    if (!datetimeLocal) return null;
+    // datetime-local format: "YYYY-MM-DDTHH:mm"
+    // Convert to ISO format with GMT+5 offset: "YYYY-MM-DDTHH:mm:ss+05:00"
+    const [datePart, timePart] = datetimeLocal.split("T");
+    return `${datePart}T${timePart}:00+05:00`;
+  };
+
+  const handleEdit = async (vacancy) => {
+    try {
+      setIsEditModalOpen(true);
+      setEditLoading(true);
+
+      // Fetch full vacancy details from API
+      const fullVacancyData = await getVacancyByIdApi(vacancy.id);
+      setEditingVacancy(fullVacancyData);
+
+      // Set form data
+      // Convert ISO datetime to datetime-local format if exists
+      let testScheduledAtValue = "";
+      if (fullVacancyData.test_scheduled_at) {
+        const date = new Date(fullVacancyData.test_scheduled_at);
+        // Convert to local datetime string in format YYYY-MM-DDTHH:mm
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        testScheduledAtValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
+      setEditFormData({
+        title: fullVacancyData.title || "",
+        description: fullVacancyData.description || "",
+        requirements: fullVacancyData.requirements || "",
+        job_tasks: fullVacancyData.job_tasks || "",
+        application_deadline: fullVacancyData.application_deadline || "",
+        test_scheduled_at: testScheduledAtValue,
+        is_active: fullVacancyData.is_active ?? true,
+        branch_type: fullVacancyData.branch_type || "",
+        region: fullVacancyData.region || "",
+        requirements_eng: fullVacancyData.requirements_eng || "",
+        requirements_ru: fullVacancyData.requirements_ru || "",
+      });
+    } catch (error) {
+      console.error("Error fetching vacancy details:", error);
+      toast.error("Vakansiya ma'lumotlarini yuklashda xatolik");
+      setIsEditModalOpen(false);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditFormData((prev) => {
+      const newData = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+      // If branch_type changes to "central", reset region to empty
+      if (name === "branch_type" && value === "central") {
+        newData.region = "";
+      }
+      return newData;
+    });
+  };
+
+  const handleEditFormSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!editFormData.title || !editFormData.application_deadline) {
+      toast.error("Iltimos, barcha majburiy maydonlarni to'ldiring");
+      return;
+    }
+
+    try {
+      setEditSaving(true);
+
+      // Prepare payload with management_id
+      const payload = {
+        ...editFormData,
+        management_id: editingVacancy.management_details?.id || editingVacancy.management,
+        branch_type: editFormData.branch_type,
+        region: editFormData.branch_type === "central" ? null : editFormData.region,
+        // Convert datetime-local to ISO format with GMT+5 timezone if exists
+        ...(editFormData.test_scheduled_at && {
+          test_scheduled_at: formatDateTimeWithTimezone(
+            editFormData.test_scheduled_at
+          ),
+        }),
+      };
+
+      // Update vacancy via API
+      const updatedVacancy = await updateVacancyApi(editingVacancy.id, payload);
+
+      // Update vacancies list
+      setVacancies((prev) =>
+        prev.map((v) => (v.id === editingVacancy.id ? updatedVacancy : v))
+      );
+
+      toast.success("Vakansiya muvaffaqiyatli yangilandi");
+      closeEditModal();
+      
+      // Refresh the list to ensure consistency
+      await fetchVacancies();
+    } catch (error) {
+      console.error("Error updating vacancy:", error);
+      toast.error(error.message || "Vakansiyani yangilashda xatolik yuz berdi");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setTimeout(() => {
+      setEditingVacancy(null);
+      setEditFormData({
+        title: "",
+        description: "",
+        requirements: "",
+        job_tasks: "",
+        application_deadline: "",
+        test_scheduled_at: "",
+        is_active: true,
+        branch_type: "",
+        region: "",
+        requirements_eng: "",
+        requirements_ru: "",
+      });
+    }, 300);
   };
 
   const handleToggleAll = (checked, visibleIds) => {
@@ -773,6 +922,356 @@ const Vacancies = () => {
                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
                     {bulkEditLoading ? "Saqlanmoqda..." : "Saqlash"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Vacancy Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
+              onClick={closeEditModal}
+            ></div>
+
+            {/* Center modal */}
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
+              &#8203;
+            </span>
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+              {/* Header */}
+              <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Vakansiyani tahrirlash
+                  </h3>
+                  <button
+                    onClick={closeEditModal}
+                    disabled={editSaving}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <form onSubmit={handleEditFormSubmit}>
+                <div className="px-6 py-5 space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto">
+                  {editLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center space-x-2">
+                        <svg
+                          className="animate-spin h-8 w-8 text-blue-600"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Yuklanmoqda...
+                        </span>
+                      </div>
+                    </div>
+                  ) : editingVacancy ? (
+                    <>
+                      {/* Title */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Vakansiya nomi <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="title"
+                          value={editFormData.title}
+                          onChange={handleEditFormChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder="Vakansiya nomini kiriting"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Tavsif
+                        </label>
+                        <textarea
+                          name="description"
+                          value={editFormData.description}
+                          onChange={handleEditFormChange}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder="Vakansiya tavsifini kiriting"
+                        />
+                      </div>
+
+                      {/* Requirements and Job Tasks - 2 columns */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Requirements */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Talablar
+                          </label>
+                          <textarea
+                            name="requirements"
+                            value={editFormData.requirements}
+                            onChange={handleEditFormChange}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            placeholder="Talablarni kiriting"
+                          />
+                        </div>
+
+                        {/* Job Tasks */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Ish vazifalari
+                          </label>
+                          <textarea
+                            name="job_tasks"
+                            value={editFormData.job_tasks}
+                            onChange={handleEditFormChange}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                            placeholder="Ish vazifalarini kiriting"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Application Deadline and Test Scheduled At - 2 columns */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Application Deadline */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Ariza topshirish muddati{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            name="application_deadline"
+                            value={editFormData.application_deadline}
+                            onChange={handleEditFormChange}
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          />
+                        </div>
+
+                        {/* Test Scheduled At */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test bo'lish sanasi va vaqti
+                          </label>
+                          <input
+                            type="datetime-local"
+                            name="test_scheduled_at"
+                            value={editFormData.test_scheduled_at}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Branch Type */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Filial turi <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="branch_type"
+                          value={editFormData.branch_type}
+                          onChange={handleEditFormChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">Filial turini tanlang</option>
+                          <option value="central">Markaziy Apparat</option>
+                          <option value="regional">Hududiy Boshqarma</option>
+                        </select>
+                      </div>
+
+                      {/* Region - only show if branch_type is regional */}
+                      {editFormData.branch_type === "regional" && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Hudud <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="region"
+                            value={editFormData.region}
+                            onChange={handleEditFormChange}
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          >
+                            <option value="">Hududni tanlang</option>
+                            <option value="toshkent">Toshkent</option>
+                            <option value="qashqadaryo">Qashqadaryo</option>
+                            <option value="samarqand">Samarqand</option>
+                            <option value="navoiy">Navoiy</option>
+                            <option value="andijon">Andijon</option>
+                            <option value="fargona">Farg'ona</option>
+                            <option value="namangan">Namangan</option>
+                            <option value="surxondaryo">Surxondaryo</option>
+                            <option value="sirdaryo">Sirdaryo</option>
+                            <option value="jizzax">Jizzax</option>
+                            <option value="buxoro">Buxoro</option>
+                            <option value="xorazm">Xorazm</option>
+                            <option value="qoraqalpogiston">Qoraqalpog'iston Respublikasi</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Language Requirements */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Talab qilinadigan ingliz tili
+                          </label>
+                          <select
+                            name="requirements_eng"
+                            value={editFormData.requirements_eng}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          >
+                            <option value="">Tanlang</option>
+                            <option value="A1">A1</option>
+                            <option value="A2">A2</option>
+                            <option value="B1">B1</option>
+                            <option value="B2">B2</option>
+                            <option value="C1">C1</option>
+                            <option value="C2">C2</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Talab qilinadigan rus tili
+                          </label>
+                          <select
+                            name="requirements_ru"
+                            value={editFormData.requirements_ru}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          >
+                            <option value="">Tanlang</option>
+                            <option value="A1">A1</option>
+                            <option value="A2">A2</option>
+                            <option value="B1">B1</option>
+                            <option value="B2">B2</option>
+                            <option value="C1">C1</option>
+                            <option value="C2">C2</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Is Active */}
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="is_active"
+                          id="is_active_edit"
+                          checked={editFormData.is_active}
+                          onChange={handleEditFormChange}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label
+                          htmlFor="is_active_edit"
+                          className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          Vakansiya faol
+                        </label>
+                      </div>
+
+                      {/* Management Info (read-only) */}
+                      {editingVacancy.management_details && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            Boshqarma
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {editingVacancy.management_details.name}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+
+                {/* Footer */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-600">
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    disabled={editSaving}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSaving || editLoading}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {editSaving ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span>Saqlanmoqda...</span>
+                      </>
+                    ) : (
+                      <span>Saqlash</span>
+                    )}
                   </button>
                 </div>
               </form>
