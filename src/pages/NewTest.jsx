@@ -23,6 +23,8 @@ const NewTest = () => {
           { text: "", is_correct: false },
         ],
         order: 1,
+        is_multiple_choice: false,
+        image: null, // For frontend only, not sent to backend
       },
     ],
   });
@@ -37,9 +39,9 @@ const NewTest = () => {
       setLoadingVacancies(true);
       const data = await getVacanciesApi();
       // Handle paginated response format: { results: [...], count: ... }
-      const vacanciesArray = Array.isArray(data) 
-        ? data 
-        : (data?.results || data?.data || []);
+      const vacanciesArray = Array.isArray(data)
+        ? data
+        : data?.results || data?.data || [];
       setVacancies(vacanciesArray);
     } catch (error) {
       console.error("Error fetching vacancies:", error);
@@ -100,8 +102,51 @@ const NewTest = () => {
             { text: "", is_correct: false },
           ],
           order: formData.questions.length + 1,
+          is_multiple_choice: false,
+          image: null,
         },
       ],
+    });
+  };
+
+  const handleImageChange = (questionIndex, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("Faqat rasm fayllari qabul qilinadi");
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Rasm hajmi 5MB dan oshmasligi kerak");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const updatedQuestions = [...formData.questions];
+        updatedQuestions[questionIndex] = {
+          ...updatedQuestions[questionIndex],
+          image: reader.result, // Store as base64 for preview
+        };
+        setFormData({
+          ...formData,
+          questions: updatedQuestions,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = (questionIndex) => {
+    const updatedQuestions = [...formData.questions];
+    updatedQuestions[questionIndex] = {
+      ...updatedQuestions[questionIndex],
+      image: null,
+    };
+    setFormData({
+      ...formData,
+      questions: updatedQuestions,
     });
   };
 
@@ -153,13 +198,20 @@ const NewTest = () => {
       return;
     }
 
-    if (!formData.duration.trim()) {
-      toast.error("Vaqt kiritilishi shart");
+    if (!formData.duration || formData.duration <= 0) {
+      toast.error("Vaqt (daqiqa) kiritilishi shart");
       return;
     }
 
-    if (!formData.pass_score || formData.pass_score < 0) {
-      toast.error("O'tish balli kiritilishi shart");
+    // Convert minutes to seconds
+    const durationInSeconds = parseInt(formData.duration) * 60;
+
+    if (
+      !formData.pass_score ||
+      formData.pass_score < 0 ||
+      formData.pass_score > 100
+    ) {
+      toast.error("O'tish foizi 0 dan 100 gacha bo'lishi kerak");
       return;
     }
 
@@ -195,8 +247,25 @@ const NewTest = () => {
 
       const hasCorrectAnswer = validChoices.some((c) => c.is_correct);
       if (!hasCorrectAnswer) {
-        toast.error(`${i + 1}-savol uchun to'g'ri javob belgilanishi kerak`);
+        toast.error(
+          `${i + 1}-savol uchun kamida 1 ta to'g'ri javob belgilanishi kerak`
+        );
         return;
+      }
+
+      // For single choice questions, ensure only one correct answer
+      if (!question.is_multiple_choice) {
+        const correctAnswersCount = validChoices.filter(
+          (c) => c.is_correct
+        ).length;
+        if (correctAnswersCount > 1) {
+          toast.error(
+            `${
+              i + 1
+            }-savol bittalik variantlik savol, faqat 1 ta to'g'ri javob bo'lishi kerak`
+          );
+          return;
+        }
       }
     }
 
@@ -205,7 +274,7 @@ const NewTest = () => {
 
       const testData = {
         title: formData.title.trim(),
-        duration: formData.duration.trim(),
+        duration: durationInSeconds.toString(),
         pass_score: parseInt(formData.pass_score),
         max_violations: parseInt(formData.max_violations),
         vacancy_id: parseInt(formData.vacancy_id),
@@ -227,41 +296,42 @@ const NewTest = () => {
       navigate("/testlar");
     } catch (error) {
       console.error("Error creating test:", error);
-      
+
       // Handle field-specific errors from backend
       const errorData = error?.responseData || {};
-      const errorMessage = error?.message || "Test yaratishda xatolik yuz berdi";
-      
+      const errorMessage =
+        error?.message || "Test yaratishda xatolik yuz berdi";
+
       // Check if errorData contains field-specific errors (object with field names as keys)
-      const hasFieldErrors = 
-        typeof errorData === 'object' && 
-        errorData !== null && 
+      const hasFieldErrors =
+        typeof errorData === "object" &&
+        errorData !== null &&
         !Array.isArray(errorData) &&
         !errorData.detail &&
         !errorData.message &&
         Object.keys(errorData).length > 0;
-      
+
       if (hasFieldErrors) {
         // Map field names to user-friendly labels
         const fieldLabels = {
           title: "Test nomi",
           duration: "Vaqt",
-          pass_score: "O'tish balli",
+          pass_score: "O'tish foizi",
           max_violations: "Maksimal buzilishlar",
           vacancy_id: "Vakansiya",
           is_active: "Faol holati",
           questions: "Savollar",
         };
-        
+
         // Display each field error
         Object.keys(errorData).forEach((field) => {
           const fieldError = errorData[field];
           if (fieldError) {
             // Handle both string and array of strings
-            const errorText = Array.isArray(fieldError) 
-              ? fieldError.join(', ') 
+            const errorText = Array.isArray(fieldError)
+              ? fieldError.join(", ")
               : fieldError;
-            
+
             const fieldLabel = fieldLabels[field] || field;
             toast.error(`${fieldLabel}: ${errorText}`, {
               duration: 5000,
@@ -343,19 +413,25 @@ const NewTest = () => {
                 htmlFor="duration"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Vaqt *
+                Vaqt (daqiqa) *
               </label>
-              <input
-                type="text"
-                id="duration"
-                name="duration"
-                value={formData.duration}
-                onChange={handleChange}
-                disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                placeholder="Masalan: 30 daqiqa"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  id="duration"
+                  name="duration"
+                  value={formData.duration}
+                  onChange={handleChange}
+                  disabled={loading}
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                  placeholder="Masalan: 30"
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400 pointer-events-none">
+                  daqiqa
+                </span>
+              </div>
             </div>
 
             {/* Pass Score */}
@@ -364,20 +440,26 @@ const NewTest = () => {
                 htmlFor="pass_score"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                O'tish balli *
+                O'tish foizi (%) *
               </label>
-              <input
-                type="number"
-                id="pass_score"
-                name="pass_score"
-                value={formData.pass_score}
-                onChange={handleChange}
-                disabled={loading}
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                placeholder="Masalan: 70"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  id="pass_score"
+                  name="pass_score"
+                  value={formData.pass_score}
+                  onChange={handleChange}
+                  disabled={loading}
+                  min="0"
+                  max="100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                  placeholder="Masalan: 70"
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400 pointer-events-none">
+                  %
+                </span>
+              </div>
             </div>
 
             {/* Max Violations */}
@@ -449,37 +531,92 @@ const NewTest = () => {
           </div>
 
           {/* Questions Section */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Savollar
-              </h3>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {formData.questions.length} ta savol
-              </span>
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Savollar
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Test savollarini va javob variantlarini qo'shing
+                </p>
+              </div>
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                <svg
+                  className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                  {formData.questions.length} ta savol
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-5">
               {formData.questions.map((question, questionIndex) => (
                 <div
                   key={questionIndex}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50"
+                  className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-semibold">
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
                         {questionIndex + 1}
                       </div>
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                        Savol {questionIndex + 1}
-                      </h4>
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                          Savol {questionIndex + 1}
+                        </h4>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {
+                              question.choices.filter((c) => c.text.trim())
+                                .length
+                            }{" "}
+                            ta variant
+                          </p>
+                          {question.is_multiple_choice && (
+                            <span className="px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded">
+                              Ko'p variantlik
+                            </span>
+                          )}
+                          {question.image && (
+                            <span className="px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 rounded flex items-center space-x-1">
+                              <svg
+                                className="h-3 w-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                              <span>Rasm</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     {formData.questions.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeQuestion(questionIndex)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         disabled={loading}
+                        title="Savolni o'chirish"
                       >
                         <svg
                           className="h-5 w-5"
@@ -498,9 +635,31 @@ const NewTest = () => {
                     )}
                   </div>
 
+                  {/* Question Settings */}
+                  <div className="mb-4 flex items-center space-x-4 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={question.is_multiple_choice || false}
+                        onChange={(e) =>
+                          handleQuestionChange(
+                            questionIndex,
+                            "is_multiple_choice",
+                            e.target.checked
+                          )
+                        }
+                        disabled={loading}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Ko'p variantlik savol (bir nechta to'g'ri javob)
+                      </span>
+                    </label>
+                  </div>
+
                   {/* Question Text */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       Savol matni *
                     </label>
                     <textarea
@@ -514,95 +673,222 @@ const NewTest = () => {
                       }
                       disabled={loading}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                      placeholder="Savol matnini kiriting"
+                      className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 transition-colors"
+                      placeholder="Savol matnini kiriting..."
                       required
                     />
                   </div>
 
+                  {/* Question Image */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Savol rasmi (ixtiyoriy)
+                    </label>
+                    {question.image ? (
+                      <div className="relative">
+                        <img
+                          src={question.image}
+                          alt="Question preview"
+                          className="w-full max-h-64 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(questionIndex)}
+                          disabled={loading}
+                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                          title="Rasmni o'chirish"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <svg
+                            className="w-10 h-10 mb-3 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                          <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="font-semibold">Rasm yuklash</span>{" "}
+                            yoki sudrab tashlang
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            PNG, JPG, GIF (max. 5MB)
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageChange(questionIndex, e)}
+                          disabled={loading}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+
                   {/* Choices */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Variantlar *
-                      </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Javob variantlari *
+                        </label>
+                        {question.is_multiple_choice && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            Bir nechta to'g'ri javob belgilash mumkin
+                          </p>
+                        )}
+                        {!question.is_multiple_choice && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Faqat 1 ta to'g'ri javob belgilash mumkin
+                          </p>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => addChoice(questionIndex)}
                         disabled={loading}
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        className="flex items-center space-x-1 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
                       >
-                        + Variant qo'shish
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m8-8H4"
+                          />
+                        </svg>
+                        <span>Variant qo'shish</span>
                       </button>
                     </div>
 
-                    {question.choices.map((choice, choiceIndex) => (
-                      <div
-                        key={choiceIndex}
-                        className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-600"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={choice.is_correct}
-                          onChange={(e) =>
-                            handleChoiceChange(
-                              questionIndex,
-                              choiceIndex,
-                              "is_correct",
-                              e.target.checked
-                            )
-                          }
-                          disabled={loading}
-                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={choice.text}
-                            onChange={(e) =>
-                              handleChoiceChange(
-                                questionIndex,
-                                choiceIndex,
-                                "text",
-                                e.target.value
-                              )
-                            }
-                            disabled={loading}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                            placeholder={`Variant ${choiceIndex + 1}`}
-                          />
-                        </div>
-                        {question.choices.length > 2 && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeChoice(questionIndex, choiceIndex)
-                            }
-                            disabled={loading}
-                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                          >
-                            <svg
-                              className="h-5 w-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
+                    <div className="space-y-2.5">
+                      {question.choices.map((choice, choiceIndex) => (
+                        <div
+                          key={choiceIndex}
+                          className={`flex items-center gap-3 p-3.5 rounded-lg border-2 transition-all ${
+                            choice.is_correct
+                              ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
+                              : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 flex-1">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                checked={choice.is_correct}
+                                onChange={(e) =>
+                                  handleChoiceChange(
+                                    questionIndex,
+                                    choiceIndex,
+                                    "is_correct",
+                                    e.target.checked
+                                  )
+                                }
+                                disabled={loading}
+                                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                                title="To'g'ri javobni belgilash"
                               />
-                            </svg>
-                          </button>
-                        )}
-                        {choice.is_correct && (
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                            To'g'ri
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                              {choice.is_correct && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <svg
+                                    className="h-3 w-3 text-white"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                value={choice.text}
+                                onChange={(e) =>
+                                  handleChoiceChange(
+                                    questionIndex,
+                                    choiceIndex,
+                                    "text",
+                                    e.target.value
+                                  )
+                                }
+                                disabled={loading}
+                                className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 transition-colors ${
+                                  choice.is_correct
+                                    ? "border-green-300 dark:border-green-600"
+                                    : "border-gray-300 dark:border-gray-600"
+                                }`}
+                                placeholder={`Variant ${choiceIndex + 1}...`}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {choice.is_correct && (
+                              <span className="px-2 py-1 text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 rounded-md">
+                                To'g'ri
+                              </span>
+                            )}
+                            {question.choices.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeChoice(questionIndex, choiceIndex)
+                                }
+                                disabled={loading}
+                                className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Variantni o'chirish"
+                              >
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -612,23 +898,30 @@ const NewTest = () => {
                 type="button"
                 onClick={addQuestion}
                 disabled={loading}
-                className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+                className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all disabled:opacity-50 group"
               >
-                <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-400">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span className="text-sm font-medium">Yangi savol qo'shish</span>
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-900/40 transition-colors">
+                    <svg
+                      className="h-6 w-6 text-blue-600 dark:text-blue-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Yangi savol qo'shish
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Savol va javob variantlarini qo'shing
+                  </span>
                 </div>
               </button>
             </div>
@@ -680,4 +973,3 @@ const NewTest = () => {
 };
 
 export default NewTest;
-
