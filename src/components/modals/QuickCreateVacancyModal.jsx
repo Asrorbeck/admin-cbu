@@ -109,7 +109,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
       setDepartments(departmentsArray);
     } catch (error) {
       console.error("Error fetching departments:", error);
-      toast.error("Bo'limlarni yuklashda xatolik");
+      toast.error("Departamentlarni yuklashda xatolik");
       setDepartments([]);
     } finally {
       setLoadingDepartments(false);
@@ -189,11 +189,11 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
       // Validate and create/select department
       if (departmentData.createNew) {
         if (!departmentData.name.trim()) {
-          toast.error("Bo'lim nomi kiritilishi shart");
+          toast.error("Departament nomi kiritilishi shart");
           return;
         }
         if (!departmentData.description.trim()) {
-          toast.error("Bo'lim tavsifi kiritilishi shart");
+          toast.error("Departament tavsifi kiritilishi shart");
           return;
         }
         try {
@@ -213,17 +213,17 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           }));
           await fetchDepartments();
           await fetchManagements(newDept.id);
-          toast.success("Bo'lim muvaffaqiyatli yaratildi");
+          toast.success("Departament muvaffaqiyatli yaratildi");
         } catch (error) {
           console.error("Error creating department:", error);
-          toast.error("Bo'limni yaratishda xatolik");
+          toast.error("Departamentni yaratishda xatolik");
           return;
         } finally {
           setLoading(false);
         }
       } else {
         if (!departmentData.selectedId) {
-          toast.error("Bo'limni tanlang yoki yangi yarating");
+          toast.error("Departamentni tanlang yoki yangi yarating");
           return;
         }
         await fetchManagements(departmentData.selectedId);
@@ -373,7 +373,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {initialBranchType === "regional" 
                   ? "Hududiy vakansiya yaratish"
-                  : step === 1 && "1/3 - Bo'limni tanlang yoki yarating"
+                  : step === 1 && "1/3 - Departamentni tanlang yoki yarating"
                   || step === 2 && "2/3 - Boshqarmani tanlang yoki yarating"
                   || step === 3 && "3/3 - Vakansiya ma'lumotlarini kiriting"}
               </p>
@@ -452,7 +452,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Bo'limni tanlang yoki yangi yarating
+                    Departamentni tanlang yoki yangi yarating
                   </label>
                   <select
                     value={
@@ -464,13 +464,13 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                     disabled={loading || loadingDepartments}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
                   >
-                    <option value="">Bo'limni tanlang...</option>
+                    <option value="">Departamentni tanlang...</option>
                     {Array.isArray(departments) && departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>
                     ))}
-                    <option value="new">+ Yangi bo'lim yaratish</option>
+                    <option value="new">+ Yangi departament yaratish</option>
                   </select>
                 </div>
 
@@ -478,7 +478,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                   <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Bo'lim nomi *
+                        Departament nomi *
                       </label>
                       <input
                         type="text"
@@ -491,14 +491,14 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                         }
                         disabled={loading}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Bo'lim nomini kiriting"
+                        placeholder="Departament nomini kiriting"
                         required
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Bo'lim tavsifi *
+                        Departament tavsifi *
                       </label>
                       <textarea
                         value={departmentData.description}
@@ -511,14 +511,14 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                         disabled={loading}
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Bo'lim tavsifini kiriting"
+                        placeholder="Departament tavsifini kiriting"
                         required
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Bo'lim vazifalari
+                        Departament vazifalari
                       </label>
                       <div className="space-y-2">
                         {departmentData.department_tasks.map((task, index) => (

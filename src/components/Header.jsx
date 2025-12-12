@@ -27,7 +27,7 @@ const Header = () => {
       pathname.startsWith("/departments") ||
       pathname.startsWith("/management")
     ) {
-      return "Kadrlar bo'limi boshqaruv paneli";
+      return "Departament boshqaruv paneli";
     } else {
       return "Markaziy Bank Administratsiyasi";
     }

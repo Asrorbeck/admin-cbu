@@ -179,10 +179,10 @@ const VacanciesTable = ({
                   {getStatusBadge(item.is_active)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {item.requirements_eng || "—"}
+                  {item.requirements_eng === "not_required" ? "Talab qilinmaydi" : (item.requirements_eng || "—")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {item.requirements_ru || "—"}
+                  {item.requirements_ru === "not_required" ? "Talab qilinmaydi" : (item.requirements_ru || "—")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {formatDateTime(item.test_scheduled_at)}

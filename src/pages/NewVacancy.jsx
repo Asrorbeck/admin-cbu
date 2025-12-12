@@ -18,6 +18,8 @@ const NewVacancy = () => {
     management: parseInt(id),
     branch_type: "",
     region: "",
+    requirements_eng: "",
+    requirements_ru: "",
   });
 
   useEffect(() => {
@@ -103,6 +105,12 @@ const NewVacancy = () => {
           test_scheduled_at: formatDateTimeWithTimezone(
             formData.test_scheduled_at
           ),
+        }),
+        ...(formData.requirements_eng && {
+          requirements_eng: formData.requirements_eng,
+        }),
+        ...(formData.requirements_ru && {
+          requirements_ru: formData.requirements_ru,
         }),
       };
 
@@ -345,6 +353,59 @@ const NewVacancy = () => {
               </select>
             </div>
           )}
+
+          {/* Language Requirements */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="requirements_eng"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Talab qilinadigan ingliz tili
+              </label>
+              <select
+                id="requirements_eng"
+                name="requirements_eng"
+                value={formData.requirements_eng}
+                onChange={handleChange}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+              >
+                <option value="">Tanlang</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="requirements_ru"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Talab qilinadigan rus tili
+              </label>
+              <select
+                id="requirements_ru"
+                name="requirements_ru"
+                value={formData.requirements_ru}
+                onChange={handleChange}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+              >
+                <option value="">Tanlang</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+              </select>
+            </div>
+          </div>
 
           {/* Is Active */}
           <div className="flex items-center">

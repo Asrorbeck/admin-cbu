@@ -30,7 +30,7 @@ const DepartmentDetails = () => {
 
   useEffect(() => {
     fetchDepartmentAndManagement();
-    document.title = "Bo'lim tafsilotlari - Markaziy Bank Administratsiyasi";
+    document.title = "Departament tafsilotlari - Markaziy Bank Administratsiyasi";
   }, [id]);
 
   const fetchDepartmentAndManagement = async () => {
@@ -102,9 +102,9 @@ const DepartmentDetails = () => {
     try {
       await toast.promise(updateDepartmentApi(department.id, payload), {
         loading: "Yangilanmoqda...",
-        success: "Bo'lim muvaffaqiyatli yangilandi",
+        success: "Departament muvaffaqiyatli yangilandi",
         error: (err) =>
-          err?.message || "Bo'limni yangilashda xatolik yuz berdi",
+          err?.message || "Departamentni yangilashda xatolik yuz berdi",
       });
 
       setDepartment((prev) => ({ ...prev, ...payload }));
@@ -268,7 +268,7 @@ const DepartmentDetails = () => {
           {/* Tasks */}
           <div>
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Bo'lim vazifalari ({department.department_tasks?.length || 0} ta):
+              Departament vazifalari ({department.department_tasks?.length || 0} ta):
             </h3>
             <div className="space-y-3">
               {(department?.department_tasks || []).map((task, index) => (

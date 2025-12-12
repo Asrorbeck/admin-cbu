@@ -20,7 +20,7 @@ const KadrlarDashboard = () => {
 
   useEffect(() => {
     fetchStats();
-    document.title = "Kadrlar bo'limi - Markaziy Bank Administratsiyasi";
+    document.title = "Departament - Markaziy Bank Administratsiyasi";
   }, []);
 
   const fetchStats = async () => {
@@ -106,9 +106,9 @@ const KadrlarDashboard = () => {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Bo'limlar</p>
+              <p className="text-blue-100 text-sm font-medium">Departamentlar</p>
               <p className="text-3xl font-bold">{stats.departments}</p>
-              <p className="text-blue-100 text-xs mt-1">Faol bo'limlar</p>
+              <p className="text-blue-100 text-xs mt-1">Faol departamentlar</p>
             </div>
             <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
               <svg

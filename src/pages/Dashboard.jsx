@@ -114,9 +114,9 @@ const Dashboard = () => {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Bo'limlar</p>
+              <p className="text-blue-100 text-sm font-medium">Departamentlar</p>
               <p className="text-3xl font-bold">{stats.departments}</p>
-              <p className="text-blue-100 text-xs mt-1">Faol bo'limlar</p>
+              <p className="text-blue-100 text-xs mt-1">Faol departamentlar</p>
             </div>
             <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
               <svg
@@ -234,9 +234,9 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">Markaziy Apparat</p>
-              <p className="text-2xl font-bold mt-2">Bo'limlar</p>
+              <p className="text-2xl font-bold mt-2">Departamentlar</p>
               <p className="text-blue-100 text-xs mt-1">
-                Markaziy apparat bo'limlari va vakansiyalari
+                Markaziy apparat departamentlari va vakansiyalari
               </p>
             </div>
             <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">

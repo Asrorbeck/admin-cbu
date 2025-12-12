@@ -1,19 +1,24 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTestApi, getVacanciesApi } from "../utils/api";
+import { createTestApi, getVacancySelectionHierarchyApi } from "../utils/api";
 import toast from "react-hot-toast";
 
 const NewTest = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [vacancies, setVacancies] = useState([]);
-  const [loadingVacancies, setLoadingVacancies] = useState(true);
+  const [hierarchyData, setHierarchyData] = useState(null);
+  const [loadingHierarchy, setLoadingHierarchy] = useState(true);
+  const [isVacancyDropdownOpen, setIsVacancyDropdownOpen] = useState(false);
+  
+  // Navigation state for hierarchy
+  const [navigationPath, setNavigationPath] = useState([]); // ['central'|'regional', deptIndex?, managementIndex?]
+  const [selectedVacancyInfo, setSelectedVacancyInfo] = useState({}); // Map of vacancyId -> {title, path}
   const [formData, setFormData] = useState({
     title: "",
     duration: "",
     pass_score: "",
     max_violations: "",
-    vacancy_id: "",
+    vacancy_ids: [],
     is_active: true,
     questions: [
       {
@@ -31,24 +36,20 @@ const NewTest = () => {
 
   useEffect(() => {
     document.title = "Yangi test yaratish - Markaziy Bank Administratsiyasi";
-    fetchVacancies();
+    fetchHierarchy();
   }, []);
 
-  const fetchVacancies = async () => {
+  const fetchHierarchy = async () => {
     try {
-      setLoadingVacancies(true);
-      const data = await getVacanciesApi();
-      // Handle paginated response format: { results: [...], count: ... }
-      const vacanciesArray = Array.isArray(data)
-        ? data
-        : data?.results || data?.data || [];
-      setVacancies(vacanciesArray);
+      setLoadingHierarchy(true);
+      const data = await getVacancySelectionHierarchyApi();
+      setHierarchyData(data);
     } catch (error) {
-      console.error("Error fetching vacancies:", error);
-      toast.error("Vakansiyalarni yuklashda xatolik yuz berdi");
-      setVacancies([]);
+      console.error("Error fetching hierarchy:", error);
+      toast.error("Vakansiya ma'lumotlarini yuklashda xatolik yuz berdi");
+      setHierarchyData(null);
     } finally {
-      setLoadingVacancies(false);
+      setLoadingHierarchy(false);
     }
   };
 
@@ -59,6 +60,219 @@ const NewTest = () => {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
+
+  // Get all vacancy IDs from a department, management, or region
+  const getAllVacancyIds = (item) => {
+    const ids = [];
+    if (item.vacancies) {
+      ids.push(...item.vacancies.map((v) => v.id));
+    }
+    if (item.managements) {
+      item.managements.forEach((mgmt) => {
+        if (mgmt.vacancies) {
+          ids.push(...mgmt.vacancies.map((v) => v.id));
+        }
+      });
+    }
+    return ids;
+  };
+
+  // Toggle all vacancies from a department, management, or region
+  const toggleAllVacancies = (item, path, label) => {
+    const allIds = getAllVacancyIds(item);
+    const currentIds = formData.vacancy_ids || [];
+    const allSelected = allIds.every((id) => currentIds.includes(id));
+
+    if (allSelected) {
+      // Remove all
+      setFormData((prev) => ({
+        ...prev,
+        vacancy_ids: prev.vacancy_ids.filter((id) => !allIds.includes(id)),
+      }));
+      // Remove from info map
+      setSelectedVacancyInfo((prev) => {
+        const updated = { ...prev };
+        allIds.forEach((id) => delete updated[id]);
+        return updated;
+      });
+    } else {
+      // Add all
+      const newIds = [...new Set([...currentIds, ...allIds])];
+      setFormData((prev) => ({
+        ...prev,
+        vacancy_ids: newIds,
+      }));
+      // Add to info map
+      const newInfo = { ...selectedVacancyInfo };
+      allIds.forEach((id) => {
+        const vacancy = findVacancyById(id);
+        if (vacancy) {
+          newInfo[id] = {
+            title: vacancy.title || `Vakansiya #${id}`,
+            path: path,
+          };
+        }
+      });
+      setSelectedVacancyInfo(newInfo);
+    }
+  };
+
+  // Find vacancy by ID in hierarchy
+  const findVacancyById = (vacancyId) => {
+    if (!hierarchyData) return null;
+
+    // Search in central
+    if (hierarchyData.central) {
+      for (const dept of hierarchyData.central) {
+        // Check department level vacancies
+        if (dept.vacancies) {
+          const vacancy = dept.vacancies.find((v) => v.id === vacancyId);
+          if (vacancy) return vacancy;
+        }
+        // Check management level vacancies
+        if (dept.managements) {
+          for (const mgmt of dept.managements) {
+            if (mgmt.vacancies) {
+              const vacancy = mgmt.vacancies.find((v) => v.id === vacancyId);
+              if (vacancy) return vacancy;
+            }
+          }
+        }
+      }
+    }
+
+    // Search in regional
+    if (hierarchyData.regional) {
+      for (const region of hierarchyData.regional) {
+        if (region.vacancies) {
+          const vacancy = region.vacancies.find((v) => v.id === vacancyId);
+          if (vacancy) return vacancy;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const handleVacancyToggle = (vacancyId, vacancyTitle, path) => {
+    setFormData((prev) => {
+      const vacancyIds = prev.vacancy_ids || [];
+      const isSelected = vacancyIds.includes(vacancyId);
+
+      if (isSelected) {
+        return {
+          ...prev,
+          vacancy_ids: vacancyIds.filter((id) => id !== vacancyId),
+        };
+      } else {
+        return {
+          ...prev,
+          vacancy_ids: [...vacancyIds, vacancyId],
+        };
+      }
+    });
+
+    // Update vacancy info
+    setSelectedVacancyInfo((prev) => {
+      const updated = { ...prev };
+      if (updated[vacancyId]) {
+        delete updated[vacancyId];
+      } else {
+        updated[vacancyId] = {
+          title: vacancyTitle || `Vakansiya #${vacancyId}`,
+          path: path,
+        };
+      }
+      return updated;
+    });
+  };
+
+  const removeVacancy = (vacancyId) => {
+    setFormData((prev) => ({
+      ...prev,
+      vacancy_ids: (prev.vacancy_ids || []).filter((id) => id !== vacancyId),
+    }));
+    setSelectedVacancyInfo((prev) => {
+      const updated = { ...prev };
+      delete updated[vacancyId];
+      return updated;
+    });
+  };
+
+  // Navigation functions
+  const navigateTo = (newPath) => {
+    setNavigationPath(newPath);
+  };
+
+  const navigateBack = () => {
+    setNavigationPath((prev) => prev.slice(0, -1));
+  };
+
+  const navigateToRoot = () => {
+    setNavigationPath([]);
+  };
+
+  // Get current view based on navigation path
+  const getCurrentView = () => {
+    if (!hierarchyData) return null;
+
+    if (navigationPath.length === 0) {
+      return { type: "root" };
+    }
+
+    const [type, ...rest] = navigationPath;
+
+    if (type === "central") {
+      if (rest.length === 0) {
+        return { type: "central" };
+      }
+      const deptIndex = typeof rest[0] === "string" ? parseInt(rest[0]) : rest[0];
+      const department = hierarchyData.central?.[deptIndex];
+      if (!department) return null;
+
+      if (rest.length === 1) {
+        return { type: "department", department, deptIndex };
+      }
+
+      const mgmtIndex = typeof rest[1] === "string" ? parseInt(rest[1]) : rest[1];
+      const management = department.managements?.[mgmtIndex];
+      if (!management) return null;
+
+      return { type: "management", department, management, deptIndex, mgmtIndex };
+    }
+
+    if (type === "regional") {
+      if (rest.length === 0) {
+        return { type: "regional" };
+      }
+      const regionIndex = typeof rest[0] === "string" ? parseInt(rest[0]) : rest[0];
+      const region = hierarchyData.regional?.[regionIndex];
+      if (!region) return null;
+
+      return { type: "region", region, regionIndex };
+    }
+
+    return null;
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const dropdown = document.getElementById("vacancy-dropdown");
+      if (dropdown && !dropdown.contains(event.target)) {
+        setIsVacancyDropdownOpen(false);
+        setNavigationPath([]); // Reset navigation when closing
+      }
+    };
+
+    if (isVacancyDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isVacancyDropdownOpen]);
 
   const handleQuestionChange = (questionIndex, field, value) => {
     const updatedQuestions = [...formData.questions];
@@ -220,8 +434,8 @@ const NewTest = () => {
       return;
     }
 
-    if (!formData.vacancy_id) {
-      toast.error("Vakansiya tanlanishi shart");
+    if (!formData.vacancy_ids || formData.vacancy_ids.length === 0) {
+      toast.error("Kamida bitta vakansiya tanlanishi shart");
       return;
     }
 
@@ -277,7 +491,7 @@ const NewTest = () => {
         duration: durationInSeconds.toString(),
         pass_score: parseInt(formData.pass_score),
         max_violations: parseInt(formData.max_violations),
-        vacancy_id: parseInt(formData.vacancy_id),
+        vacancy_ids: formData.vacancy_ids.map((id) => parseInt(id)),
         is_active: formData.is_active,
         questions: validQuestions.map((q) => ({
           text: q.text.trim(),
@@ -319,6 +533,7 @@ const NewTest = () => {
           pass_score: "O'tish foizi",
           max_violations: "Maksimal buzilishlar",
           vacancy_id: "Vakansiya",
+          vacancy_ids: "Vakansiyalar",
           is_active: "Faol holati",
           questions: "Savollar",
         };
@@ -484,30 +699,505 @@ const NewTest = () => {
               />
             </div>
 
-            {/* Vacancy ID */}
+            {/* Vacancy IDs */}
             <div>
               <label
-                htmlFor="vacancy_id"
+                htmlFor="vacancy_ids"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Vakansiya *
+                Vakansiyalar *{" "}
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
+                  (bir nechtasini tanlash mumkin)
+                </span>
               </label>
-              <select
-                id="vacancy_id"
-                name="vacancy_id"
-                value={formData.vacancy_id}
-                onChange={handleChange}
-                disabled={loading || loadingVacancies}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                required
+              <div
+                id="vacancy-dropdown"
+                className="relative"
               >
-                <option value="">Vakansiyani tanlang</option>
-                {vacancies.map((vacancy) => (
-                  <option key={vacancy.id} value={vacancy.id}>
-                    {vacancy.title || `Vakansiya #${vacancy.id}`}
-                  </option>
-                ))}
-              </select>
+                {/* Custom Select Input */}
+                <div
+                  onClick={() => !loading && !loadingHierarchy && setIsVacancyDropdownOpen(!isVacancyDropdownOpen)}
+                  className={`w-full min-h-[42px] px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white cursor-pointer flex items-center flex-wrap gap-2 ${
+                    loading || loadingHierarchy
+                      ? "opacity-50 cursor-not-allowed"
+                      : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+                  } ${
+                    isVacancyDropdownOpen
+                      ? "border-blue-500 dark:border-blue-500 ring-2 ring-blue-500"
+                      : ""
+                  }`}
+                >
+                  {formData.vacancy_ids.length === 0 ? (
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">
+                      Vakansiyani tanlang
+                    </span>
+                  ) : (
+                    formData.vacancy_ids.map((vacancyId) => {
+                      const vacancyInfo = selectedVacancyInfo[vacancyId];
+                      if (!vacancyInfo) return null;
+                      return (
+                        <span
+                          key={vacancyId}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-md text-sm font-medium"
+                        >
+                          <span>{vacancyInfo.title}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeVacancy(vacancyId);
+                            }}
+                            disabled={loading || loadingHierarchy}
+                            className="hover:bg-blue-200 dark:hover:bg-blue-900/50 rounded-full p-0.5 transition-colors disabled:opacity-50"
+                            title="O'chirish"
+                          >
+                            <svg
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </span>
+                      );
+                    })
+                  )}
+                  <div className="ml-auto flex items-center">
+                    <svg
+                      className={`h-5 w-5 text-gray-400 transition-transform ${
+                        isVacancyDropdownOpen ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Dropdown Menu with Hierarchy */}
+                {isVacancyDropdownOpen && !loadingHierarchy && hierarchyData && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-96 overflow-auto">
+                    {(() => {
+                      const currentView = getCurrentView();
+
+                      // Breadcrumb Navigation
+                      const renderBreadcrumb = () => {
+                        if (navigationPath.length === 0) return null;
+
+                        const breadcrumbItems = [];
+                        
+                        // Always start with root
+                        breadcrumbItems.push({ label: "Bosh sahifa", path: [] });
+                        
+                        if (navigationPath[0] === "central") {
+                          breadcrumbItems.push({ label: "Markaziy apparat", path: ["central"] });
+                          if (navigationPath.length > 1) {
+                            const deptIndex = parseInt(navigationPath[1]);
+                            const dept = hierarchyData.central?.[deptIndex];
+                            if (dept) {
+                              breadcrumbItems.push({ label: dept.department_name, path: ["central", deptIndex] });
+                              if (navigationPath.length > 2) {
+                                const mgmtIndex = parseInt(navigationPath[2]);
+                                const mgmt = dept.managements?.[mgmtIndex];
+                                if (mgmt) {
+                                  breadcrumbItems.push({ label: mgmt.management_name, path: ["central", deptIndex, mgmtIndex] });
+                                }
+                              }
+                            }
+                          }
+                        } else if (navigationPath[0] === "regional") {
+                          breadcrumbItems.push({ label: "Hududiy boshqarma", path: ["regional"] });
+                          if (navigationPath.length > 1) {
+                            const regionIndex = parseInt(navigationPath[1]);
+                            const region = hierarchyData.regional?.[regionIndex];
+                            if (region) {
+                              breadcrumbItems.push({ label: region.region, path: ["regional", regionIndex] });
+                            }
+                          }
+                        }
+
+                        return (
+                          <div className="sticky top-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600 px-4 py-2 flex items-center gap-2 flex-wrap">
+                            {breadcrumbItems.map((item, idx) => (
+                              <React.Fragment key={idx}>
+                                {idx > 0 && <span className="text-gray-400">/</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => navigateTo(item.path)}
+                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  {item.label}
+                                </button>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        );
+                      };
+
+                      // Root view - Central or Regional
+                      if (!currentView || currentView.type === "root") {
+                        return (
+                          <>
+                            {renderBreadcrumb()}
+                            <div className="p-2 space-y-1">
+                              {/* Central Option */}
+                              {hierarchyData.central && hierarchyData.central.length > 0 && (
+                                <div
+                                  onClick={() => navigateTo(["central"])}
+                                  className="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors flex items-center justify-between"
+                                >
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Markaziy apparat
+                                  </span>
+                                  <svg
+                                    className="h-5 w-5 text-gray-400"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+
+                              {/* Regional Option */}
+                              {hierarchyData.regional && hierarchyData.regional.length > 0 && (
+                                <div
+                                  onClick={() => navigateTo(["regional"])}
+                                  className="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors flex items-center justify-between"
+                                >
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Hududiy boshqarma
+                                  </span>
+                                  <svg
+                                    className="h-5 w-5 text-gray-400"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      // Central departments view
+                      if (currentView.type === "central") {
+                        return (
+                          <>
+                            {renderBreadcrumb()}
+                            <div className="p-2 space-y-1">
+                              {hierarchyData.central?.map((dept, deptIndex) => {
+                                const allIds = getAllVacancyIds(dept);
+                                const allSelected = allIds.length > 0 && allIds.every((id) => formData.vacancy_ids.includes(id));
+                                const hasManagements = dept.managements && dept.managements.length > 0;
+
+                                return (
+                                  <div
+                                    key={deptIndex}
+                                    className="border border-gray-200 dark:border-gray-600 rounded-md"
+                                  >
+                                    <div
+                                      onClick={hasManagements ? () => navigateTo(["central", deptIndex]) : undefined}
+                                      className={`px-4 py-3 flex items-center justify-between ${hasManagements ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" : ""}`}
+                                    >
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={allSelected}
+                                          onChange={() => toggleAllVacancies(dept, `Markaziy apparat > ${dept.department_name}`, dept.department_name)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
+                                          {dept.department_name}
+                                        </span>
+                                      </div>
+                                      {hasManagements && (
+                                        <svg
+                                          className="h-5 w-5 text-gray-400"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5l7 7-7 7"
+                                          />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      // Department managements view
+                      if (currentView.type === "department") {
+                        const { department, deptIndex } = currentView;
+                        return (
+                          <>
+                            {renderBreadcrumb()}
+                            <div className="p-2 space-y-1">
+                              {/* Department level vacancies */}
+                              {department.vacancies && department.vacancies.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">
+                                    Departament vakansiyalari
+                                  </div>
+                                  {department.vacancies.map((vacancy) => {
+                                    const isSelected = formData.vacancy_ids.includes(vacancy.id);
+                                    return (
+                                      <div
+                                        key={vacancy.id}
+                                        onClick={() => handleVacancyToggle(vacancy.id, vacancy.title, `Markaziy apparat > ${department.department_name}`)}
+                                        className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center justify-between ${
+                                          isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                                        }`}
+                                      >
+                                        <span className={`text-sm ${isSelected ? "text-blue-900 dark:text-blue-300 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
+                                          {vacancy.title || `Vakansiya #${vacancy.id}`}
+                                        </span>
+                                        {isSelected && (
+                                          <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                          </svg>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Managements */}
+                              {department.managements?.map((mgmt, mgmtIndex) => {
+                                const allIds = getAllVacancyIds(mgmt);
+                                const allSelected = allIds.length > 0 && allIds.every((id) => formData.vacancy_ids.includes(id));
+                                const hasVacancies = mgmt.vacancies && mgmt.vacancies.length > 0;
+
+                                return (
+                                  <div key={mgmtIndex} className="border border-gray-200 dark:border-gray-600 rounded-md">
+                                    <div
+                                      onClick={hasVacancies ? () => navigateTo(["central", deptIndex, mgmtIndex]) : undefined}
+                                      className={`px-4 py-3 flex items-center justify-between ${hasVacancies ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" : ""}`}
+                                    >
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={allSelected}
+                                          onChange={() => toggleAllVacancies(mgmt, `Markaziy apparat > ${department.department_name} > ${mgmt.management_name}`, mgmt.management_name)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
+                                          {mgmt.management_name}
+                                        </span>
+                                      </div>
+                                      {hasVacancies && (
+                                        <svg
+                                          className="h-5 w-5 text-gray-400"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5l7 7-7 7"
+                                          />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      // Management vacancies view
+                      if (currentView.type === "management") {
+                        const { department, management } = currentView;
+                        return (
+                          <>
+                            {renderBreadcrumb()}
+                            <div className="p-2 space-y-1">
+                              {management.vacancies?.map((vacancy) => {
+                                const isSelected = formData.vacancy_ids.includes(vacancy.id);
+                                return (
+                                  <div
+                                    key={vacancy.id}
+                                    onClick={() => handleVacancyToggle(vacancy.id, vacancy.title, `Markaziy apparat > ${department.department_name} > ${management.management_name}`)}
+                                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center justify-between ${
+                                      isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                                    }`}
+                                  >
+                                    <span className={`text-sm ${isSelected ? "text-blue-900 dark:text-blue-300 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
+                                      {vacancy.title || `Vakansiya #${vacancy.id}`}
+                                    </span>
+                                    {isSelected && (
+                                      <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      // Regional view
+                      if (currentView.type === "regional") {
+                        return (
+                          <>
+                            {renderBreadcrumb()}
+                            <div className="p-2 space-y-1">
+                              {hierarchyData.regional?.map((region, regionIndex) => {
+                                const allIds = getAllVacancyIds(region);
+                                const allSelected = allIds.length > 0 && allIds.every((id) => formData.vacancy_ids.includes(id));
+                                const hasVacancies = region.vacancies && region.vacancies.length > 0;
+
+                                return (
+                                  <div key={regionIndex} className="border border-gray-200 dark:border-gray-600 rounded-md">
+                                    <div
+                                      onClick={hasVacancies ? () => navigateTo(["regional", regionIndex]) : undefined}
+                                      className={`px-4 py-3 flex items-center justify-between ${hasVacancies ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" : ""}`}
+                                    >
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={allSelected}
+                                          onChange={() => toggleAllVacancies(region, `Hududiy boshqarma > ${region.region}`, region.region)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
+                                          {region.region}
+                                        </span>
+                                      </div>
+                                      {hasVacancies && (
+                                        <svg
+                                          className="h-5 w-5 text-gray-400"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5l7 7-7 7"
+                                          />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      // Region vacancies view
+                      if (currentView.type === "region") {
+                        const { region } = currentView;
+                        return (
+                          <>
+                            {renderBreadcrumb()}
+                            <div className="p-2 space-y-1">
+                              {region.vacancies?.map((vacancy) => {
+                                const isSelected = formData.vacancy_ids.includes(vacancy.id);
+                                return (
+                                  <div
+                                    key={vacancy.id}
+                                    onClick={() => handleVacancyToggle(vacancy.id, vacancy.title, `Hududiy boshqarma > ${region.region}`)}
+                                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center justify-between ${
+                                      isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                                    }`}
+                                  >
+                                    <span className={`text-sm ${isSelected ? "text-blue-900 dark:text-blue-300 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
+                                      {vacancy.title || `Vakansiya #${vacancy.id}`}
+                                    </span>
+                                    {isSelected && (
+                                      <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      return null;
+                    })()}
+                  </div>
+                )}
+
+                {/* Loading State */}
+                {loadingHierarchy && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                    <svg
+                      className="animate-spin h-5 w-5 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Is Active */}

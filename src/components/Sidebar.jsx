@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           {/* Kadrlar bo'limi */}
           <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-              Kadrlar bo'limi
+              Departament
             </h2>
             <div className="space-y-1">
               <Link

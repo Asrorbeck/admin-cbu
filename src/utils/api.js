@@ -383,6 +383,13 @@ export const updateSpellingReportApi = async (id, data) => {
   });
 };
 
+// Vacancy Selection Hierarchy API
+export const getVacancySelectionHierarchyApi = async () => {
+  return apiRequest("/vacancy-selection/hierarchy/", {
+    method: "GET",
+  });
+};
+
 // Tests API calls
 export const getTestsApi = async () => {
   return apiRequest(API_CONFIG.ENDPOINTS.TESTS, {
@@ -560,8 +567,12 @@ export const deleteOrganizationApi = async (id) => {
 };
 
 // Corruption Reports API calls
-export const getCorruptionReportsApi = async () => {
-  return apiRequest("/report/", {
+export const getCorruptionReportsApi = async (createdAtFrom = null) => {
+  let endpoint = "/report/";
+  if (createdAtFrom) {
+    endpoint = `/report/?created_at=${createdAtFrom}`;
+  }
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };
@@ -576,6 +587,23 @@ export const updateCorruptionReportApi = async (id, data) => {
   return apiRequest(`/report/${id}/`, {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+};
+
+export const sendReportResponseApi = async (reportId, responseText, status) => {
+  return apiRequest(`/report/${reportId}/send-response/`, {
+    method: "POST",
+    body: JSON.stringify({
+      report: reportId,
+      response_text: responseText,
+      status: status,
+    }),
+  });
+};
+
+export const getReportResponsesApi = async (reportId) => {
+  return apiRequest(`/report/${reportId}/responses/`, {
+    method: "GET",
   });
 };
 

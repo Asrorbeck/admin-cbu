@@ -57,7 +57,7 @@ const EditDepartmentModal = ({ department, onSave, onClose }) => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Bo'limni tahrirlash
+            Departamentni tahrirlash
           </h3>
         </div>
 
@@ -67,7 +67,7 @@ const EditDepartmentModal = ({ department, onSave, onClose }) => {
               htmlFor="name"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Bo'lim nomi
+              Departament nomi
             </label>
             <input
               type="text"
@@ -85,7 +85,7 @@ const EditDepartmentModal = ({ department, onSave, onClose }) => {
               htmlFor="description"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Bo'lim tavsifi
+              Departament tavsifi
             </label>
             <textarea
               id="description"
@@ -101,7 +101,7 @@ const EditDepartmentModal = ({ department, onSave, onClose }) => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Bo'lim vazifalari
+                Departament vazifalari
               </label>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {formData.department_tasks.length} ta vazifa

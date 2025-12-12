@@ -41,7 +41,7 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   T/r
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Bo'lim nomi
+                  Departament nomi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Tavsifi
@@ -174,10 +174,10 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
 
       <ConfirmDialog
         open={confirm.open}
-        title="Bo'limni o'chirish"
+        title="Departamentni o'chirish"
         description={
           confirm.department
-            ? `"${confirm.department.name}" bo'limini o'chirishni xohlaysizmi?`
+            ? `"${confirm.department.name}" departamentini o'chirishni xohlaysizmi?`
             : ""
         }
         confirmText="O'chirish"

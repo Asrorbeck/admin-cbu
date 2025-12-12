@@ -21,7 +21,7 @@ const Departments = () => {
   // Fetch departments from API
   useEffect(() => {
     fetchDepartments();
-    document.title = "Bo'limlar - Markaziy Bank Administratsiyasi";
+    document.title = "Departamentlar - Markaziy Bank Administratsiyasi";
   }, []);
 
   const fetchDepartments = async () => {
@@ -53,7 +53,7 @@ const Departments = () => {
     } catch (error) {
       console.error("Error fetching departments:", error);
       setError(error.message);
-      toast.error("Bo'limlarni yuklashda xatolik yuz berdi");
+      toast.error("Departamentlarni yuklashda xatolik yuz berdi");
       // Set empty array on error to prevent filter errors
       setDepartmentsData([]);
     } finally {
@@ -73,9 +73,9 @@ const Departments = () => {
     try {
       await toast.promise(updateDepartmentApi(updatedData.id, payload), {
         loading: "Yangilanmoqda...",
-        success: "Bo'lim muvaffaqiyatli yangilandi",
+        success: "Departament muvaffaqiyatli yangilandi",
         error: (err) =>
-          err?.message || "Bo'limni yangilashda xatolik yuz berdi",
+          err?.message || "Departamentni yangilashda xatolik yuz berdi",
       });
 
       setDepartmentsData((prev) =>
@@ -110,10 +110,10 @@ const Departments = () => {
         if (page > totalPages) setPage(totalPages);
         return updated;
       });
-      toast.success("Bo'lim muvaffaqiyatli o'chirildi");
+      toast.success("Departament muvaffaqiyatli o'chirildi");
     } catch (error) {
       console.error("Error deleting department:", error);
-      toast.error(error.message || "Bo'limni o'chirishda xatolik yuz berdi");
+      toast.error(error.message || "Departamentni o'chirishda xatolik yuz berdi");
     } finally {
       toast.dismiss(tId);
     }
@@ -195,10 +195,10 @@ const Departments = () => {
         <div className="flex items-center space-x-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Bo'limlar
+              Departamentlar
             </h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Tashkilot bo'limlarini boshqaring
+              Tashkilot departamentlarini boshqaring
             </p>
           </div>
         </div>
@@ -242,7 +242,7 @@ const Departments = () => {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Yangi bo'lim qo'shish
+            Yangi departament qo'shish
           </Link>
         </div>
       </div>
@@ -314,12 +314,12 @@ const Departments = () => {
               d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-            Bo'limlar yo'q
-          </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Birinchi bo'limni qo'shish uchun tugmani bosing.
-          </p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+              Departamentlar yo'q
+            </h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Birinchi departamentni qo'shish uchun tugmani bosing.
+            </p>
         </div>
       ) : (
         (() => {

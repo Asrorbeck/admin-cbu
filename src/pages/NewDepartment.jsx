@@ -13,7 +13,7 @@ const NewDepartment = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    document.title = "Yangi bo'lim - Markaziy Bank Administratsiyasi";
+    document.title = "Yangi departament - Markaziy Bank Administratsiyasi";
   }, []);
 
   const handleChange = (e) => {
@@ -74,7 +74,7 @@ const NewDepartment = () => {
 
       await toast.promise(createDepartmentApi(payload), {
         loading: "Saqlanmoqda...",
-        success: "Yangi bo'lim muvaffaqiyatli qo'shildi",
+        success: "Yangi departament muvaffaqiyatli qo'shildi",
         error: (err) => err?.message || "Xatolik yuz berdi",
       });
 
@@ -114,10 +114,10 @@ const NewDepartment = () => {
               </button>
               <div>
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Bo'lim ma'lumotlari
+                  Departament ma'lumotlari
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Yangi bo'lim uchun zarur ma'lumotlarni to'ldiring
+                  Yangi departament uchun zarur ma'lumotlarni to'ldiring
                 </p>
               </div>
             </div>
@@ -131,7 +131,7 @@ const NewDepartment = () => {
                   htmlFor="name"
                   className="block text-sm font-semibold text-gray-900 dark:text-white mb-3"
                 >
-                  Bo'lim nomi *
+                  Departament nomi *
                 </label>
                 <input
                   type="text"
@@ -140,7 +140,7 @@ const NewDepartment = () => {
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                  placeholder="Masalan: Axborot texnologiyalari bo'limi"
+                  placeholder="Masalan: Axborot texnologiyalari departamenti"
                   required
                 />
               </div>
@@ -152,7 +152,7 @@ const NewDepartment = () => {
                 htmlFor="description"
                 className="block text-sm font-semibold text-gray-900 dark:text-white mb-3"
               >
-                Bo'lim tavsifi *
+                Departament tavsifi *
               </label>
               <textarea
                 id="description"
@@ -161,7 +161,7 @@ const NewDepartment = () => {
                 onChange={handleChange}
                 rows={5}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
-                placeholder="Bo'limning asosiy vazifalari, maqsadi va faoliyat yo'nalishlarini batafsil yozing..."
+                placeholder="Departamentning asosiy vazifalari, maqsadi va faoliyat yo'nalishlarini batafsil yozing..."
                 required
               />
             </div>
@@ -170,7 +170,7 @@ const NewDepartment = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white">
-                  Bo'lim vazifalari *
+                  Departament vazifalari *
                 </label>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   {formData.department_tasks.length} ta vazifa
@@ -199,7 +199,7 @@ const NewDepartment = () => {
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
                           placeholder={`Vazifa ${
                             index + 1
-                          }: Bo'limning asosiy vazifalaridan birini batafsil yozing...`}
+                          }: Departamentning asosiy vazifalaridan birini batafsil yozing...`}
                         />
                       </div>
                       {formData.department_tasks.length > 1 && (

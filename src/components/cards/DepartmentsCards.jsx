@@ -14,7 +14,7 @@ const DepartmentsCards = ({ departments, onEdit, onDelete, onViewDetails }) => {
   const handleSaveEdit = (updatedData) => {
     const success = updateDepartment(editingDepartment.id, updatedData);
     if (success) {
-      toast.success("Bo'lim muvaffaqiyatli yangilandi");
+      toast.success("Departament muvaffaqiyatli yangilandi");
       onEdit(updatedData);
       setEditingDepartment(null);
     } else {
@@ -24,8 +24,8 @@ const DepartmentsCards = ({ departments, onEdit, onDelete, onViewDetails }) => {
 
   const handleDelete = (department) => {
     confirmAlert({
-      title: "Bo'limni o'chirish",
-      message: `"${department.name}" bo'limini o'chirishni xohlaysizmi?`,
+      title: "Departamentni o'chirish",
+            message: `"${department.name}" departamentini o'chirishni xohlaysizmi?`,
       buttons: [
         {
           label: "Bekor qilish",
@@ -39,7 +39,7 @@ const DepartmentsCards = ({ departments, onEdit, onDelete, onViewDetails }) => {
             console.log("Delete confirmed");
             const success = deleteDepartment(department.id);
             if (success) {
-              toast.success("Bo'lim muvaffaqiyatli o'chirildi");
+              toast.success("Departament muvaffaqiyatli o'chirildi");
               onDelete(department.id);
             } else {
               toast.error("Xatolik yuz berdi");
