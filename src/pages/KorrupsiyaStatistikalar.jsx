@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { getCorruptionReportsApi } from "../utils/api";
 import toast from "react-hot-toast";
 import {
@@ -18,6 +19,7 @@ import {
 } from "recharts";
 
 const KorrupsiyaStatistikalar = () => {
+  const navigate = useNavigate();
   // Get date range defaults (last 30 days)
   const getDefaultDateRange = () => {
     const end = new Date();
@@ -35,6 +37,7 @@ const KorrupsiyaStatistikalar = () => {
     acceptedReports: 0,
     rejectedReports: 0,
     pendingReports: 0,
+    anonymousReports: 0,
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState(getDefaultDateRange());
@@ -54,21 +57,33 @@ const KorrupsiyaStatistikalar = () => {
     try {
       setLoading(true);
 
-      const reportsData = await getCorruptionReportsApi();
-      setReports(reportsData || []);
-
-      // Ensure data is an array
-      const reportsArray = Array.isArray(reportsData) 
-        ? reportsData 
-        : (reportsData?.data || []);
+      // Fetch reports with date range
+      const reportsData = await getCorruptionReportsApi(null, dateRange.start, dateRange.end);
+      
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      const reportsList = reportsData?.results || (Array.isArray(reportsData) ? reportsData : []);
+      setReports(reportsList);
 
       // Calculate statistics
-      calculateStats(reportsArray);
+      calculateStats(reportsList);
     } catch (error) {
       console.error("Error fetching statistics:", error);
       toast.error("Statistikalarni yuklashda xatolik yuz berdi");
       // Set empty array on error
       setReports([]);
+      // Set empty stats
+      setStats({
+        totalReports: 0,
+        acceptedReports: 0,
+        rejectedReports: 0,
+        pendingReports: 0,
+        anonymousReports: 0,
+      });
+      setChartData({
+        dailyReports: [],
+        reportStatus: [],
+        reportComparison: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -82,7 +97,7 @@ const KorrupsiyaStatistikalar = () => {
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999); // End of day
 
-    // Filter reports by date range
+    // Filter reports by date range (API already filters, but double-check)
     const filteredReports = safeReps.filter((rep) => {
       const repDate = new Date(rep.created_at || rep.date_created);
       return repDate >= startDate && repDate <= endDate;
@@ -91,31 +106,29 @@ const KorrupsiyaStatistikalar = () => {
     // Count total reports
     const totalReports = filteredReports.length;
 
-    // For corruption reports, we use is_archived field
-    // is_archived = true means accepted/archived (qabul qilingan)
-    // is_archived = false means pending/active (kutilmoqda)
-    // We don't have explicit rejected status, so we'll treat non-archived as pending
+    // Use status field: "accepted", "rejected", "waiting"
     const acceptedReports = filteredReports.filter(
-      (rep) => rep.is_archived === true
+      (rep) => rep.status === "accepted"
+    ).length;
+
+    const rejectedReports = filteredReports.filter(
+      (rep) => rep.status === "rejected"
     ).length;
 
     const pendingReports = filteredReports.filter(
-      (rep) => rep.is_archived !== true
+      (rep) => rep.status === "waiting" || !rep.status
     ).length;
 
-    // Since there's no explicit rejected status in corruption reports,
-    // we'll set it to 0 or we can check if there's a status field
-    const rejectedReports = filteredReports.filter((rep) => {
-      // Check if there's a status field that indicates rejection
-      const status = (rep.status || "").toLowerCase();
-      return status === "rejected" || status === "closed_rejected";
-    }).length;
+    const anonymousReports = filteredReports.filter(
+      (rep) => rep.is_anonymous === true
+    ).length;
 
     setStats({
       totalReports,
       acceptedReports,
       rejectedReports,
       pendingReports,
+      anonymousReports,
     });
 
     // Prepare chart data
@@ -155,50 +168,29 @@ const KorrupsiyaStatistikalar = () => {
     const reportStatus = [
       { 
         name: "Qabul qilingan", 
-        value: reps.filter(r => r.is_archived === true).length, 
+        value: reps.filter(r => r.status === "accepted").length, 
         color: "#10b981" 
       },
       { 
         name: "Rad etilgan", 
-        value: reps.filter(r => {
-          const s = (r.status || "").toLowerCase();
-          return s === "rejected" || s === "closed_rejected";
-        }).length, 
+        value: reps.filter(r => r.status === "rejected").length, 
         color: "#ef4444" 
       },
       { 
         name: "Kutilmoqda", 
-        value: reps.filter(r => r.is_archived !== true).length, 
+        value: reps.filter(r => r.status === "waiting" || !r.status).length, 
         color: "#f59e0b" 
       },
     ];
 
-    // Report comparison bar chart data
+    // Report comparison bar chart data - single row with all statistics
     const reportComparison = [
-      { name: "Jami murojaatlar", jami: reps.length, qabul: 0, rad: 0, kutilmoqda: 0 },
       { 
-        name: "Qabul qilingan", 
-        jami: 0, 
-        qabul: reps.filter(r => r.is_archived === true).length, 
-        rad: 0,
-        kutilmoqda: 0
-      },
-      { 
-        name: "Rad etilgan", 
-        jami: 0, 
-        qabul: 0, 
-        rad: reps.filter(r => {
-          const s = (r.status || "").toLowerCase();
-          return s === "rejected" || s === "closed_rejected";
-        }).length,
-        kutilmoqda: 0
-      },
-      { 
-        name: "Kutilmoqda", 
-        jami: 0, 
-        qabul: 0, 
-        rad: 0,
-        kutilmoqda: reps.filter(r => r.is_archived !== true).length
+        name: "Murojaatlar", 
+        jami: reps.length, 
+        qabul: reps.filter(r => r.status === "accepted").length, 
+        rad: reps.filter(r => r.status === "rejected").length,
+        kutilmoqda: reps.filter(r => r.status === "waiting" || !r.status).length
       },
     ];
 
@@ -308,9 +300,12 @@ const KorrupsiyaStatistikalar = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Total Reports Card */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div 
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all"
+          onClick={() => navigate("/korrupsiya-murojaatlari/murojaatlar")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">Jami murojaatlar</p>
@@ -338,7 +333,10 @@ const KorrupsiyaStatistikalar = () => {
         </div>
 
         {/* Accepted Reports Card */}
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+        <div 
+          className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-green-600 hover:to-green-700 transition-all"
+          onClick={() => navigate("/korrupsiya-murojaatlari/murojaatlar?status=accepted")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm font-medium">Qabul qilingan</p>
@@ -366,7 +364,10 @@ const KorrupsiyaStatistikalar = () => {
         </div>
 
         {/* Rejected Reports Card */}
-        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
+        <div 
+          className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-red-600 hover:to-red-700 transition-all"
+          onClick={() => navigate("/korrupsiya-murojaatlari/murojaatlar?status=rejected")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-red-100 text-sm font-medium">Rad etilgan</p>
@@ -394,7 +395,10 @@ const KorrupsiyaStatistikalar = () => {
         </div>
 
         {/* Pending Reports Card */}
-        <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white">
+        <div 
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-yellow-600 hover:to-yellow-700 transition-all"
+          onClick={() => navigate("/korrupsiya-murojaatlari/murojaatlar?status=waiting")}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-yellow-100 text-sm font-medium">Kutilmoqda</p>
@@ -415,6 +419,36 @@ const KorrupsiyaStatistikalar = () => {
                   strokeLinejoin="round"
                   strokeWidth={2}
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Anonymous Reports Card */}
+        <div 
+          className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-purple-600 hover:to-purple-700 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium">Anonim sorovlar</p>
+              <p className="text-3xl font-bold mt-1">{stats.anonymousReports}</p>
+              <p className="text-purple-100 text-xs mt-2">
+                Anonim murojaatlar
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
             </div>
@@ -503,7 +537,7 @@ const KorrupsiyaStatistikalar = () => {
         </div>
 
         {/* Report Comparison Bar Chart */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 lg:col-span-2">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Murojaatlar taqqoslash
           </h3>
@@ -537,6 +571,92 @@ const KorrupsiyaStatistikalar = () => {
               <Bar dataKey="kutilmoqda" fill="#f59e0b" name="Kutilmoqda" />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Additional Statistics Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Qo'shimcha statistika
+          </h3>
+          <div className="space-y-4">
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    O'rtacha kunlik murojaatlar
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">
+                    {(() => {
+                      if (chartData.dailyReports.length === 0) return 0;
+                      const totalReports = chartData.dailyReports.reduce((sum, day) => sum + day.murojaatlar, 0);
+                      const totalDays = chartData.dailyReports.length;
+                      return (totalReports / totalDays).toFixed(1);
+                    })()}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    {chartData.dailyReports.length > 0 && (
+                      <>
+                        {chartData.dailyReports.reduce((sum, day) => sum + day.murojaatlar, 0)} ta / {chartData.dailyReports.length} kun
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-blue-200 dark:bg-blue-800 rounded-lg flex items-center justify-center">
+                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">
+                    Eng ko'p murojaatlar kun
+                  </p>
+                  <p className="text-xl font-bold text-purple-900 dark:text-purple-100 mt-1">
+                    {chartData.dailyReports.length > 0
+                      ? (() => {
+                          const maxDay = chartData.dailyReports.reduce((max, day) => 
+                            day.murojaatlar > max.murojaatlar ? day : max
+                          , chartData.dailyReports[0]);
+                          return `${maxDay.murojaatlar} ta (${maxDay.date})`;
+                        })()
+                      : "Ma'lumot yo'q"}
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-purple-200 dark:bg-purple-800 rounded-lg flex items-center justify-center">
+                  <svg className="h-6 w-6 text-purple-600 dark:text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
+                    Javob berilgan murojaatlar
+                  </p>
+                  <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
+                    {stats.totalReports > 0 ? reports.filter(r => r.responses_count > 0).length : 0}
+                  </p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+                    {stats.totalReports > 0
+                      ? `${((reports.filter(r => r.responses_count > 0).length / stats.totalReports) * 100).toFixed(1)}% javob berilgan`
+                      : "0%"}
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-indigo-200 dark:bg-indigo-800 rounded-lg flex items-center justify-center">
+                  <svg className="h-6 w-6 text-indigo-600 dark:text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

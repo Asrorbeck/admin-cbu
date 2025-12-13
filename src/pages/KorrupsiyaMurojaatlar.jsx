@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   getCorruptionReportsApi,
   getCorruptionReportByIdApi,
@@ -9,6 +10,7 @@ import {
 import toast from "react-hot-toast";
 
 const KorrupsiyaMurojaatlar = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,12 +31,26 @@ const KorrupsiyaMurojaatlar = () => {
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
+  // Get status filter from URL, default to empty (all statuses)
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return searchParams.get("status") || "";
+  });
 
   useEffect(() => {
     document.title =
       "Korrupsiya murojaatlari - Murojaatlar - Markaziy Bank Administratsiyasi";
     fetchReports();
   }, [selectedDate]);
+
+  // Update status filter when URL changes
+  useEffect(() => {
+    const statusFromUrl = searchParams.get("status") || "";
+    if (statusFromUrl !== statusFilter) {
+      setStatusFilter(statusFromUrl);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const fetchReports = async () => {
     try {
@@ -200,11 +216,16 @@ const KorrupsiyaMurojaatlar = () => {
   };
 
 
+  // Filter reports by status
+  const filteredReports = statusFilter
+    ? reports.filter((report) => report.status === statusFilter)
+    : reports;
+
   // Pagination logic
-  const total = reports.length;
+  const total = filteredReports.length;
   const startIndex = (page - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedReports = reports.slice(startIndex, endIndex);
+  const paginatedReports = filteredReports.slice(startIndex, endIndex);
   const showingStart = total === 0 ? 0 : startIndex + 1;
   const showingEnd = Math.min(endIndex, total);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -298,31 +319,58 @@ const KorrupsiyaMurojaatlar = () => {
             className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex items-center space-x-2">
-          <label className="text-sm text-gray-600 dark:text-gray-400">
-            Sahifa hajmi:
-          </label>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              const size = Number(e.target.value);
-              setPageSize(size);
-              setPage(1);
-            }}
-            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
-          >
-            {[5, 10, 20, 50].map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Holati:
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                setStatusFilter(newStatus);
+                setPage(1);
+                // Update URL parameter
+                if (newStatus) {
+                  setSearchParams({ status: newStatus });
+                } else {
+                  setSearchParams({});
+                }
+              }}
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+            >
+              <option value="">Barchasi</option>
+              <option value="waiting">Kutilmoqda</option>
+              <option value="accepted">Qabul qilindi</option>
+              <option value="rejected">Rad etildi</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">
+              Sahifa hajmi:
+            </label>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                const size = Number(e.target.value);
+                setPageSize(size);
+                setPage(1);
+              }}
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+            >
+              {[5, 10, 20, 50].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {reports.length === 0 ? (
+        {filteredReports.length === 0 ? (
           <div className="text-center py-12">
             <svg
               className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600"
@@ -378,19 +426,45 @@ const KorrupsiyaMurojaatlar = () => {
                     <tr
                       key={report.id || report.user_id || index}
                       onClick={() => handleRowClick(report)}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                      className={`cursor-pointer transition-colors ${
+                        report.is_anonymous
+                          ? "bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">
-                        {report.id || "-"}
+                        <div className="flex items-center gap-2">
+                          {report.id || "-"}
+                          {report.is_anonymous && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                              <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Anonim
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {report.full_name || "-"}
+                        {report.is_anonymous ? (
+                          <span className="text-gray-400 dark:text-gray-500 italic">Anonim murojaat</span>
+                        ) : (
+                          report.full_name || "-"
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {report.phone_number || "-"}
+                        {report.is_anonymous ? (
+                          <span className="text-gray-400 dark:text-gray-500 italic">-</span>
+                        ) : (
+                          report.phone_number || "-"
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {report.email || "-"}
+                        {report.is_anonymous ? (
+                          <span className="text-gray-400 dark:text-gray-500 italic">-</span>
+                        ) : (
+                          report.email || "-"
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs">
                         {truncateText(report.summary, 50)}

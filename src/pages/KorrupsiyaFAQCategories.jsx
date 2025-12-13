@@ -36,11 +36,14 @@ const KorrupsiyaFAQCategories = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getFaqCategoriesApi("korrupsiya");
+      const data = await getFaqCategoriesApi("reports");
+      
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      const categoriesList = data?.results || (Array.isArray(data) ? data : []);
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (categoriesList.length > 0) {
         // Kategoriya mavjud - tahrirlash rejimi
-        const existing = data[0];
+        const existing = categoriesList[0];
         setCategory(existing);
         setForm({
           name: existing.name || "",
@@ -187,6 +190,7 @@ const KorrupsiyaFAQCategories = () => {
         name: form.name.trim(),
         slug: form.slug.trim(),
         description: form.description.trim(),
+        faq_category: "reports",
         is_active: form.is_active,
         order: form.order,
         items: form.items.map((item) => ({
@@ -211,7 +215,7 @@ const KorrupsiyaFAQCategories = () => {
         );
       } else {
         // Yaratish
-        result = await toast.promise(createFaqCategoryApi(payload, "korrupsiya"), {
+        result = await toast.promise(createFaqCategoryApi(payload, "reports"), {
           loading: "Yaratilmoqda...",
           success: "FAQ kategoriya yaratildi",
           error: (err) => err?.message || "Xatolik yuz berdi",

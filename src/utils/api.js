@@ -495,9 +495,9 @@ export const updateAttemptApi = async (id, data) => {
 };
 
 // FAQ Categories API calls
-export const getFaqCategoriesApi = async (section = null) => {
-  const endpoint = section
-    ? `${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}?section=${section}`
+export const getFaqCategoriesApi = async (category = null) => {
+  const endpoint = category
+    ? `${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}?category=${category}`
     : API_CONFIG.ENDPOINTS.FAQ_CATEGORIES;
   return apiRequest(endpoint, {
     method: "GET",
@@ -510,9 +510,9 @@ export const getFaqCategoryByIdApi = async (id) => {
   });
 };
 
-export const createFaqCategoryApi = async (data, section = null) => {
-  const endpoint = section
-    ? `${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}?section=${section}`
+export const createFaqCategoryApi = async (data, category = null) => {
+  const endpoint = category
+    ? `${API_CONFIG.ENDPOINTS.FAQ_CATEGORIES}?category=${category}`
     : API_CONFIG.ENDPOINTS.FAQ_CATEGORIES;
   return apiRequest(endpoint, {
     method: "POST",
@@ -567,11 +567,28 @@ export const deleteOrganizationApi = async (id) => {
 };
 
 // Corruption Reports API calls
-export const getCorruptionReportsApi = async (createdAtFrom = null) => {
+export const getCorruptionReportsApi = async (createdAt = null, createdAtFrom = null, createdAtTo = null) => {
   let endpoint = "/report/";
-  if (createdAtFrom) {
-    endpoint = `/report/?created_at=${createdAtFrom}`;
+  const params = new URLSearchParams();
+  
+  // Single date filter (for murojaatlar page)
+  if (createdAt) {
+    params.append("created_at", createdAt);
   }
+  
+  // Date range filter (for statistics page)
+  if (createdAtFrom) {
+    params.append("created_at_from", createdAtFrom);
+  }
+  if (createdAtTo) {
+    params.append("created_at_to", createdAtTo);
+  }
+  
+  const queryString = params.toString();
+  if (queryString) {
+    endpoint = `/report/?${queryString}`;
+  }
+  
   return apiRequest(endpoint, {
     method: "GET",
   });
