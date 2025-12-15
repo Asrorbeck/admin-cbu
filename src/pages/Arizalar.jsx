@@ -190,7 +190,11 @@ const Arizalar = () => {
   const [evaluationFilter, setEvaluationFilter] = useState("all");
   const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [paginationInfo, setPaginationInfo] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [availableDates, setAvailableDates] = useState([]);
@@ -206,8 +210,12 @@ const Arizalar = () => {
   }, []);
 
   useEffect(() => {
-    fetchApplications();
+    setPage(1);
   }, [selectedDate]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [selectedDate, page]);
 
   // Load / persist evaluation rules in localStorage
   useEffect(() => {
@@ -264,7 +272,9 @@ const Arizalar = () => {
       setLoading(true);
       setError(null);
 
-      const params = {};
+      const params = {
+        page: page,
+      };
       if (selectedDate) {
         params.application_deadline = selectedDate;
       }
@@ -276,14 +286,34 @@ const Arizalar = () => {
         ? applicationsData 
         : (applicationsData?.results || applicationsData?.data || []);
       setApplications(applicationsArray);
+      
+      // Save pagination info
+      if (applicationsData && !Array.isArray(applicationsData)) {
+        setPaginationInfo({
+          count: applicationsData.count || 0,
+          next: applicationsData.next,
+          previous: applicationsData.previous,
+        });
+      } else {
+        setPaginationInfo({
+          count: applicationsArray.length,
+          next: null,
+          previous: null,
+        });
+      }
+      
       setSelectedIds(new Set());
-      setPage(1);
     } catch (error) {
       console.error("Error fetching applications:", error);
       setError(error.message);
       toast.error("Arizalarni yuklashda xatolik yuz berdi");
       // Set empty array on error to prevent forEach errors
       setApplications([]);
+      setPaginationInfo({
+        count: 0,
+        next: null,
+        previous: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -720,7 +750,7 @@ const Arizalar = () => {
     setDeletingApplicationId(null);
   };
 
-  // Pagination + evaluation filter derived data
+  // Frontend filtering (search and evaluation filter only)
   const safeApplications = Array.isArray(applications) ? applications : [];
   const filteredApps = safeApplications.filter((a) => {
     // Search filter by name
@@ -746,12 +776,56 @@ const Arizalar = () => {
     if (evaluationFilter === "bad") return evalResult.status === "bad";
     return true;
   });
-  const totalItems = filteredApps.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
-  const visibleApps = filteredApps.slice(startIndex, endIndex);
+  
+  // Backend pagination info
+  const totalItems = paginationInfo.count;
+  const totalPages = Math.max(1, Math.ceil(totalItems / 20)); // Backend returns 20 items per page
+  const currentPage = page;
+  const startIndex = (currentPage - 1) * 20 + 1;
+  const endIndex = Math.min(currentPage * 20, totalItems);
+  
+  // Calculate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5; // Maximum number of page buttons to show
+    
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is less than maxVisible
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show pages with ellipsis
+      if (currentPage <= 3) {
+        // Show first pages
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Show last pages
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Show middle pages
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+  
+  const visibleApps = filteredApps; // All filtered apps from current page
   const allVisibleSelected =
     visibleApps.length > 0 && visibleApps.every((a) => selectedIds.has(a.id));
   const someVisibleSelected =
@@ -903,24 +977,6 @@ const Arizalar = () => {
               <option value="all">Barchasi</option>
               <option value="good">Faqat mos</option>
               <option value="bad">Faqat mos emas</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 dark:text-gray-400">
-              Sahifadagi yozuvlar:
-            </label>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
             </select>
           </div>
         </div>
@@ -1137,7 +1193,17 @@ const Arizalar = () => {
                   className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => handleViewDetails(application.id)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td 
+                    className="px-6 py-4 whitespace-nowrap text-sm cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Toggle checkbox if click is not directly on the checkbox
+                      if (e.target.type !== 'checkbox') {
+                        const isSelected = selectedIds.has(application.id);
+                        handleToggleOne(application.id, !isSelected);
+                      }
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedIds.has(application.id)}
@@ -1148,7 +1214,7 @@ const Arizalar = () => {
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {startIndex + index + 1}
+                    {startIndex + index}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -1266,7 +1332,10 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatDateTime(application.created_at)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td 
+                    className="px-6 py-4 whitespace-nowrap text-sm font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleViewDetails(application.id)}
@@ -1325,23 +1394,52 @@ const Arizalar = () => {
           <div className="text-xs text-gray-600 dark:text-gray-300">
             {totalItems === 0
               ? "0 yozuv"
-              : `${startIndex + 1}–${endIndex} / ${totalItems} yozuv`}
+              : `${startIndex}–${endIndex} / ${totalItems} yozuv`}
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
-              disabled={currentPage <= 1}
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              disabled={!paginationInfo.previous}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
               Oldingi
             </button>
-            <div className="text-sm text-gray-700 dark:text-gray-200">
-              {currentPage} / {totalPages}
+            
+            {/* Page number buttons */}
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((pageNum, index) => {
+                if (pageNum === 'ellipsis') {
+                  return (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="px-2 text-sm text-gray-500 dark:text-gray-400"
+                    >
+                      ...
+                    </span>
+                  );
+                }
+                
+                const isActive = pageNum === currentPage;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                      isActive
+                        ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
             </div>
+            
             <button
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
-              disabled={currentPage >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              disabled={!paginationInfo.next}
+              onClick={() => setPage((p) => p + 1)}
             >
               Keyingi
             </button>

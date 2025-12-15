@@ -15,7 +15,11 @@ const KorrupsiyaMurojaatlar = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [paginationInfo, setPaginationInfo] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [status, setStatus] = useState("waiting");
@@ -39,8 +43,15 @@ const KorrupsiyaMurojaatlar = () => {
   useEffect(() => {
     document.title =
       "Korrupsiya murojaatlari - Murojaatlar - Markaziy Bank Administratsiyasi";
-    fetchReports();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
   }, [selectedDate]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [selectedDate, page]);
 
   // Update status filter when URL changes
   useEffect(() => {
@@ -56,14 +67,34 @@ const KorrupsiyaMurojaatlar = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getCorruptionReportsApi(selectedDate);
+      const data = await getCorruptionReportsApi(selectedDate, null, null, page);
       // Handle new paginated response structure: { count, next, previous, results: [...] }
       const reportsList = data?.results || (Array.isArray(data) ? data : []);
       setReports(reportsList);
-      setPage(1);
+      
+      // Save pagination info
+      if (data && !Array.isArray(data)) {
+        setPaginationInfo({
+          count: data.count || 0,
+          next: data.next,
+          previous: data.previous,
+        });
+      } else {
+        setPaginationInfo({
+          count: reportsList.length,
+          next: null,
+          previous: null,
+        });
+      }
     } catch (e) {
       setError(e.message || "Xatolik yuz berdi");
       toast.error("Murojaatlarni yuklashda xatolik yuz berdi");
+      setReports([]);
+      setPaginationInfo({
+        count: 0,
+        next: null,
+        previous: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -216,19 +247,60 @@ const KorrupsiyaMurojaatlar = () => {
   };
 
 
-  // Filter reports by status
+  // Filter reports by status (frontend filtering only for current page)
   const filteredReports = statusFilter
     ? reports.filter((report) => report.status === statusFilter)
     : reports;
 
-  // Pagination logic
-  const total = filteredReports.length;
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedReports = filteredReports.slice(startIndex, endIndex);
-  const showingStart = total === 0 ? 0 : startIndex + 1;
-  const showingEnd = Math.min(endIndex, total);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  // Backend pagination info
+  const totalItems = paginationInfo.count;
+  const totalPages = Math.max(1, Math.ceil(totalItems / 20)); // Backend returns 20 items per page
+  const currentPage = page;
+  const startIndex = (currentPage - 1) * 20 + 1;
+  const endIndex = Math.min(currentPage * 20, totalItems);
+  
+  // Calculate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5; // Maximum number of page buttons to show
+    
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is less than maxVisible
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show pages with ellipsis
+      if (currentPage <= 3) {
+        // Show first pages
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Show last pages
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Show middle pages
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+  
+  const paginatedReports = filteredReports; // All filtered reports from current page
 
   if (loading) {
     return (
@@ -343,26 +415,6 @@ const KorrupsiyaMurojaatlar = () => {
               <option value="waiting">Kutilmoqda</option>
               <option value="accepted">Qabul qilindi</option>
               <option value="rejected">Rad etildi</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400">
-              Sahifa hajmi:
-            </label>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                const size = Number(e.target.value);
-                setPageSize(size);
-                setPage(1);
-              }}
-              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
-            >
-              {[5, 10, 20, 50].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
             </select>
           </div>
         </div>
@@ -492,25 +544,56 @@ const KorrupsiyaMurojaatlar = () => {
             {/* Pagination controls */}
             <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 dark:border-gray-600">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${total}`}
+                {totalItems === 0
+                  ? "0 yozuv"
+                  : `Ko'rsatilmoqda ${startIndex}–${endIndex} / ${totalItems}`}
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  disabled={!paginationInfo.previous}
+                  className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Oldingi
                 </button>
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {`Sahifa ${page} / ${totalPages}`}
-                </span>
+                
+                {/* Page number buttons */}
+                <div className="flex items-center gap-1">
+                  {getPageNumbers().map((pageNum, index) => {
+                    if (pageNum === 'ellipsis') {
+                      return (
+                        <span
+                          key={`ellipsis-${index}`}
+                          className="px-2 text-sm text-gray-500 dark:text-gray-400"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    
+                    const isActive = pageNum === currentPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                          isActive
+                            ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!paginationInfo.next}
+                  className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Keyingi
                 </button>

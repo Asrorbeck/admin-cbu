@@ -50,11 +50,16 @@ const Dashboard = () => {
         ? applications 
         : (applications?.results || applications?.data || []);
 
+      // For applications, use count if available (paginated response), otherwise use array length
+      const applicationsCount = applications?.count !== undefined 
+        ? applications.count 
+        : applicationsArray.length;
+
       setStats({
         departments: departmentsArray.length,
         management: managementArray.length,
         vacancies: vacanciesArray.length,
-        applications: applicationsArray.length,
+        applications: applicationsCount,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);

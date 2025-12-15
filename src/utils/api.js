@@ -320,6 +320,10 @@ export const getApplicationsApi = async (params = {}) => {
     queryParams.append("application_deadline", params.application_deadline);
   }
   
+  if (params.page) {
+    queryParams.append("page", params.page);
+  }
+  
   const queryString = queryParams.toString();
   const endpoint = queryString 
     ? `/apply-jobs/?${queryString}`
@@ -567,7 +571,7 @@ export const deleteOrganizationApi = async (id) => {
 };
 
 // Corruption Reports API calls
-export const getCorruptionReportsApi = async (createdAt = null, createdAtFrom = null, createdAtTo = null) => {
+export const getCorruptionReportsApi = async (createdAt = null, createdAtFrom = null, createdAtTo = null, page = null) => {
   let endpoint = "/report/";
   const params = new URLSearchParams();
   
@@ -584,9 +588,37 @@ export const getCorruptionReportsApi = async (createdAt = null, createdAtFrom = 
     params.append("created_at_to", createdAtTo);
   }
   
+  // Page parameter for pagination
+  if (page) {
+    params.append("page", page);
+  }
+  
   const queryString = params.toString();
   if (queryString) {
     endpoint = `/report/?${queryString}`;
+  }
+  
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+// Corruption Reports Statistics API
+export const getCorruptionReportsStatisticsApi = async (dateFrom, dateTo) => {
+  let endpoint = "/report/statistics/";
+  const params = new URLSearchParams();
+  
+  if (dateFrom) {
+    params.append("date_from", dateFrom);
+  }
+  
+  if (dateTo) {
+    params.append("date_to", dateTo);
+  }
+  
+  const queryString = params.toString();
+  if (queryString) {
+    endpoint = `/report/statistics/?${queryString}`;
   }
   
   return apiRequest(endpoint, {
