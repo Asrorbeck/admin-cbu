@@ -190,12 +190,14 @@ const Arizalar = () => {
   const [evaluationFilter, setEvaluationFilter] = useState("all");
   const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [paginationInfo, setPaginationInfo] = useState({
     count: 0,
     next: null,
     previous: null,
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [jshshirQuery, setJshshirQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [availableDates, setAvailableDates] = useState([]);
   const [loadingDates, setLoadingDates] = useState(true);
@@ -211,11 +213,11 @@ const Arizalar = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedDate]);
+  }, [selectedDate, searchQuery, jshshirQuery]);
 
   useEffect(() => {
     fetchApplications();
-  }, [selectedDate, page]);
+  }, [selectedDate, page, pageSize, searchQuery, jshshirQuery]);
 
   // Load / persist evaluation rules in localStorage
   useEffect(() => {
@@ -274,9 +276,19 @@ const Arizalar = () => {
 
       const params = {
         page: page,
+        page_size: pageSize,
       };
+      
       if (selectedDate) {
         params.application_deadline = selectedDate;
+      }
+      
+      if (searchQuery.trim()) {
+        params.full_name = searchQuery.trim();
+      }
+      
+      if (jshshirQuery.trim()) {
+        params.jshshir = jshshirQuery.trim();
       }
 
       const applicationsData = await getApplicationsApi(params);
@@ -750,18 +762,9 @@ const Arizalar = () => {
     setDeletingApplicationId(null);
   };
 
-  // Frontend filtering (search and evaluation filter only)
+  // Frontend filtering (evaluation filter only - search and jshshir handled by backend)
   const safeApplications = Array.isArray(applications) ? applications : [];
   const filteredApps = safeApplications.filter((a) => {
-    // Search filter by name
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      const fullName = (a.user?.full_name || a.full_name || "").toLowerCase();
-      if (!fullName.includes(query)) {
-        return false;
-      }
-    }
-    
     // If evaluation rules are set (o'lchash rejimi qo'yilgan), filter by selected vacancy
     const hasEvaluationRules = Object.keys(evaluationRules).length > 0;
     if (hasEvaluationRules && a.job && a.job.id) {
@@ -779,10 +782,10 @@ const Arizalar = () => {
   
   // Backend pagination info
   const totalItems = paginationInfo.count;
-  const totalPages = Math.max(1, Math.ceil(totalItems / 20)); // Backend returns 20 items per page
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const currentPage = page;
-  const startIndex = (currentPage - 1) * 20 + 1;
-  const endIndex = Math.min(currentPage * 20, totalItems);
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalItems);
   
   // Calculate page numbers to display
   const getPageNumbers = () => {
@@ -984,54 +987,107 @@ const Arizalar = () => {
 
       {/* Date Filter and Search Bar */}
       <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-              Ariza muddati:
-            </label>
-            {loadingDates ? (
-              <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
-                Yuklanmoqda...
-              </div>
-            ) : (
-              <select
-                value={selectedDate}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Left side: Date and Search inputs */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Ariza muddati:
+              </label>
+              {loadingDates ? (
+                <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                  Yuklanmoqda...
+                </div>
+              ) : (
+                <select
+                  value={selectedDate}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Barcha sanalar</option>
+                  {availableDates.map((date) => {
+                    const dateObj = new Date(date + "T00:00:00");
+                    const day = dateObj.getDate();
+                    const monthNames = [
+                      "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+                      "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+                    ];
+                    const month = monthNames[dateObj.getMonth()];
+                    const year = dateObj.getFullYear();
+                    const formattedDate = `${day} ${month}, ${year}`;
+                    return (
+                      <option key={date} value={date}>
+                        {formattedDate}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+              {selectedDate && !loadingDates && (
+                <button
+                  onClick={() => {
+                    setSelectedDate("");
+                    setPage(1);
+                  }}
+                  className="px-2 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  title="Tozalash"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
                 onChange={(e) => {
-                  setSelectedDate(e.target.value);
+                  setSearchQuery(e.target.value);
                   setPage(1);
                 }}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Barcha sanalar</option>
-                {availableDates.map((date) => {
-                  const dateObj = new Date(date + "T00:00:00");
-                  const day = dateObj.getDate();
-                  const monthNames = [
-                    "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-                    "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
-                  ];
-                  const month = monthNames[dateObj.getMonth()];
-                  const year = dateObj.getFullYear();
-                  const formattedDate = `${day} ${month}, ${year}`;
-                  return (
-                    <option key={date} value={date}>
-                      {formattedDate}
-                    </option>
-                  );
-                })}
-              </select>
-            )}
-            {selectedDate && !loadingDates && (
-              <button
-                onClick={() => {
-                  setSelectedDate("");
-                  setPage(1);
-                }}
-                className="px-2 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                title="Tozalash"
-              >
+                placeholder="Ism bo'yicha qidirish..."
+                className="w-48 px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery ? (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="Tozalash"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              ) : (
                 <svg
-                  className="h-5 w-5"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -1040,61 +1096,82 @@ const Arizalar = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-              </button>
-            )}
-          </div>
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Qidirish: ism, familiya..."
-              className="w-full pr-10 pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <svg
-              className="h-4 w-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={jshshirQuery}
+                onChange={(e) => {
+                  setJshshirQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="JSHSHIR bo'yicha qidirish..."
+                className="w-48 px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-            </svg>
+              {jshshirQuery ? (
+                <button
+                  onClick={() => {
+                    setJshshirQuery("");
+                    setPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="Tozalash"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <svg
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              )}
+            </div>
           </div>
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery("");
+          
+          {/* Right side: Page Size */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Sahifa hajmi:
+            </label>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
                 setPage(1);
               }}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-              title="Tozalash"
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
       </div>
 

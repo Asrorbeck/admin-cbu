@@ -324,6 +324,18 @@ export const getApplicationsApi = async (params = {}) => {
     queryParams.append("page", params.page);
   }
   
+  if (params.page_size) {
+    queryParams.append("page_size", params.page_size);
+  }
+  
+  if (params.jshshir) {
+    queryParams.append("jshshir", params.jshshir);
+  }
+  
+  if (params.full_name) {
+    queryParams.append("full_name", params.full_name);
+  }
+  
   const queryString = queryParams.toString();
   const endpoint = queryString 
     ? `/apply-jobs/?${queryString}`
@@ -571,29 +583,49 @@ export const deleteOrganizationApi = async (id) => {
 };
 
 // Corruption Reports API calls
-export const getCorruptionReportsApi = async (createdAt = null, createdAtFrom = null, createdAtTo = null, page = null) => {
+export const getCorruptionReportsApi = async (params = {}) => {
   let endpoint = "/report/";
-  const params = new URLSearchParams();
+  const queryParams = new URLSearchParams();
   
   // Single date filter (for murojaatlar page)
-  if (createdAt) {
-    params.append("created_at", createdAt);
+  if (params.createdAt) {
+    queryParams.append("created_at", params.createdAt);
   }
   
   // Date range filter (for statistics page)
-  if (createdAtFrom) {
-    params.append("created_at_from", createdAtFrom);
+  if (params.createdAtFrom) {
+    queryParams.append("created_at_from", params.createdAtFrom);
   }
-  if (createdAtTo) {
-    params.append("created_at_to", createdAtTo);
+  if (params.createdAtTo) {
+    queryParams.append("created_at_to", params.createdAtTo);
   }
   
   // Page parameter for pagination
-  if (page) {
-    params.append("page", page);
+  if (params.page) {
+    queryParams.append("page", params.page);
   }
   
-  const queryString = params.toString();
+  // Page size parameter
+  if (params.pageSize) {
+    queryParams.append("page_size", params.pageSize);
+  }
+  
+  // Status filter
+  if (params.status) {
+    queryParams.append("status", params.status);
+  }
+  
+  // Anonymous filter
+  if (params.isAnonymous !== undefined && params.isAnonymous !== null) {
+    queryParams.append("is_anonymous", params.isAnonymous);
+  }
+  
+  // Full name search
+  if (params.fullName) {
+    queryParams.append("full_name", params.fullName);
+  }
+  
+  const queryString = queryParams.toString();
   if (queryString) {
     endpoint = `/report/?${queryString}`;
   }

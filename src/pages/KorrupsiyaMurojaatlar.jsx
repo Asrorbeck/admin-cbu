@@ -15,11 +15,14 @@ const KorrupsiyaMurojaatlar = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [paginationInfo, setPaginationInfo] = useState({
     count: 0,
     next: null,
     previous: null,
   });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAnonymousFilter, setIsAnonymousFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [status, setStatus] = useState("waiting");
@@ -47,11 +50,11 @@ const KorrupsiyaMurojaatlar = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedDate]);
+  }, [selectedDate, statusFilter, isAnonymousFilter, searchQuery]);
 
   useEffect(() => {
     fetchReports();
-  }, [selectedDate, page]);
+  }, [selectedDate, page, pageSize, statusFilter, isAnonymousFilter, searchQuery]);
 
   // Update status filter when URL changes
   useEffect(() => {
@@ -67,7 +70,29 @@ const KorrupsiyaMurojaatlar = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getCorruptionReportsApi(selectedDate, null, null, page);
+      
+      const params = {
+        createdAt: selectedDate,
+        page: page,
+        pageSize: pageSize,
+      };
+      
+      // Add status filter if selected
+      if (statusFilter) {
+        params.status = statusFilter;
+      }
+      
+      // Add anonymous filter if selected
+      if (isAnonymousFilter !== "") {
+        params.isAnonymous = isAnonymousFilter === "true";
+      }
+      
+      // Add search query if provided
+      if (searchQuery.trim()) {
+        params.fullName = searchQuery.trim();
+      }
+      
+      const data = await getCorruptionReportsApi(params);
       // Handle new paginated response structure: { count, next, previous, results: [...] }
       const reportsList = data?.results || (Array.isArray(data) ? data : []);
       setReports(reportsList);
@@ -247,17 +272,15 @@ const KorrupsiyaMurojaatlar = () => {
   };
 
 
-  // Filter reports by status (frontend filtering only for current page)
-  const filteredReports = statusFilter
-    ? reports.filter((report) => report.status === statusFilter)
-    : reports;
+  // No frontend filtering needed - backend handles all filtering
+  const filteredReports = reports;
 
   // Backend pagination info
   const totalItems = paginationInfo.count;
-  const totalPages = Math.max(1, Math.ceil(totalItems / 20)); // Backend returns 20 items per page
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const currentPage = page;
-  const startIndex = (currentPage - 1) * 20 + 1;
-  const endIndex = Math.min(currentPage * 20, totalItems);
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalItems);
   
   // Calculate page numbers to display
   const getPageNumbers = () => {
@@ -378,44 +401,136 @@ const KorrupsiyaMurojaatlar = () => {
         </div>
       </div>
 
-      {/* Filters Row: Date Picker (left) and Page Size (right) */}
-      <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-            Sana:
-          </label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center space-x-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-              Holati:
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                const newStatus = e.target.value;
-                setStatusFilter(newStatus);
-                setPage(1);
-                // Update URL parameter
-                if (newStatus) {
-                  setSearchParams({ status: newStatus });
-                } else {
-                  setSearchParams({});
-                }
-              }}
-              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
-            >
-              <option value="">Barchasi</option>
-              <option value="waiting">Kutilmoqda</option>
-              <option value="accepted">Qabul qilindi</option>
-              <option value="rejected">Rad etildi</option>
-            </select>
+      {/* Filters Row */}
+      <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Left side: Date and Search */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Sana:
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Ism bo'yicha qidirish..."
+                className="w-48 px-3 py-1 pr-8 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery ? (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setPage(1);
+                  }}
+                  className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="Tozalash"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <svg
+                  className="absolute right-2 h-4 w-4 text-gray-400 pointer-events-none"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              )}
+            </div>
+          </div>
+          
+          {/* Right side: Status, Anonymous, Page Size */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Holati:
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  setStatusFilter(newStatus);
+                  setPage(1);
+                  // Update URL parameter
+                  if (newStatus) {
+                    setSearchParams({ status: newStatus });
+                  } else {
+                    setSearchParams({});
+                  }
+                }}
+                className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+              >
+                <option value="">Barchasi</option>
+                <option value="waiting">Kutilmoqda</option>
+                <option value="accepted">Qabul qilindi</option>
+                <option value="rejected">Rad etildi</option>
+              </select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Anonim:
+              </label>
+              <select
+                value={isAnonymousFilter}
+                onChange={(e) => {
+                  setIsAnonymousFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+              >
+                <option value="">Barchasi</option>
+                <option value="true">Ha</option>
+                <option value="false">Yo'q</option>
+              </select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Sahifa hajmi:
+              </label>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
