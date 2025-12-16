@@ -346,6 +346,35 @@ export const getApplicationsApi = async (params = {}) => {
   });
 };
 
+export const getUrgentTestApplicationsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  queryParams.append("urgent_test_applications", "true");
+  
+  if (params.page) {
+    queryParams.append("page", params.page);
+  }
+  
+  if (params.page_size) {
+    queryParams.append("page_size", params.page_size);
+  }
+  
+  if (params.jshshir) {
+    queryParams.append("jshshir", params.jshshir);
+  }
+  
+  if (params.full_name) {
+    queryParams.append("full_name", params.full_name);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = `/apply-jobs/?${queryString}`;
+  
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
 export const getDeadlineArchivesApi = async () => {
   return apiRequest("/deadline-archives/", {
     method: "GET",
