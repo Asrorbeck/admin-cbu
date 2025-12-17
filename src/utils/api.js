@@ -786,6 +786,46 @@ export const deleteSurveyQuestionApi = async (id) => {
   });
 };
 
+// Notifications API calls
+export const getNotificationsApi = async () => {
+  return apiRequest("/notifications/", {
+    method: "GET",
+  });
+};
+
+export const sendNotificationApi = async (data) => {
+  return apiRequest("/notifications/send/", {
+    method: "POST",
+    body: JSON.stringify({
+      message: data.message,
+      recipients: data.recipients || "all", // "all" or array of user IDs
+      ...data,
+    }),
+  });
+};
+
+// Users API calls
+export const getUsersApi = async () => {
+  return apiRequest("/users/", {
+    method: "GET",
+  });
+};
+
+export const getUserMessagesApi = async (userId) => {
+  return apiRequest(`/users/${userId}/messages/`, {
+    method: "GET",
+  });
+};
+
+export const sendUserMessageApi = async (userId, message) => {
+  return apiRequest(`/users/${userId}/messages/`, {
+    method: "POST",
+    body: JSON.stringify({
+      message: message,
+    }),
+  });
+};
+
 // Logout API call (if needed)
 export const logoutApi = async () => {
   // Clear secure storage

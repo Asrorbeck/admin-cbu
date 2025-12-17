@@ -346,6 +346,62 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </svg>
                 Statistikalar
               </Link>
+
+              <Link
+                to="/xabarnoma"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/xabarnoma"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+                Xabarnoma
+              </Link>
+
+              <Link
+                to="/foydalanuvchilar"
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                  ${
+                    location.pathname === "/foydalanuvchilar"
+                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                  }
+                `}
+                onClick={onClose}
+              >
+                <svg
+                  className="mr-3 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+                Foydalanuvchilar
+              </Link>
             </div>
           </div>
 
@@ -654,7 +710,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
 
           {/* So'rovnomalar */}
-          <div className="px-6">
+          {/* <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
               So'rovnomalar
             </h2>
@@ -715,7 +771,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 So'rovnoma javoblari
               </Link>
             </div>
-          </div>
+          </div> */}
         </nav>
       </div>
     </>

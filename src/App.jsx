@@ -40,6 +40,8 @@ import KorrupsiyaStatistikalar from "./pages/KorrupsiyaStatistikalar";
 import Vacancies from "./pages/Vacancies";
 import Regions from "./pages/Regions";
 import RegionVacancies from "./pages/RegionVacancies";
+import Xabarnoma from "./pages/Xabarnoma";
+import Foydalanuvchilar from "./pages/Foydalanuvchilar";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -254,6 +256,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <KadrlarStatistikalar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/xabarnoma"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Xabarnoma />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/foydalanuvchilar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Foydalanuvchilar />
             </Layout>
           </ProtectedRoute>
         }
