@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  getApplicationsApi,
-  getVacanciesApi,
+  getApplicationsStatisticsApi,
 } from "../utils/api";
 import toast from "react-hot-toast";
 import {
@@ -43,8 +42,6 @@ const KadrlarStatistikalar = () => {
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState(getDefaultDateRange());
-  const [applications, setApplications] = useState([]);
-  const [vacancies, setVacancies] = useState([]);
   const [chartData, setChartData] = useState({
     dailyApplications: [],
     testResults: [],
@@ -61,146 +58,86 @@ const KadrlarStatistikalar = () => {
     try {
       setLoading(true);
 
-      // Fetch all data in parallel
-      const [applicationsData, vacanciesData] = await Promise.all([
-        getApplicationsApi(),
-        getVacanciesApi(),
-      ]);
+      // Fetch statistics from backend API
+      const statisticsData = await getApplicationsStatisticsApi(
+        dateRange.start,
+        dateRange.end
+      );
 
-      // Ensure data is an array
-      const applicationsArray = Array.isArray(applicationsData) 
-        ? applicationsData 
-        : (applicationsData?.data || []);
-      const vacanciesArray = Array.isArray(vacanciesData) 
-        ? vacanciesData 
-        : (vacanciesData?.data || []);
+      // Update stats from backend response
+      setStats({
+        applicationsCount: statisticsData.total_applications || 0,
+        testsTakenCount: statisticsData.test_taken || 0,
+        testsPassedCount: statisticsData.test_passed || 0,
+        totalVacancies: statisticsData.total_vacancies || 0,
+        activeVacancies: statisticsData.active_vacancies || 0,
+        inactiveVacancies: statisticsData.inactive_vacancies || 0,
+      });
 
-      setApplications(applicationsArray);
-      setVacancies(vacanciesArray);
-
-      // Calculate statistics
-      calculateStats(applicationsArray, vacanciesArray);
+      // Prepare chart data from backend response
+      prepareChartDataFromBackend(statisticsData);
     } catch (error) {
       console.error("Error fetching statistics:", error);
       toast.error("Statistikalarni yuklashda xatolik yuz berdi");
-      // Set empty arrays on error
-      setApplications([]);
-      setVacancies([]);
+      // Reset stats on error
+      setStats({
+        applicationsCount: 0,
+        testsTakenCount: 0,
+        testsPassedCount: 0,
+        totalVacancies: 0,
+        activeVacancies: 0,
+        inactiveVacancies: 0,
+      });
+      setChartData({
+        dailyApplications: [],
+        testResults: [],
+        vacancyStatus: [],
+        testComparison: [],
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateStats = (apps, vacs) => {
-    // Ensure apps and vacs are arrays
-    const safeApps = Array.isArray(apps) ? apps : [];
-    const safeVacs = Array.isArray(vacs) ? vacs : [];
+  const prepareChartDataFromBackend = (statisticsData) => {
+    // Daily applications data from backend
+    const dailyApplicationsData = statisticsData.daily_applications || [];
+    const monthNames = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
     
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
-    endDate.setHours(23, 59, 59, 999); // End of day
-
-    // Filter applications by date range
-    const filteredApps = safeApps.filter((app) => {
-      const appDate = new Date(app.created_at || app.date_created);
-      return appDate >= startDate && appDate <= endDate;
-    });
-
-    // Count applications
-    const applicationsCount = filteredApps.length;
-
-    // Count tests taken (applications with test_scheduled status or test_date)
-    const testsTaken = filteredApps.filter(
-      (app) =>
-        app.status === "test_scheduled" ||
-        app.status === "TEST_SCHEDULED" ||
-        app.test_date ||
-        app.test_scheduled_at
-    ).length;
-
-    // Count tests passed (applications that passed test - we'll check status or test_passed field)
-    // For now, we'll assume applications with test_scheduled status that have test results
-    // In a real scenario, you'd check test results API
-    const testsPassed = filteredApps.filter((app) => {
-      // Check if application has passed test status or test_passed field
-      return (
-        app.test_passed === true ||
-        app.test_status === "passed" ||
-        (app.test_score && app.test_percentage >= 70) // Assuming 70% is passing
-      );
-    }).length;
-
-    const testsFailed = testsTaken - testsPassed;
-
-    // Vacancy statistics (not filtered by date as they're current state)
-    const totalVacancies = safeVacs.length;
-    const activeVacancies = safeVacs.filter(
-      (vac) => vac.is_active !== false && vac.status !== "closed"
-    ).length;
-    const inactiveVacancies = totalVacancies - activeVacancies;
-
-    setStats({
-      applicationsCount,
-      testsTakenCount: testsTaken,
-      testsPassedCount: testsPassed,
-      totalVacancies,
-      activeVacancies,
-      inactiveVacancies,
-    });
-
-    // Prepare chart data
-    prepareChartData(filteredApps, vacs, startDate, endDate, testsPassed, testsFailed);
-  };
-
-  const prepareChartData = (apps, vacs, startDate, endDate, testsPassed, testsFailed) => {
-    // Ensure apps and vacs are arrays
-    const safeApps = Array.isArray(apps) ? apps : [];
-    const safeVacs = Array.isArray(vacs) ? vacs : [];
-    
-    // Daily applications data
-    const dailyDataMap = new Map();
-    const currentDate = new Date(startDate);
-    
-    // Initialize all dates in range with 0
-    while (currentDate <= endDate) {
-      const dateKey = currentDate.toISOString().split('T')[0];
-      const monthNames = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
-      const month = monthNames[currentDate.getMonth()];
-      const day = currentDate.getDate();
-      dailyDataMap.set(dateKey, {
+    const dailyApplications = dailyApplicationsData.map((item) => {
+      const date = new Date(item.date);
+      const month = monthNames[date.getMonth()];
+      const day = date.getDate();
+      return {
         date: `${day} ${month}`,
-        applications: 0,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // Count applications per day
-    safeApps.forEach((app) => {
-      const appDate = new Date(app.created_at || app.date_created);
-      const dateKey = appDate.toISOString().split('T')[0];
-      if (dailyDataMap.has(dateKey)) {
-        dailyDataMap.get(dateKey).applications += 1;
-      }
+        applications: item.count || 0,
+      };
     });
-
-    const dailyApplications = Array.from(dailyDataMap.values());
 
     // Test results pie chart data
+    const testsPassed = statisticsData.test_passed || 0;
+    const testsTaken = statisticsData.test_taken || 0;
+    const testsFailed = testsTaken - testsPassed;
+    
     const testResults = [
       { name: "O'tgan", value: testsPassed, color: "#10b981" },
       { name: "O'tmagan", value: testsFailed, color: "#ef4444" },
     ];
 
     // Vacancy status pie chart data
+    const activeVacancies = statisticsData.active_vacancies || 0;
+    const inactiveVacancies = statisticsData.inactive_vacancies || 0;
+    
     const vacancyStatus = [
-      { name: "Faol", value: safeVacs.filter(v => v.is_active !== false && v.status !== "closed").length, color: "#14b8a6" },
-      { name: "Faol emas", value: safeVacs.filter(v => v.is_active === false || v.status === "closed").length, color: "#6b7280" },
+      { name: "Faol", value: activeVacancies, color: "#14b8a6" },
+      { name: "Faol emas", value: inactiveVacancies, color: "#6b7280" },
     ];
 
     // Test comparison bar chart data
+    const totalApplications = statisticsData.total_applications || 0;
     const testComparison = [
-      { name: "Arizalar", arizalar: safeApps.length, test: 0 },
-      { name: "Test topshirganlar", arizalar: 0, test: safeApps.filter(a => a.status === "test_scheduled" || a.status === "TEST_SCHEDULED" || a.test_date || a.test_scheduled_at).length },
+      { name: "Arizalar", arizalar: totalApplications, test: 0 },
+      { name: "Test topshirganlar", arizalar: 0, test: testsTaken },
       { name: "Testdan o'tganlar", arizalar: 0, test: testsPassed },
     ];
 

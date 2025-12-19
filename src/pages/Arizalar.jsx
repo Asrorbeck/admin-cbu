@@ -6,6 +6,7 @@ import {
   updateApplicationApi,
   deleteApplicationApi,
   getDeadlineArchivesApi,
+  getVacancySelectionHierarchyApi,
 } from "../utils/api";
 import toast from "react-hot-toast";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
@@ -204,20 +205,30 @@ const Arizalar = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingApplicationId, setDeletingApplicationId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [hierarchyData, setHierarchyData] = useState(null);
+  const [loadingHierarchy, setLoadingHierarchy] = useState(true);
+  const [hierarchyFilters, setHierarchyFilters] = useState({
+    type: null, // 'central' or 'regional'
+    department_id: null,
+    management_id: null,
+    job_id: null,
+    region: null,
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchDeadlineArchives();
+    fetchHierarchy();
     document.title = "Arizalar - Markaziy Bank Administratsiyasi";
   }, []);
 
   useEffect(() => {
     setPage(1);
-  }, [selectedDate, searchQuery, jshshirQuery]);
+  }, [selectedDate, searchQuery, jshshirQuery, hierarchyFilters]);
 
   useEffect(() => {
     fetchApplications();
-  }, [selectedDate, page, pageSize, searchQuery, jshshirQuery]);
+  }, [selectedDate, page, pageSize, searchQuery, jshshirQuery, hierarchyFilters]);
 
   // Load / persist evaluation rules in localStorage
   useEffect(() => {
@@ -244,6 +255,20 @@ const Arizalar = () => {
       console.error("Failed to save evaluation rules to storage", e);
     }
   }, [evaluationRules]);
+
+  const fetchHierarchy = async () => {
+    try {
+      setLoadingHierarchy(true);
+      const data = await getVacancySelectionHierarchyApi();
+      setHierarchyData(data);
+    } catch (error) {
+      console.error("Error fetching hierarchy:", error);
+      toast.error("Vakansiya ma'lumotlarini yuklashda xatolik yuz berdi");
+      setHierarchyData(null);
+    } finally {
+      setLoadingHierarchy(false);
+    }
+  };
 
   const fetchDeadlineArchives = async () => {
     try {
@@ -289,6 +314,17 @@ const Arizalar = () => {
       
       if (jshshirQuery.trim()) {
         params.jshshir = jshshirQuery.trim();
+      }
+      
+      // Add hierarchy filter params
+      if (hierarchyFilters.department_id) {
+        params.department_id = hierarchyFilters.department_id;
+      }
+      if (hierarchyFilters.management_id) {
+        params.management_id = hierarchyFilters.management_id;
+      }
+      if (hierarchyFilters.job_id) {
+        params.job_id = hierarchyFilters.job_id;
       }
 
       const applicationsData = await getApplicationsApi(params);
@@ -1134,6 +1170,199 @@ const Arizalar = () => {
                 </svg>
               )}
             </div>
+            
+            {/* Hierarchy Filter - Inline with search bars */}
+            {/* First Select: Type Selection */}
+            <div className="relative min-w-[180px]">
+              <select
+                value={hierarchyFilters.type || ""}
+                onChange={(e) => {
+                  const newType = e.target.value || null;
+                  if (newType) {
+                    setHierarchyFilters({ 
+                      type: newType, 
+                      department_id: null, 
+                      management_id: null, 
+                      job_id: null, 
+                      region: null 
+                    });
+                  } else {
+                    setHierarchyFilters({ 
+                      type: null, 
+                      department_id: null, 
+                      management_id: null, 
+                      job_id: null, 
+                      region: null 
+                    });
+                  }
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tashkilot turi</option>
+                <option value="central">Markaziy apparat</option>
+                <option value="regional">Hududiy bosh boshqarma</option>
+              </select>
+            </div>
+
+            {/* Second Select: Department/Region Selection */}
+            {hierarchyFilters.type === 'central' && hierarchyData?.central && (
+              <div className="relative min-w-[180px]">
+                <select
+                  value={hierarchyFilters.department_id || ""}
+                  onChange={(e) => {
+                    const deptId = e.target.value ? parseInt(e.target.value) : null;
+                    setHierarchyFilters({ 
+                      ...hierarchyFilters, 
+                      department_id: deptId, 
+                      management_id: null, 
+                      job_id: null 
+                    });
+                    setPage(1);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Departament</option>
+                  {hierarchyData.central.map((dept) => (
+                    <option key={dept.department_id} value={dept.department_id}>
+                      {dept.department_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {hierarchyFilters.type === 'regional' && hierarchyData?.regional && (
+              <div className="relative min-w-[180px]">
+                <select
+                  value={hierarchyFilters.region || ""}
+                  onChange={(e) => {
+                    const region = e.target.value || null;
+                    setHierarchyFilters({ 
+                      ...hierarchyFilters, 
+                      region, 
+                      job_id: null 
+                    });
+                    setPage(1);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Viloyat</option>
+                  {hierarchyData.regional.map((reg) => (
+                    <option key={reg.region} value={reg.region}>
+                      {reg.region}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Third Select: Management Selection (only for central with managements) */}
+            {hierarchyFilters.type === 'central' && 
+             hierarchyFilters.department_id && 
+             hierarchyData?.central && (() => {
+              const dept = hierarchyData.central.find(d => d.department_id === hierarchyFilters.department_id);
+              const hasManagements = dept?.managements && dept.managements.length > 0;
+              
+              if (hasManagements) {
+                return (
+                  <div key="management-select" className="relative min-w-[180px]">
+                    <select
+                      value={hierarchyFilters.management_id || ""}
+                      onChange={(e) => {
+                        const mgmtId = e.target.value ? parseInt(e.target.value) : null;
+                        setHierarchyFilters({ 
+                          ...hierarchyFilters, 
+                          management_id: mgmtId, 
+                          job_id: null 
+                        });
+                        setPage(1);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Boshqarma</option>
+                      {dept.managements.map((mgmt) => (
+                        <option key={mgmt.management_id} value={mgmt.management_id}>
+                          {mgmt.management_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Fourth Select: Vacancy Selection (only for central, not for regional) */}
+            {hierarchyFilters.type === 'central' && hierarchyFilters.department_id && (() => {
+              const dept = hierarchyData?.central?.find(d => d.department_id === hierarchyFilters.department_id);
+              const hasManagements = dept?.managements && dept.managements.length > 0;
+              
+              // Show vacancy select if:
+              // 1. Department has managements AND management is selected
+              // 2. Department has no managements (direct vacancies)
+              const shouldShow = hasManagements 
+                ? hierarchyFilters.management_id 
+                : true;
+              
+              if (shouldShow) {
+                const vacancies = hasManagements 
+                  ? dept.managements.find(m => m.management_id === hierarchyFilters.management_id)?.vacancies || []
+                  : dept?.vacancies || [];
+                
+                if (vacancies.length > 0) {
+                  return (
+                    <div key="vacancy-select-central" className="relative min-w-[180px]">
+                      <select
+                        value={hierarchyFilters.job_id || ""}
+                        onChange={(e) => {
+                          const jobId = e.target.value ? parseInt(e.target.value) : null;
+                          setHierarchyFilters({ 
+                            ...hierarchyFilters, 
+                            job_id: jobId 
+                          });
+                          setPage(1);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Vakansiya</option>
+                        {vacancies.map((vacancy) => (
+                          <option key={vacancy.id} value={vacancy.id}>
+                            {vacancy.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+              }
+              
+              return null;
+            })()}
+
+            {/* Clear button for hierarchy filter */}
+            {(hierarchyFilters.type || hierarchyFilters.department_id || hierarchyFilters.management_id || hierarchyFilters.job_id || hierarchyFilters.region) && (
+              <button
+                onClick={() => {
+                  setHierarchyFilters({ type: null, department_id: null, management_id: null, job_id: null, region: null });
+                  setPage(1);
+                }}
+                className="px-2.5 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                title="Filterni tozalash"
+              >
+                ✕
+              </button>
+            )}
+
+            {/* Loading state */}
+            {loadingHierarchy && (
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            )}
           </div>
           
           {/* Right side: Page Size */}

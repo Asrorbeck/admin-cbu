@@ -336,6 +336,18 @@ export const getApplicationsApi = async (params = {}) => {
     queryParams.append("full_name", params.full_name);
   }
   
+  if (params.department_id) {
+    queryParams.append("department_id", params.department_id);
+  }
+  
+  if (params.management_id) {
+    queryParams.append("management_id", params.management_id);
+  }
+  
+  if (params.job_id) {
+    queryParams.append("job_id", params.job_id);
+  }
+  
   const queryString = queryParams.toString();
   const endpoint = queryString 
     ? `/apply-jobs/?${queryString}`
@@ -377,6 +389,27 @@ export const getUrgentTestApplicationsApi = async (params = {}) => {
 
 export const getDeadlineArchivesApi = async () => {
   return apiRequest("/deadline-archives/", {
+    method: "GET",
+  });
+};
+
+export const getApplicationsStatisticsApi = async (dateFrom, dateTo) => {
+  const queryParams = new URLSearchParams();
+  
+  if (dateFrom) {
+    queryParams.append("date_from", dateFrom);
+  }
+  
+  if (dateTo) {
+    queryParams.append("date_to", dateTo);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString 
+    ? `/apply-jobs/statistics/?${queryString}`
+    : "/apply-jobs/statistics/";
+  
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };
