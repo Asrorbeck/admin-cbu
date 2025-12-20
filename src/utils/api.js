@@ -191,8 +191,23 @@ export const loginApi = async (username, password) => {
 };
 
 // Departments API calls
-export const getDepartmentsApi = async () => {
-  return apiRequest(API_CONFIG.ENDPOINTS.DEPARTMENTS, {
+export const getDepartmentsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.page) {
+    queryParams.append("page", params.page);
+  }
+  
+  if (params.page_size) {
+    queryParams.append("page_size", params.page_size);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString 
+    ? `${API_CONFIG.ENDPOINTS.DEPARTMENTS}?${queryString}`
+    : API_CONFIG.ENDPOINTS.DEPARTMENTS;
+  
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };

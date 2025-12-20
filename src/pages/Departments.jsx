@@ -15,47 +15,76 @@ const Departments = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [query, setQuery] = useState("");
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
+  const [paginationInfo, setPaginationInfo] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+  });
 
   // Fetch departments from API
   useEffect(() => {
     fetchDepartments();
     document.title = "Departamentlar - Markaziy Bank Administratsiyasi";
-  }, []);
+  }, [page, pageSize]);
 
   const fetchDepartments = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getDepartmentsApi();
+      const data = await getDepartmentsApi({
+        page: page,
+        page_size: pageSize,
+      });
       console.log("Departments API response:", data);
 
-      // Handle different response formats
+      // Handle paginated response format: { count, next, previous, results: [...] }
       let departmentsArray = [];
       if (Array.isArray(data)) {
         departmentsArray = data;
+        setPaginationInfo({
+          count: data.length,
+          next: null,
+          previous: null,
+        });
       } else if (data && Array.isArray(data.results)) {
-        // Paginated response format: { results: [...], count: ... }
+        // Paginated response format
         departmentsArray = data.results;
+        setPaginationInfo({
+          count: data.count || 0,
+          next: data.next,
+          previous: data.previous,
+        });
       } else if (data && Array.isArray(data.data)) {
         // Wrapped response format: { data: [...] }
         departmentsArray = data.data;
-      } else if (data && typeof data === "object") {
-        // Single object or other format - try to extract array
+        setPaginationInfo({
+          count: data.data.length,
+          next: null,
+          previous: null,
+        });
+      } else {
         console.warn("Unexpected departments response format:", data);
         departmentsArray = [];
+        setPaginationInfo({
+          count: 0,
+          next: null,
+          previous: null,
+        });
       }
 
       console.log("Processed departments array:", departmentsArray);
       setDepartmentsData(departmentsArray);
-      setPage(1);
     } catch (error) {
       console.error("Error fetching departments:", error);
       setError(error.message);
       toast.error("Departamentlarni yuklashda xatolik yuz berdi");
-      // Set empty array on error to prevent filter errors
       setDepartmentsData([]);
+      setPaginationInfo({
+        count: 0,
+        next: null,
+        previous: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -100,43 +129,8 @@ const Departments = () => {
     const tId = toast.loading("O'chirilmoqda...");
     try {
       await deleteDepartmentApi(departmentId);
-      setDepartmentsData((prev) => {
-        const updated = prev.filter((dept) => dept.id !== departmentId);
-        // Recalculate total pages based on current filter
-        const q = query.trim().toLowerCase();
-        const filtered = updated.filter((d) => {
-          if (!q) return true;
-          // Search in multilingual names
-          const inNameUz = (d.name_uz || d.name || "")
-            .toLowerCase()
-            .includes(q);
-          const inNameCr = (d.name_cr || "").toLowerCase().includes(q);
-          const inNameRu = (d.name_ru || "").toLowerCase().includes(q);
-          // Search in multilingual tasks
-          const inTasksUz = (
-            d.department_tasks_uz ||
-            d.department_tasks ||
-            []
-          ).some((t) => (t.task || "").toLowerCase().includes(q));
-          const inTasksCr = (d.department_tasks_cr || []).some((t) =>
-            (t.task || "").toLowerCase().includes(q)
-          );
-          const inTasksRu = (d.department_tasks_ru || []).some((t) =>
-            (t.task || "").toLowerCase().includes(q)
-          );
-          return (
-            inNameUz ||
-            inNameCr ||
-            inNameRu ||
-            inTasksUz ||
-            inTasksCr ||
-            inTasksRu
-          );
-        });
-        const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-        if (page > totalPages) setPage(totalPages);
-        return updated;
-      });
+      // Refresh the list after deletion
+      await fetchDepartments();
       toast.success("Departament muvaffaqiyatli o'chirildi");
     } catch (error) {
       console.error("Error deleting department:", error);
@@ -276,35 +270,8 @@ const Departments = () => {
         </div>
       </div>
 
-      {/* Filters Row: Search (left) and Page Size (right) */}
-      <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex-1 sm:max-w-sm flex items-center gap-3">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Qidirish: nomi yoki vazifa..."
-              className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
-            />
-            <svg
-              className="h-3.5 w-3.5 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-4.35-4.35m1.35-4.65a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-        </div>
+      {/* Filters Row: Page Size */}
+      <div className="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
         <div className="flex items-center space-x-2">
           <label className="text-sm text-gray-600 dark:text-gray-400">
             Sahifa hajmi:
@@ -351,70 +318,32 @@ const Departments = () => {
           </p>
         </div>
       ) : (
-        (() => {
-          // Ensure departmentsData is an array before filtering
-          const safeDepartmentsData = Array.isArray(departmentsData)
-            ? departmentsData
-            : [];
-          const q = query.trim().toLowerCase();
-          const filtered = safeDepartmentsData.filter((d) => {
-            if (!q) return true;
-            // Search in multilingual names
-            const inNameUz = (d.name_uz || d.name || "")
-              .toLowerCase()
-              .includes(q);
-            const inNameCr = (d.name_cr || "").toLowerCase().includes(q);
-            const inNameRu = (d.name_ru || "").toLowerCase().includes(q);
-            // Search in multilingual tasks
-            const inTasksUz = (
-              d.department_tasks_uz ||
-              d.department_tasks ||
-              []
-            ).some((t) => (t.task || "").toLowerCase().includes(q));
-            const inTasksCr = (d.department_tasks_cr || []).some((t) =>
-              (t.task || "").toLowerCase().includes(q)
-            );
-            const inTasksRu = (d.department_tasks_ru || []).some((t) =>
-              (t.task || "").toLowerCase().includes(q)
-            );
+        <>
+          <DepartmentsTable
+            departments={departmentsData}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onViewDetails={handleViewDetails}
+          />
+
+          {/* Pagination controls */}
+          {(() => {
+            const totalItems = paginationInfo.count;
+            const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+            const startIndex = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+            const endIndex = Math.min(page * pageSize, totalItems);
+
             return (
-              inNameUz ||
-              inNameCr ||
-              inNameRu ||
-              inTasksUz ||
-              inTasksCr ||
-              inTasksRu
-            );
-          });
-
-          const total = filtered.length;
-          const startIndex = (page - 1) * pageSize;
-          const endIndex = startIndex + pageSize;
-          const paginated = filtered.slice(startIndex, endIndex);
-          const showingStart = total === 0 ? 0 : startIndex + 1;
-          const showingEnd = Math.min(endIndex, total);
-          const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-          return (
-            <>
-              <DepartmentsTable
-                departments={paginated}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onViewDetails={handleViewDetails}
-              />
-
-              {/* Pagination controls */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${total}`}
+                  {`Ko'rsatilmoqda ${startIndex}-${endIndex} / ${totalItems}`}
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50"
+                    disabled={page === 1 || !paginationInfo.previous}
+                    className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Oldingi
                   </button>
@@ -424,16 +353,16 @@ const Departments = () => {
                   <button
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50"
-                    disabled={page >= totalPages}
+                    disabled={page >= totalPages || !paginationInfo.next}
+                    className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Keyingi
                   </button>
                 </div>
               </div>
-            </>
-          );
-        })()
+            );
+          })()}
+        </>
       )}
 
       {/* Quick Create Vacancy Modal */}

@@ -1,43 +1,68 @@
 import { useState, useEffect } from "react";
 import { updateManagementApi } from "../../utils/api";
+import { latinToCyrillic } from "../../utils/transliterate";
 import toast from "react-hot-toast";
 
 const EditManagementModal = ({ isOpen, onClose, management, onSuccess }) => {
   const [formData, setFormData] = useState({
-    name: "",
-    management_functions: "",
+    name_uz: "",
+    name_cr: "",
+    name_ru: "",
     department: "",
+  });
+  const [manualEditFlags, setManualEditFlags] = useState({
+    name_cr: false,
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (management && isOpen) {
       setFormData({
-        name: management.name || "",
-        management_functions: management.management_functions || "",
+        name_uz: management.name_uz || management.name || "",
+        name_cr: management.name_cr || "",
+        name_ru: management.name_ru || "",
         department: management.department || "",
       });
+      // Check if name_cr was manually edited (if it exists and doesn't match transliteration)
+      if (management.name_cr && management.name_uz) {
+        const autoTransliterated = latinToCyrillic(management.name_uz);
+        setManualEditFlags({
+          name_cr: management.name_cr !== autoTransliterated,
+        });
+      }
     }
   }, [management, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Auto-transliterate name_uz to name_cr
+    if (name === 'name_uz' && !manualEditFlags.name_cr) {
+      setFormData({
+        ...formData,
+        [name]: value,
+        name_cr: latinToCyrillic(value),
+      });
+    } else {
+      // If editing name_cr, mark as manually edited
+      if (name === 'name_cr') {
+        setManualEditFlags((prev) => ({
+          ...prev,
+          name_cr: true,
+        }));
+      }
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name.trim()) {
-      toast.error("Boshqarma nomi kiritilishi shart");
-      return;
-    }
-
-    if (!formData.management_functions.trim()) {
-      toast.error("Boshqarma vazifalari kiritilishi shart");
+    if (!formData.name_uz.trim()) {
+      toast.error("Boshqarma nomi (O'zbekcha) kiritilishi shart");
       return;
     }
 
@@ -45,8 +70,9 @@ const EditManagementModal = ({ isOpen, onClose, management, onSuccess }) => {
       setLoading(true);
 
       const updatedData = {
-        name: formData.name.trim(),
-        management_functions: formData.management_functions.trim(),
+        name_uz: formData.name_uz.trim(),
+        name_cr: formData.name_cr.trim(),
+        name_ru: formData.name_ru.trim(),
         department: parseInt(formData.department),
       };
 
@@ -73,7 +99,7 @@ const EditManagementModal = ({ isOpen, onClose, management, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -103,46 +129,68 @@ const EditManagementModal = ({ isOpen, onClose, management, onSuccess }) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Management Name */}
+            {/* Management Name - Multilingual */}
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Boshqarma nomi *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                placeholder="Boshqarma nomini kiriting"
-                required
-              />
-            </div>
-
-            {/* Management Functions */}
-            <div>
-              <label
-                htmlFor="management_functions"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Boshqarma vazifalari *
-              </label>
-              <textarea
-                id="management_functions"
-                name="management_functions"
-                value={formData.management_functions}
-                onChange={handleChange}
-                disabled={loading}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-                placeholder="Boshqarma vazifalarini kiriting"
-                required
-              />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Boshqarma nomi (3 tilda) *
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="name_uz"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    O'zbekcha *
+                  </label>
+                  <input
+                    type="text"
+                    id="name_uz"
+                    name="name_uz"
+                    value={formData.name_uz}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                    placeholder="O'zbekcha nom"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="name_cr"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    O'zbekcha (Kirill)
+                  </label>
+                  <input
+                    type="text"
+                    id="name_cr"
+                    name="name_cr"
+                    value={formData.name_cr}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                    placeholder="O'zbekcha (Kirill) nom"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="name_ru"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Ruscha
+                  </label>
+                  <input
+                    type="text"
+                    id="name_ru"
+                    name="name_ru"
+                    value={formData.name_ru}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                    placeholder="Русское название"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Department ID (hidden) */}

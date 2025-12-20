@@ -44,10 +44,13 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   Departament nomi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Tavsifi
+                  Boshqarmalar soni
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Vazifalar soni
+                  Faol vakansiyalar
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Nofaol vakansiyalar
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Amallar
@@ -66,19 +69,22 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {department.name}
+                      {department.name_uz || department.name || "Noma'lum"}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 dark:text-gray-300 max-w-xs truncate">
-                      {department.description}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-300">
+                      {department.managements_count || 0}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 dark:text-gray-300 max-w-xs truncate">
-                      {department.department_tasks?.length > 0
-                        ? `${department.department_tasks.length} ta vazifa`
-                        : "Vazifalar yo'q"}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-300">
+                      {department.active_vacancies_count || 0}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-300">
+                      {department.inactive_vacancies_count || 0}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -177,7 +183,7 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
         title="Departamentni o'chirish"
         description={
           confirm.department
-            ? `"${confirm.department.name}" departamentini o'chirishni xohlaysizmi?`
+            ? `"${confirm.department.name_uz || confirm.department.name || "Noma'lum"}" departamentini o'chirishni xohlaysizmi?`
             : ""
         }
         confirmText="O'chirish"

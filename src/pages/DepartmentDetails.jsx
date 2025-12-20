@@ -16,10 +16,14 @@ const DepartmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [department, setDepartment] = useState({
-    name: "",
-    description: "",
-    department_tasks: [], // Initialize with empty array
+    name_uz: "",
+    name_cr: "",
+    name_ru: "",
+    department_tasks_uz: [],
+    department_tasks_cr: [],
+    department_tasks_ru: [],
   });
+  const [activeTaskTab, setActiveTaskTab] = useState("uz");
   const [management, setManagement] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,11 +45,20 @@ const DepartmentDetails = () => {
       // Fetch department data
       const departmentData = await getDepartmentApi(id);
 
-      // Ensure department_tasks is always an array
+      // Normalize department data with multilingual fields
       const normalizedData = {
         ...departmentData,
-        department_tasks: Array.isArray(departmentData.department_tasks)
-          ? departmentData.department_tasks
+        name_uz: departmentData.name_uz || departmentData.name || "",
+        name_cr: departmentData.name_cr || "",
+        name_ru: departmentData.name_ru || "",
+        department_tasks_uz: Array.isArray(departmentData.department_tasks_uz)
+          ? departmentData.department_tasks_uz
+          : [],
+        department_tasks_cr: Array.isArray(departmentData.department_tasks_cr)
+          ? departmentData.department_tasks_cr
+          : [],
+        department_tasks_ru: Array.isArray(departmentData.department_tasks_ru)
+          ? departmentData.department_tasks_ru
           : [],
       };
 
@@ -92,9 +105,16 @@ const DepartmentDetails = () => {
 
   const handleDepartmentEditSave = async (updatedData) => {
     const payload = {
-      name: updatedData.name,
-      description: updatedData.description,
-      department_tasks: (updatedData.department_tasks || []).filter(
+      name_uz: updatedData.name_uz || "",
+      name_cr: updatedData.name_cr || "",
+      name_ru: updatedData.name_ru || "",
+      department_tasks_uz: (updatedData.department_tasks_uz || []).filter(
+        (t) => (t.task || "").trim() !== ""
+      ),
+      department_tasks_cr: (updatedData.department_tasks_cr || []).filter(
+        (t) => (t.task || "").trim() !== ""
+      ),
+      department_tasks_ru: (updatedData.department_tasks_ru || []).filter(
         (t) => (t.task || "").trim() !== ""
       ),
     };
@@ -220,7 +240,7 @@ const DepartmentDetails = () => {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Departament: {department.name}
+              Departament: {department.name_uz || department.name || "Noma'lum"}
             </h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               Boshqarmalar va tashkilotlar
@@ -255,38 +275,87 @@ const DepartmentDetails = () => {
       {/* Department Info */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="space-y-6">
-          {/* Description */}
+          {/* Tasks - Multilingual */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Bo'lim tavsifi:
-            </h3>
-            <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
-              {department.description}
-            </p>
-          </div>
-
-          {/* Tasks */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Departament vazifalari ({department.department_tasks?.length || 0} ta):
-            </h3>
-            <div className="space-y-3">
-              {(department?.department_tasks || []).map((task, index) => (
-                <div
-                  key={index}
-                  className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Departament vazifalari
+              </h3>
+              {/* Language Tabs */}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setActiveTaskTab("uz")}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    activeTaskTab === "uz"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
                 >
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-semibold">
-                      {index + 1}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
-                    {task.task}
-                  </p>
-                </div>
-              ))}
+                  O'zbekcha
+                </button>
+                <button
+                  onClick={() => setActiveTaskTab("cr")}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    activeTaskTab === "cr"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  O'zbekcha (Kirill)
+                </button>
+                <button
+                  onClick={() => setActiveTaskTab("ru")}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    activeTaskTab === "ru"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  Ruscha
+                </button>
+              </div>
             </div>
+
+            {/* Tasks List based on active tab */}
+            {(() => {
+              const tasksField = `department_tasks_${activeTaskTab}`;
+              const tasks = department[tasksField] || [];
+              const langNames = {
+                uz: "O'zbekcha",
+                cr: "O'zbekcha (Kirill)",
+                ru: "Ruscha",
+              };
+
+              if (tasks.length === 0) {
+                return (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p className="text-sm">
+                      {langNames[activeTaskTab]} tilida vazifalar mavjud emas
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {tasks.map((task, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-semibold">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed flex-1">
+                        {task.task}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -373,16 +442,9 @@ const DepartmentDetails = () => {
         isOpen={isNewMgmtOpen}
         onClose={() => setIsNewMgmtOpen(false)}
         departmentId={id}
-        onSuccess={(payload) => {
-          setManagement((prev) => [
-            ...prev,
-            {
-              id: Math.max(0, ...prev.map((m) => m.id || 0)) + 1, // fallback local id
-              name: payload.name,
-              management_functions: payload.management_functions,
-              department: payload.department,
-            },
-          ]);
+        onSuccess={async () => {
+          // Refresh management list after creation
+          await fetchDepartmentAndManagement();
         }}
       />
     </div>

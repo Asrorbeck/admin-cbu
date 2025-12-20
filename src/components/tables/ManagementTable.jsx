@@ -44,7 +44,10 @@ const ManagementTable = ({
                 Boshqarma nomi
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Vazifalari
+                Faol vakansiyalar
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Nofaol vakansiyalar
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Amallar
@@ -63,12 +66,17 @@ const ManagementTable = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {item.name}
+                    {item.name_uz || item.name || "Noma'lum"}
                   </div>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900 dark:text-gray-300 max-w-xs">
-                    <p className="line-clamp-2">{item.management_functions}</p>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-gray-300">
+                    {item.active_vacancies_count || 0}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-gray-300">
+                    {item.inactive_vacancies_count || 0}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -157,7 +165,7 @@ const ManagementTable = ({
         title="Boshqarmani o'chirish"
         description={
           confirm.item
-            ? `"${confirm.item.name}" boshqarmasini o'chirishni xohlaysizmi?`
+            ? `"${confirm.item.name_uz || confirm.item.name || "Noma'lum"}" boshqarmasini o'chirishni xohlaysizmi?`
             : ""
         }
         confirmText="O'chirish"

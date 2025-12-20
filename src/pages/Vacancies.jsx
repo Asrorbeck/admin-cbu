@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import VacanciesTable from "../components/tables/VacanciesTable";
 import { getVacanciesApi, deleteVacancyApi, getVacancyByIdApi, updateVacancyApi } from "../utils/api";
+import { latinToCyrillic } from "../utils/transliterate";
 import toast from "react-hot-toast";
 
 const Vacancies = () => {
@@ -23,21 +24,40 @@ const Vacancies = () => {
   });
   const [bulkEditLoading, setBulkEditLoading] = useState(false);
   
+  // View modal tabs
+  const [activeTitleTab, setActiveTitleTab] = useState("uz");
+  const [activeRequirementsTab, setActiveRequirementsTab] = useState("uz");
+  const [activeJobTasksTab, setActiveJobTasksTab] = useState("uz");
+  
   // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingVacancy, setEditingVacancy] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    title: "",
-    description: "",
-    requirements: "",
-    job_tasks: "",
+    title_uz: "",
+    title_cr: "",
+    title_ru: "",
+    requirements_uz: [{ task: "" }],
+    requirements_cr: [{ task: "" }],
+    requirements_ru: [{ task: "" }],
+    job_tasks_uz: [{ task: "" }],
+    job_tasks_cr: [{ task: "" }],
+    job_tasks_ru: [{ task: "" }],
     application_deadline: "",
     test_scheduled_at: "",
     is_active: true,
     branch_type: "",
     region: "",
-    requirements_eng: "",
-    requirements_ru: "",
+    lan_requirements_eng: "not_required",
+    lan_requirements_ru: "not_required",
+  });
+  const [editManualEditFlags, setEditManualEditFlags] = useState({
+    title_cr: false,
+    requirements_cr: {},
+    job_tasks_cr: {},
+  });
+  const [editExpandedSections, setEditExpandedSections] = useState({
+    requirements: false,
+    job_tasks: false,
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -207,18 +227,43 @@ const Vacancies = () => {
         testScheduledAtValue = `${year}-${month}-${day}T${hours}:${minutes}`;
       }
 
+      // Initialize form data with new structure
       setEditFormData({
-        title: fullVacancyData.title || "",
-        description: fullVacancyData.description || "",
-        requirements: fullVacancyData.requirements || "",
-        job_tasks: fullVacancyData.job_tasks || "",
+        title_uz: fullVacancyData.title_uz || "",
+        title_cr: fullVacancyData.title_cr || "",
+        title_ru: fullVacancyData.title_ru || "",
+        requirements_uz: Array.isArray(fullVacancyData.requirements_uz) && fullVacancyData.requirements_uz.length > 0
+          ? fullVacancyData.requirements_uz
+          : [{ task: "" }],
+        requirements_cr: Array.isArray(fullVacancyData.requirements_cr) && fullVacancyData.requirements_cr.length > 0
+          ? fullVacancyData.requirements_cr
+          : [{ task: "" }],
+        requirements_ru: Array.isArray(fullVacancyData.requirements_ru) && fullVacancyData.requirements_ru.length > 0
+          ? fullVacancyData.requirements_ru
+          : [{ task: "" }],
+        job_tasks_uz: Array.isArray(fullVacancyData.job_tasks_uz) && fullVacancyData.job_tasks_uz.length > 0
+          ? fullVacancyData.job_tasks_uz
+          : [{ task: "" }],
+        job_tasks_cr: Array.isArray(fullVacancyData.job_tasks_cr) && fullVacancyData.job_tasks_cr.length > 0
+          ? fullVacancyData.job_tasks_cr
+          : [{ task: "" }],
+        job_tasks_ru: Array.isArray(fullVacancyData.job_tasks_ru) && fullVacancyData.job_tasks_ru.length > 0
+          ? fullVacancyData.job_tasks_ru
+          : [{ task: "" }],
         application_deadline: fullVacancyData.application_deadline || "",
         test_scheduled_at: testScheduledAtValue,
         is_active: fullVacancyData.is_active ?? true,
         branch_type: fullVacancyData.branch_type || "",
         region: fullVacancyData.region || "",
-        requirements_eng: fullVacancyData.requirements_eng || "",
-        requirements_ru: fullVacancyData.requirements_ru || "",
+        lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
+        lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
+      });
+      
+      // Reset manual edit flags
+      setEditManualEditFlags({
+        title_cr: false,
+        requirements_cr: {},
+        job_tasks_cr: {},
       });
     } catch (error) {
       console.error("Error fetching vacancy details:", error);
@@ -231,42 +276,180 @@ const Vacancies = () => {
 
   const handleEditFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setEditFormData((prev) => {
-      const newData = {
+    
+    // Auto-transliterate title_uz to title_cr
+    if (name === 'title_uz' && !editManualEditFlags.title_cr) {
+      setEditFormData((prev) => ({
         ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
-      // If branch_type changes to "central", reset region to empty
-      if (name === "branch_type" && value === "central") {
-        newData.region = "";
+        [name]: value,
+        title_cr: latinToCyrillic(value),
+      }));
+    } else {
+      // If editing title_cr, mark as manually edited
+      if (name === 'title_cr') {
+        setEditManualEditFlags((prev) => ({
+          ...prev,
+          title_cr: true,
+        }));
       }
-      return newData;
+      setEditFormData((prev) => {
+        const newData = {
+          ...prev,
+          [name]: type === "checkbox" ? checked : value,
+        };
+        // If branch_type changes to "central", reset region to empty
+        if (name === "branch_type" && value === "central") {
+          newData.region = "";
+        }
+        return newData;
+      });
+    }
+  };
+
+  const handleEditTaskChange = (type, lang, index, value) => {
+    const fieldName = `${type}_${lang}`;
+    const updated = [...editFormData[fieldName]];
+    updated[index] = { task: value };
+    
+    // Auto-transliterate Uzbek Latin tasks to Cyrillic
+    if (lang === 'uz') {
+      const taskKey = `${type}_${index}`;
+      const isManuallyEdited = editManualEditFlags[`${type}_cr`]?.[taskKey] || false;
+      
+      if (!isManuallyEdited) {
+        const cyrillicFieldName = `${type}_cr`;
+        const cyrillicTasks = [...editFormData[cyrillicFieldName]];
+        // Ensure the array is long enough
+        while (cyrillicTasks.length <= index) {
+          cyrillicTasks.push({ task: "" });
+        }
+        cyrillicTasks[index] = { task: latinToCyrillic(value) };
+        setEditFormData({ 
+          ...editFormData, 
+          [fieldName]: updated,
+          [cyrillicFieldName]: cyrillicTasks,
+        });
+        return;
+      }
+    }
+    
+    // If Cyrillic task is being edited, mark as manually edited
+    if (lang === 'cr') {
+      const taskKey = `${type}_${index}`;
+      setEditManualEditFlags((prev) => ({
+        ...prev,
+        [`${type}_cr`]: {
+          ...(prev[`${type}_cr`] || {}),
+          [taskKey]: true,
+        },
+      }));
+    }
+    
+    setEditFormData({ ...editFormData, [fieldName]: updated });
+  };
+
+  const addEditTask = (type, lang) => {
+    const fieldName = `${type}_${lang}`;
+    setEditFormData({
+      ...editFormData,
+      [fieldName]: [...editFormData[fieldName], { task: "" }],
     });
+  };
+
+  const removeEditTask = (type, lang, index) => {
+    const fieldName = `${type}_${lang}`;
+    if (editFormData[fieldName].length <= 1) return;
+    setEditFormData({
+      ...editFormData,
+      [fieldName]: editFormData[fieldName].filter((_, i) => i !== index),
+    });
+  };
+
+  const toggleEditSection = (section) => {
+    setEditExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
   };
 
   const handleEditFormSubmit = async (e) => {
     e.preventDefault();
 
-    if (!editFormData.title || !editFormData.application_deadline) {
-      toast.error("Iltimos, barcha majburiy maydonlarni to'ldiring");
+    // Validate title
+    if (!editFormData.title_uz.trim()) {
+      toast.error("Vakansiya nomi (O'zbekcha) kiritilishi shart");
+      return;
+    }
+
+    // Filter and validate requirements
+    const filteredRequirementsUz = editFormData.requirements_uz.filter(
+      (t) => (t.task || "").trim() !== ""
+    );
+    const filteredRequirementsCr = editFormData.requirements_cr.filter(
+      (t) => (t.task || "").trim() !== ""
+    );
+    const filteredRequirementsRu = editFormData.requirements_ru.filter(
+      (t) => (t.task || "").trim() !== ""
+    );
+
+    if (
+      filteredRequirementsUz.length === 0 &&
+      filteredRequirementsCr.length === 0 &&
+      filteredRequirementsRu.length === 0
+    ) {
+      toast.error("Kamida bitta tilda talablar kiritilishi shart");
+      return;
+    }
+
+    // Filter and validate job_tasks
+    const filteredJobTasksUz = editFormData.job_tasks_uz.filter(
+      (t) => (t.task || "").trim() !== ""
+    );
+    const filteredJobTasksCr = editFormData.job_tasks_cr.filter(
+      (t) => (t.task || "").trim() !== ""
+    );
+    const filteredJobTasksRu = editFormData.job_tasks_ru.filter(
+      (t) => (t.task || "").trim() !== ""
+    );
+
+    if (
+      filteredJobTasksUz.length === 0 &&
+      filteredJobTasksCr.length === 0 &&
+      filteredJobTasksRu.length === 0
+    ) {
+      toast.error("Kamida bitta tilda ish vazifalari kiritilishi shart");
+      return;
+    }
+
+    if (!editFormData.application_deadline) {
+      toast.error("Ariza topshirish muddati kiritilishi shart");
       return;
     }
 
     try {
       setEditSaving(true);
 
-      // Prepare payload with management_id
+      // Prepare payload with new structure
       const payload = {
-        ...editFormData,
+        title_uz: editFormData.title_uz.trim(),
+        title_cr: editFormData.title_cr.trim(),
+        title_ru: editFormData.title_ru.trim(),
+        requirements_uz: filteredRequirementsUz,
+        requirements_cr: filteredRequirementsCr,
+        requirements_ru: filteredRequirementsRu,
+        job_tasks_uz: filteredJobTasksUz,
+        job_tasks_cr: filteredJobTasksCr,
+        job_tasks_ru: filteredJobTasksRu,
+        lan_requirements_eng: editFormData.lan_requirements_eng,
+        lan_requirements_ru: editFormData.lan_requirements_ru,
+        is_active: editFormData.is_active,
+        application_deadline: editFormData.application_deadline,
+        test_scheduled_at: editFormData.test_scheduled_at
+          ? formatDateTimeWithTimezone(editFormData.test_scheduled_at)
+          : null,
         management_id: editingVacancy.management_details?.id || editingVacancy.management,
         branch_type: editFormData.branch_type,
         region: editFormData.branch_type === "central" ? null : editFormData.region,
-        // Convert datetime-local to ISO format with GMT+5 timezone if exists
-        ...(editFormData.test_scheduled_at && {
-          test_scheduled_at: formatDateTimeWithTimezone(
-            editFormData.test_scheduled_at
-          ),
-        }),
       };
 
       // Update vacancy via API
@@ -295,17 +478,27 @@ const Vacancies = () => {
     setTimeout(() => {
       setEditingVacancy(null);
       setEditFormData({
-        title: "",
-        description: "",
-        requirements: "",
-        job_tasks: "",
+        title_uz: "",
+        title_cr: "",
+        title_ru: "",
+        requirements_uz: [{ task: "" }],
+        requirements_cr: [{ task: "" }],
+        requirements_ru: [{ task: "" }],
+        job_tasks_uz: [{ task: "" }],
+        job_tasks_cr: [{ task: "" }],
+        job_tasks_ru: [{ task: "" }],
         application_deadline: "",
         test_scheduled_at: "",
         is_active: true,
         branch_type: "",
         region: "",
-        requirements_eng: "",
-        requirements_ru: "",
+        lan_requirements_eng: "not_required",
+        lan_requirements_ru: "not_required",
+      });
+      setEditManualEditFlags({
+        title_cr: false,
+        requirements_cr: {},
+        job_tasks_cr: {},
       });
     }, 300);
   };
@@ -720,99 +913,230 @@ const Vacancies = () => {
                   </div>
                 ) : selectedVacancy ? (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Vakansiya nomi
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedVacancy.title}
-                        </p>
+                    {/* Title and Status */}
+                    <div className="flex items-start justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
+                      <div className="flex-1">
+                        {/* Title with Tabs */}
+                        <div className="mb-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                              Vakansiya nomi
+                            </h4>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => setActiveTitleTab("uz")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeTitleTab === "uz"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                UZ
+                              </button>
+                              <button
+                                onClick={() => setActiveTitleTab("cr")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeTitleTab === "cr"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                CR
+                              </button>
+                              <button
+                                onClick={() => setActiveTitleTab("ru")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeTitleTab === "ru"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                RU
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-xl font-bold text-gray-900 dark:text-white">
+                            {activeTitleTab === "uz" && (selectedVacancy.title_uz || selectedVacancy.title || "Ma'lumot yo'q")}
+                            {activeTitleTab === "cr" && (selectedVacancy.title_cr || "Ma'lumot yo'q")}
+                            {activeTitleTab === "ru" && (selectedVacancy.title_ru || "Ma'lumot yo'q")}
+                          </p>
+                        </div>
+                        {selectedVacancy.management_details && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {selectedVacancy.management_details.name_uz || selectedVacancy.management_details.name || "Noma'lum"}
+                          </p>
+                        )}
                       </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Holati
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedVacancy.is_active ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                              Faol
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                              Nofaol
-                            </span>
-                          )}
-                        </p>
+                      <div className="ml-4">
+                        {selectedVacancy.is_active ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            Faol
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400">
+                            Nofaol
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Boshqarma
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedVacancy.management_details?.name || "Ma'lumot yo'q"}
-                        </p>
+                    </div>
+
+                    {/* Main Info Grid */}
+                    <div className="space-y-4">
+                      {/* Requirements with Tabs */}
+                      {((selectedVacancy.requirements_uz && Array.isArray(selectedVacancy.requirements_uz) && selectedVacancy.requirements_uz.length > 0) ||
+                        (selectedVacancy.requirements_cr && Array.isArray(selectedVacancy.requirements_cr) && selectedVacancy.requirements_cr.length > 0) ||
+                        (selectedVacancy.requirements_ru && Array.isArray(selectedVacancy.requirements_ru) && selectedVacancy.requirements_ru.length > 0)) && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                              Talablar
+                            </h5>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => setActiveRequirementsTab("uz")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeRequirementsTab === "uz"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                UZ
+                              </button>
+                              <button
+                                onClick={() => setActiveRequirementsTab("cr")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeRequirementsTab === "cr"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                CR
+                              </button>
+                              <button
+                                onClick={() => setActiveRequirementsTab("ru")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeRequirementsTab === "ru"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                RU
+                              </button>
+                            </div>
+                          </div>
+                          <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
+                            {activeRequirementsTab === "uz" && selectedVacancy.requirements_uz?.map((req, idx) => (
+                              <li key={idx}>{req.task || req}</li>
+                            ))}
+                            {activeRequirementsTab === "cr" && selectedVacancy.requirements_cr?.map((req, idx) => (
+                              <li key={idx}>{req.task || req}</li>
+                            ))}
+                            {activeRequirementsTab === "ru" && selectedVacancy.requirements_ru?.map((req, idx) => (
+                              <li key={idx}>{req.task || req}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Job Tasks with Tabs */}
+                      {((selectedVacancy.job_tasks_uz && Array.isArray(selectedVacancy.job_tasks_uz) && selectedVacancy.job_tasks_uz.length > 0) ||
+                        (selectedVacancy.job_tasks_cr && Array.isArray(selectedVacancy.job_tasks_cr) && selectedVacancy.job_tasks_cr.length > 0) ||
+                        (selectedVacancy.job_tasks_ru && Array.isArray(selectedVacancy.job_tasks_ru) && selectedVacancy.job_tasks_ru.length > 0)) && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                              Ish vazifalari
+                            </h5>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => setActiveJobTasksTab("uz")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeJobTasksTab === "uz"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                UZ
+                              </button>
+                              <button
+                                onClick={() => setActiveJobTasksTab("cr")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeJobTasksTab === "cr"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                CR
+                              </button>
+                              <button
+                                onClick={() => setActiveJobTasksTab("ru")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeJobTasksTab === "ru"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                RU
+                              </button>
+                            </div>
+                          </div>
+                          <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
+                            {activeJobTasksTab === "uz" && selectedVacancy.job_tasks_uz?.map((task, idx) => (
+                              <li key={idx}>{task.task || task}</li>
+                            ))}
+                            {activeJobTasksTab === "cr" && selectedVacancy.job_tasks_cr?.map((task, idx) => (
+                              <li key={idx}>{task.task || task}</li>
+                            ))}
+                            {activeJobTasksTab === "ru" && selectedVacancy.job_tasks_ru?.map((task, idx) => (
+                              <li key={idx}>{task.task || task}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Language Requirements */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h5 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Ingliz tili
+                          </h5>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">
+                            {selectedVacancy.lan_requirements_eng === "not_required" 
+                              ? "Talab qilinmaydi" 
+                              : (selectedVacancy.lan_requirements_eng || "—")}
+                          </p>
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Rus tili
+                          </h5>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">
+                            {selectedVacancy.lan_requirements_ru === "not_required" 
+                              ? "Talab qilinmaydi" 
+                              : (selectedVacancy.lan_requirements_ru || "—")}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Filial turi
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedVacancy.branch_type_display || selectedVacancy.branch_type || "Ma'lumot yo'q"}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Test topshirish sanasi
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {formatDateTime(selectedVacancy.test_scheduled_at)}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Qabul sanasi
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
+                    </div>
+
+                    {/* Footer Info */}
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="font-medium">Ariza muddati:</span>{" "}
+                        <span className="text-gray-900 dark:text-white font-semibold">
                           {formatDate(selectedVacancy.application_deadline)}
-                        </p>
+                        </span>
                       </div>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                        Tavsif
-                      </h4>
-                      <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                        {selectedVacancy.description || "Ma'lumot yo'q"}
-                      </p>
-                    </div>
-                    {selectedVacancy.requirements && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Talablar
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {selectedVacancy.requirements}
-                        </p>
-                      </div>
-                    )}
-                    {selectedVacancy.job_tasks && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Vazifalar
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {selectedVacancy.job_tasks}
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                        Yaratilgan sana
-                      </h4>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {formatDateTime(selectedVacancy.created_at)}
-                      </p>
+                      {selectedVacancy.test_scheduled_at && (
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="font-medium">
+                            Test bo'lish sanasi va vaqti:
+                          </span>{" "}
+                          <span className="text-gray-900 dark:text-white font-semibold">
+                            {formatDateTime(selectedVacancy.test_scheduled_at)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -946,7 +1270,7 @@ const Vacancies = () => {
             </span>
 
             {/* Modal panel */}
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
               {/* Header */}
               <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between">
@@ -1008,68 +1332,300 @@ const Vacancies = () => {
                     </div>
                   ) : editingVacancy ? (
                     <>
-                      {/* Title */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Vakansiya nomi <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="title"
-                          value={editFormData.title}
-                          onChange={handleEditFormChange}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                          placeholder="Vakansiya nomini kiriting"
-                        />
+                      {/* Title - Multilingual */}
+                      <div className="space-y-4">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                          Vakansiya nomi (3 tilda) *
+                        </h3>
+                        <div className="space-y-4">
+                          <div>
+                            <label
+                              htmlFor="edit_title_uz"
+                              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              O'zbekcha *
+                            </label>
+                            <input
+                              type="text"
+                              id="edit_title_uz"
+                              name="title_uz"
+                              value={editFormData.title_uz}
+                              onChange={handleEditFormChange}
+                              disabled={editSaving}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                              placeholder="O'zbekcha nom"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="edit_title_cr"
+                              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              O'zbekcha (Kirill)
+                            </label>
+                            <input
+                              type="text"
+                              id="edit_title_cr"
+                              name="title_cr"
+                              value={editFormData.title_cr}
+                              onChange={handleEditFormChange}
+                              disabled={editSaving}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                              placeholder="O'zbekcha (Kirill) nom"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="edit_title_ru"
+                              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              Ruscha
+                            </label>
+                            <input
+                              type="text"
+                              id="edit_title_ru"
+                              name="title_ru"
+                              value={editFormData.title_ru}
+                              onChange={handleEditFormChange}
+                              disabled={editSaving}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                              placeholder="Русское название"
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Description */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Tavsif
-                        </label>
-                        <textarea
-                          name="description"
-                          value={editFormData.description}
-                          onChange={handleEditFormChange}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                          placeholder="Vakansiya tavsifini kiriting"
-                        />
+                      {/* Requirements - Multilingual with Accordion */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => toggleEditSection('requirements')}
+                          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700/30 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            <label className="text-base font-semibold text-gray-900 dark:text-white">
+                              Talablar *
+                            </label>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-500">
+                              {editFormData.requirements_uz.length + editFormData.requirements_cr.length + editFormData.requirements_ru.length} ta
+                            </span>
+                          </div>
+                          <svg
+                            className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${editExpandedSections.requirements ? 'rotate-180' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        {editExpandedSections.requirements && (
+                          <div className="p-5 space-y-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                            {['uz', 'cr', 'ru'].map((lang) => {
+                              const langNames = { uz: "O'zbekcha", cr: "O'zbekcha (Kirill)", ru: "Ruscha" };
+                              const requirementsField = `requirements_${lang}`;
+                              const requirements = editFormData[requirementsField] || [];
+                              
+                              return (
+                                <div key={`edit_requirements_${lang}`} className="space-y-3">
+                                  <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700">
+                                    <label className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                      {langNames[lang]} {lang === 'uz' && <span className="text-red-500">*</span>}
+                                    </label>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                      {requirements.length} ta
+                                    </span>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {requirements.map((req, index) => (
+                                      <div
+                                        key={index}
+                                        className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                                      >
+                                        <div className="flex-shrink-0 mt-1">
+                                          <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-semibold shadow-sm">
+                                            {index + 1}
+                                          </div>
+                                        </div>
+                                        <div className="flex-1">
+                                          <textarea
+                                            value={req.task}
+                                            onChange={(e) =>
+                                              handleEditTaskChange('requirements', lang, index, e.target.value)
+                                            }
+                                            rows={3}
+                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm transition-all"
+                                            placeholder={`${langNames[lang]} talab ${index + 1}...`}
+                                            disabled={editSaving}
+                                          />
+                                        </div>
+                                        {requirements.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => removeEditTask('requirements', lang, index)}
+                                            disabled={editSaving}
+                                            className="flex-shrink-0 mt-1 p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                            title="Talabni o'chirish"
+                                          >
+                                            <svg
+                                              className="h-4 w-4"
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                              />
+                                            </svg>
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => addEditTask('requirements', lang)}
+                                      disabled={editSaving}
+                                      className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-sm font-medium text-gray-700 dark:text-gray-300"
+                                    >
+                                      <span className="flex items-center justify-center space-x-2">
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span>{langNames[lang]} talab qo'shish</span>
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Requirements and Job Tasks - 2 columns */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Requirements */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Talablar
-                          </label>
-                          <textarea
-                            name="requirements"
-                            value={editFormData.requirements}
-                            onChange={handleEditFormChange}
-                            rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                            placeholder="Talablarni kiriting"
-                          />
-                        </div>
-
-                        {/* Job Tasks */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Ish vazifalari
-                          </label>
-                          <textarea
-                            name="job_tasks"
-                            value={editFormData.job_tasks}
-                            onChange={handleEditFormChange}
-                            rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                            placeholder="Ish vazifalarini kiriting"
-                          />
-                        </div>
+                      {/* Job Tasks - Multilingual with Accordion */}
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => toggleEditSection('job_tasks')}
+                          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700/30 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                            <label className="text-base font-semibold text-gray-900 dark:text-white">
+                              Ish vazifalari *
+                            </label>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-500">
+                              {editFormData.job_tasks_uz.length + editFormData.job_tasks_cr.length + editFormData.job_tasks_ru.length} ta
+                            </span>
+                          </div>
+                          <svg
+                            className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${editExpandedSections.job_tasks ? 'rotate-180' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        {editExpandedSections.job_tasks && (
+                          <div className="p-5 space-y-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                            {['uz', 'cr', 'ru'].map((lang) => {
+                              const langNames = { uz: "O'zbekcha", cr: "O'zbekcha (Kirill)", ru: "Ruscha" };
+                              const jobTasksField = `job_tasks_${lang}`;
+                              const jobTasks = editFormData[jobTasksField] || [];
+                              
+                              return (
+                                <div key={`edit_job_tasks_${lang}`} className="space-y-3">
+                                  <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700">
+                                    <label className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                      {langNames[lang]} {lang === 'uz' && <span className="text-red-500">*</span>}
+                                    </label>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                      {jobTasks.length} ta
+                                    </span>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {jobTasks.map((task, index) => (
+                                      <div
+                                        key={index}
+                                        className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-600 transition-colors"
+                                      >
+                                        <div className="flex-shrink-0 mt-1">
+                                          <div className="w-7 h-7 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center text-xs font-semibold shadow-sm">
+                                            {index + 1}
+                                          </div>
+                                        </div>
+                                        <div className="flex-1">
+                                          <textarea
+                                            value={task.task}
+                                            onChange={(e) =>
+                                              handleEditTaskChange('job_tasks', lang, index, e.target.value)
+                                            }
+                                            rows={3}
+                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white text-sm transition-all"
+                                            placeholder={`${langNames[lang]} vazifa ${index + 1}...`}
+                                            disabled={editSaving}
+                                          />
+                                        </div>
+                                        {jobTasks.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => removeEditTask('job_tasks', lang, index)}
+                                            disabled={editSaving}
+                                            className="flex-shrink-0 mt-1 p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                            title="Vazifani o'chirish"
+                                          >
+                                            <svg
+                                              className="h-4 w-4"
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                              />
+                                            </svg>
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => addEditTask('job_tasks', lang)}
+                                      disabled={editSaving}
+                                      className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all text-sm font-medium text-gray-700 dark:text-gray-300"
+                                    >
+                                      <span className="flex items-center justify-center space-x-2">
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span>{langNames[lang]} vazifa qo'shish</span>
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Application Deadline and Test Scheduled At - 2 columns */}
@@ -1161,12 +1717,12 @@ const Vacancies = () => {
                             Talab qilinadigan ingliz tili
                           </label>
                           <select
-                            name="requirements_eng"
-                            value={editFormData.requirements_eng}
+                            name="lan_requirements_eng"
+                            value={editFormData.lan_requirements_eng}
                             onChange={handleEditFormChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                           >
-                            <option value="">Tanlang</option>
+                            <option value="not_required">Talab qilinmaydi</option>
                             <option value="A1">A1</option>
                             <option value="A2">A2</option>
                             <option value="B1">B1</option>
@@ -1181,12 +1737,12 @@ const Vacancies = () => {
                             Talab qilinadigan rus tili
                           </label>
                           <select
-                            name="requirements_ru"
-                            value={editFormData.requirements_ru}
+                            name="lan_requirements_ru"
+                            value={editFormData.lan_requirements_ru}
                             onChange={handleEditFormChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                           >
-                            <option value="">Tanlang</option>
+                            <option value="not_required">Talab qilinmaydi</option>
                             <option value="A1">A1</option>
                             <option value="A2">A2</option>
                             <option value="B1">B1</option>
