@@ -30,7 +30,7 @@ const Departments = () => {
       setError(null);
       const data = await getDepartmentsApi();
       console.log("Departments API response:", data);
-      
+
       // Handle different response formats
       let departmentsArray = [];
       if (Array.isArray(data)) {
@@ -41,12 +41,12 @@ const Departments = () => {
       } else if (data && Array.isArray(data.data)) {
         // Wrapped response format: { data: [...] }
         departmentsArray = data.data;
-      } else if (data && typeof data === 'object') {
+      } else if (data && typeof data === "object") {
         // Single object or other format - try to extract array
         console.warn("Unexpected departments response format:", data);
         departmentsArray = [];
       }
-      
+
       console.log("Processed departments array:", departmentsArray);
       setDepartmentsData(departmentsArray);
       setPage(1);
@@ -63,9 +63,16 @@ const Departments = () => {
 
   const handleEdit = async (updatedData) => {
     const payload = {
-      name: updatedData.name,
-      description: updatedData.description,
-      department_tasks: (updatedData.department_tasks || []).filter(
+      name_uz: updatedData.name_uz || "",
+      name_cr: updatedData.name_cr || "",
+      name_ru: updatedData.name_ru || "",
+      department_tasks_uz: (updatedData.department_tasks_uz || []).filter(
+        (t) => (t.task || "").trim() !== ""
+      ),
+      department_tasks_cr: (updatedData.department_tasks_cr || []).filter(
+        (t) => (t.task || "").trim() !== ""
+      ),
+      department_tasks_ru: (updatedData.department_tasks_ru || []).filter(
         (t) => (t.task || "").trim() !== ""
       ),
     };
@@ -99,12 +106,32 @@ const Departments = () => {
         const q = query.trim().toLowerCase();
         const filtered = updated.filter((d) => {
           if (!q) return true;
-          const inName = d.name?.toLowerCase().includes(q);
-          const inDesc = d.description?.toLowerCase().includes(q);
-          const inTasks = (d.department_tasks || []).some((t) =>
+          // Search in multilingual names
+          const inNameUz = (d.name_uz || d.name || "")
+            .toLowerCase()
+            .includes(q);
+          const inNameCr = (d.name_cr || "").toLowerCase().includes(q);
+          const inNameRu = (d.name_ru || "").toLowerCase().includes(q);
+          // Search in multilingual tasks
+          const inTasksUz = (
+            d.department_tasks_uz ||
+            d.department_tasks ||
+            []
+          ).some((t) => (t.task || "").toLowerCase().includes(q));
+          const inTasksCr = (d.department_tasks_cr || []).some((t) =>
             (t.task || "").toLowerCase().includes(q)
           );
-          return inName || inDesc || inTasks;
+          const inTasksRu = (d.department_tasks_ru || []).some((t) =>
+            (t.task || "").toLowerCase().includes(q)
+          );
+          return (
+            inNameUz ||
+            inNameCr ||
+            inNameRu ||
+            inTasksUz ||
+            inTasksCr ||
+            inTasksRu
+          );
         });
         const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
         if (page > totalPages) setPage(totalPages);
@@ -113,7 +140,9 @@ const Departments = () => {
       toast.success("Departament muvaffaqiyatli o'chirildi");
     } catch (error) {
       console.error("Error deleting department:", error);
-      toast.error(error.message || "Departamentni o'chirishda xatolik yuz berdi");
+      toast.error(
+        error.message || "Departamentni o'chirishda xatolik yuz berdi"
+      );
     } finally {
       toast.dismiss(tId);
     }
@@ -258,7 +287,7 @@ const Departments = () => {
                 setQuery(e.target.value);
                 setPage(1);
               }}
-              placeholder="Qidirish: nomi, tavsifi yoki vazifa..."
+              placeholder="Qidirish: nomi yoki vazifa..."
               className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
             />
             <svg
@@ -314,26 +343,48 @@ const Departments = () => {
               d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
             />
           </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-              Departamentlar yo'q
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Birinchi departamentni qo'shish uchun tugmani bosing.
-            </p>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+            Departamentlar yo'q
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Birinchi departamentni qo'shish uchun tugmani bosing.
+          </p>
         </div>
       ) : (
         (() => {
           // Ensure departmentsData is an array before filtering
-          const safeDepartmentsData = Array.isArray(departmentsData) ? departmentsData : [];
+          const safeDepartmentsData = Array.isArray(departmentsData)
+            ? departmentsData
+            : [];
           const q = query.trim().toLowerCase();
           const filtered = safeDepartmentsData.filter((d) => {
             if (!q) return true;
-            const inName = d.name?.toLowerCase().includes(q);
-            const inDesc = d.description?.toLowerCase().includes(q);
-            const inTasks = (d.department_tasks || []).some((t) =>
+            // Search in multilingual names
+            const inNameUz = (d.name_uz || d.name || "")
+              .toLowerCase()
+              .includes(q);
+            const inNameCr = (d.name_cr || "").toLowerCase().includes(q);
+            const inNameRu = (d.name_ru || "").toLowerCase().includes(q);
+            // Search in multilingual tasks
+            const inTasksUz = (
+              d.department_tasks_uz ||
+              d.department_tasks ||
+              []
+            ).some((t) => (t.task || "").toLowerCase().includes(q));
+            const inTasksCr = (d.department_tasks_cr || []).some((t) =>
               (t.task || "").toLowerCase().includes(q)
             );
-            return inName || inDesc || inTasks;
+            const inTasksRu = (d.department_tasks_ru || []).some((t) =>
+              (t.task || "").toLowerCase().includes(q)
+            );
+            return (
+              inNameUz ||
+              inNameCr ||
+              inNameRu ||
+              inTasksUz ||
+              inTasksCr ||
+              inTasksRu
+            );
           });
 
           const total = filtered.length;

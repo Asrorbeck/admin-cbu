@@ -6,6 +6,7 @@ import {
   createManagementApi,
   createVacancyApi,
 } from "../../utils/api";
+import { latinToCyrillic } from "../../utils/transliterate";
 import toast from "react-hot-toast";
 
 const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType = null, initialRegion = null }) => {
@@ -20,9 +21,18 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
   const [departmentData, setDepartmentData] = useState({
     selectedId: "",
     createNew: false,
-    name: "",
-    description: "",
-    department_tasks: [{ task: "" }],
+    name_uz: "",
+    name_cr: "",
+    name_ru: "",
+    department_tasks_uz: [{ task: "" }],
+    department_tasks_cr: [{ task: "" }],
+    department_tasks_ru: [{ task: "" }],
+  });
+
+  // Track if user manually edited Cyrillic fields (to prevent auto-transliteration)
+  const [manualEditFlags, setManualEditFlags] = useState({
+    name_cr: false,
+    tasks_cr: {},
   });
 
   const [managementData, setManagementData] = useState({
@@ -71,9 +81,16 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         setDepartmentData({
           selectedId: "",
           createNew: false,
-          name: "",
-          description: "",
-          department_tasks: [{ task: "" }],
+          name_uz: "",
+          name_cr: "",
+          name_ru: "",
+          department_tasks_uz: [{ task: "" }],
+          department_tasks_cr: [{ task: "" }],
+          department_tasks_ru: [{ task: "" }],
+        });
+        setManualEditFlags({
+          name_cr: false,
+          tasks_cr: {},
         });
         setManagementData({
           selectedId: "",
@@ -163,24 +180,61 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     }
   };
 
-  const handleTaskChange = (index, value) => {
-    const updated = [...departmentData.department_tasks];
+  const handleTaskChange = (lang, index, value) => {
+    const fieldName = `department_tasks_${lang}`;
+    const updated = [...departmentData[fieldName]];
     updated[index] = { task: value };
-    setDepartmentData((prev) => ({ ...prev, department_tasks: updated }));
+    
+    // Auto-transliterate to Cyrillic if changing Uzbek Latin task
+    if (lang === 'uz') {
+      const taskKey = `task_${index}`;
+      const isManuallyEdited = manualEditFlags.tasks_cr[taskKey] || false;
+      
+      if (!isManuallyEdited) {
+        // Auto-transliterate corresponding Cyrillic task
+        const cyrillicFieldName = 'department_tasks_cr';
+        const cyrillicTasks = [...departmentData[cyrillicFieldName]];
+        if (cyrillicTasks[index]) {
+          cyrillicTasks[index] = { task: latinToCyrillic(value) };
+        }
+        setDepartmentData((prev) => ({
+          ...prev,
+          [fieldName]: updated,
+          [cyrillicFieldName]: cyrillicTasks,
+        }));
+        return;
+      }
+    }
+    
+    // If Cyrillic task is being edited, mark it as manually edited
+    if (lang === 'cr') {
+      const taskKey = `task_${index}`;
+      setManualEditFlags((prev) => ({
+        ...prev,
+        tasks_cr: {
+          ...prev.tasks_cr,
+          [taskKey]: true,
+        },
+      }));
+    }
+    
+    setDepartmentData((prev) => ({ ...prev, [fieldName]: updated }));
   };
 
-  const addTask = () => {
+  const addTask = (lang) => {
+    const fieldName = `department_tasks_${lang}`;
     setDepartmentData((prev) => ({
       ...prev,
-      department_tasks: [...prev.department_tasks, { task: "" }],
+      [fieldName]: [...prev[fieldName], { task: "" }],
     }));
   };
 
-  const removeTask = (index) => {
-    if (departmentData.department_tasks.length <= 1) return;
+  const removeTask = (lang, index) => {
+    const fieldName = `department_tasks_${lang}`;
+    if (departmentData[fieldName].length <= 1) return;
     setDepartmentData((prev) => ({
       ...prev,
-      department_tasks: prev.department_tasks.filter((_, i) => i !== index),
+      [fieldName]: prev[fieldName].filter((_, i) => i !== index),
     }));
   };
 
@@ -188,24 +242,40 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     if (step === 1) {
       // Validate and create/select department
       if (departmentData.createNew) {
-        if (!departmentData.name.trim()) {
-          toast.error("Departament nomi kiritilishi shart");
+        // Validate at least one name is provided
+        if (!departmentData.name_uz.trim() && !departmentData.name_cr.trim() && !departmentData.name_ru.trim()) {
+          toast.error("Kamida bitta tilda departament nomi kiritilishi shart");
           return;
         }
-        if (!departmentData.description.trim()) {
-          toast.error("Departament tavsifi kiritilishi shart");
+        
+        // Filter tasks for each language
+        const filteredTasksUz = departmentData.department_tasks_uz.filter(
+          (t) => (t.task || "").trim() !== ""
+        );
+        const filteredTasksCr = departmentData.department_tasks_cr.filter(
+          (t) => (t.task || "").trim() !== ""
+        );
+        const filteredTasksRu = departmentData.department_tasks_ru.filter(
+          (t) => (t.task || "").trim() !== ""
+        );
+
+        // Validate at least one task is provided
+        if (filteredTasksUz.length === 0 && filteredTasksCr.length === 0 && filteredTasksRu.length === 0) {
+          toast.error("Kamida bitta tilda vazifa kiritilishi shart");
           return;
         }
+
         try {
           setLoading(true);
-          const filteredTasks = departmentData.department_tasks.filter(
-            (t) => (t.task || "").trim() !== ""
-          );
-          const newDept = await createDepartmentApi({
-            name: departmentData.name.trim(),
-            description: departmentData.description.trim(),
-            department_tasks: filteredTasks,
-          });
+          const payload = {
+            name_uz: departmentData.name_uz.trim(),
+            name_cr: departmentData.name_cr.trim(),
+            name_ru: departmentData.name_ru.trim(),
+            department_tasks_uz: filteredTasksUz,
+            department_tasks_cr: filteredTasksCr,
+            department_tasks_ru: filteredTasksRu,
+          };
+          const newDept = await createDepartmentApi(payload);
           setDepartmentData((prev) => ({
             ...prev,
             selectedId: newDept.id.toString(),
@@ -362,7 +432,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
@@ -467,7 +537,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                     <option value="">Departamentni tanlang...</option>
                     {Array.isArray(departments) && departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
-                        {dept.name}
+                        {dept.name_uz || dept.name || `Departament #${dept.id}`}
                       </option>
                     ))}
                     <option value="new">+ Yangi departament yaratish</option>
@@ -476,100 +546,145 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
 
                 {departmentData.createNew && (
                   <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    {/* Department Names - Multilingual */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Departament nomi *
+                        Departament nomi (3 tilda) *
                       </label>
-                      <input
-                        type="text"
-                        value={departmentData.name}
-                        onChange={(e) =>
-                          setDepartmentData((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
-                        }
-                        disabled={loading}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Departament nomini kiriting"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Departament tavsifi *
-                      </label>
-                      <textarea
-                        value={departmentData.description}
-                        onChange={(e) =>
-                          setDepartmentData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        disabled={loading}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Departament tavsifini kiriting"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Departament vazifalari
-                      </label>
-                      <div className="space-y-2">
-                        {departmentData.department_tasks.map((task, index) => (
-                          <div
-                            key={index}
-                            className="flex items-start space-x-2"
-                          >
-                            <textarea
-                              value={task.task}
-                              onChange={(e) =>
-                                handleTaskChange(index, e.target.value)
-                              }
-                              disabled={loading}
-                              rows={2}
-                              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                              placeholder={`Vazifa ${index + 1}`}
-                            />
-                            {departmentData.department_tasks.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeTask(index)}
-                                disabled={loading}
-                                className="mt-1 p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={addTask}
-                          disabled={loading}
-                          className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm"
-                        >
-                          + Vazifa qo'shish
-                        </button>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            O'zbekcha
+                          </label>
+                          <input
+                            type="text"
+                            value={departmentData.name_uz}
+                            onChange={(e) => {
+                              const newValue = e.target.value;
+                              setDepartmentData((prev) => {
+                                // Auto-transliterate to Cyrillic if not manually edited
+                                const updated = {
+                                  ...prev,
+                                  name_uz: newValue,
+                                };
+                                if (!manualEditFlags.name_cr) {
+                                  updated.name_cr = latinToCyrillic(newValue);
+                                }
+                                return updated;
+                              });
+                            }}
+                            disabled={loading}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            placeholder="O'zbekcha nom"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            O'zbekcha (Kirill)
+                          </label>
+                          <input
+                            type="text"
+                            value={departmentData.name_cr}
+                            onChange={(e) => {
+                              setDepartmentData((prev) => ({
+                                ...prev,
+                                name_cr: e.target.value,
+                              }));
+                              // Mark as manually edited to stop auto-transliteration
+                              setManualEditFlags((prev) => ({
+                                ...prev,
+                                name_cr: true,
+                              }));
+                            }}
+                            disabled={loading}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            placeholder="O'zbekcha (Kirill) nom"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            Ruscha
+                          </label>
+                          <input
+                            type="text"
+                            value={departmentData.name_ru}
+                            onChange={(e) =>
+                              setDepartmentData((prev) => ({
+                                ...prev,
+                                name_ru: e.target.value,
+                              }))
+                            }
+                            disabled={loading}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            placeholder="Русское название"
+                          />
+                        </div>
                       </div>
                     </div>
+
+                    {/* Department Tasks - Multilingual */}
+                    {['uz', 'cr', 'ru'].map((lang) => {
+                      const langNames = { uz: "O'zbekcha", cr: "O'zbekcha (Kirill)", ru: "Ruscha" };
+                      const tasksField = `department_tasks_${lang}`;
+                      const tasks = departmentData[tasksField] || [];
+                      
+                      return (
+                        <div key={lang}>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {langNames[lang]} vazifalari {lang === 'uz' && '*'}
+                          </label>
+                          <div className="space-y-2">
+                            {tasks.map((task, index) => (
+                              <div
+                                key={index}
+                                className="flex items-start space-x-2"
+                              >
+                                <textarea
+                                  value={task.task}
+                                  onChange={(e) =>
+                                    handleTaskChange(lang, index, e.target.value)
+                                  }
+                                  disabled={loading}
+                                  rows={2}
+                                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                  placeholder={`${langNames[lang]} vazifa ${index + 1}`}
+                                />
+                                {tasks.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeTask(lang, index)}
+                                    disabled={loading}
+                                    className="mt-1 p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                                  >
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addTask(lang)}
+                              disabled={loading}
+                              className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm"
+                            >
+                              + {langNames[lang]} vazifa qo'shish
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
