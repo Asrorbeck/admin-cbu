@@ -101,7 +101,7 @@ const EvalRulesModalContent = ({
             )}
             {uniqueJobs.map((job) => (
               <option key={job.id} value={job.id}>
-                {job.title}
+                {job.title_uz || job.title || `Vakansiya #${job.id}`}
               </option>
             ))}
           </select>
@@ -1543,9 +1543,9 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 w-40 max-w-[180px]">
                     <span
                       className="block overflow-hidden text-ellipsis"
-                      title={application.job?.title || ""}
+                      title={application.job?.title_uz || application.job?.title || ""}
                     >
-                      {truncateText(application.job?.title || "—", 40)}
+                      {truncateText(application.job?.title_uz || application.job?.title || "—", 40)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -1998,11 +1998,11 @@ const Arizalar = () => {
                           Ish o'rni
                         </h4>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedApplication.job.title || "Ma'lumot yo'q"}
-                          {selectedApplication.job.management_details?.name && (
+                          {selectedApplication.job.title_uz || selectedApplication.job.title || "Ma'lumot yo'q"}
+                          {selectedApplication.job.management?.name_uz && (
                             <span className="text-gray-500 dark:text-gray-400">
                               {" "}
-                              ({selectedApplication.job.management_details.name}
+                              ({selectedApplication.job.management.name_uz}
                               )
                             </span>
                           )}

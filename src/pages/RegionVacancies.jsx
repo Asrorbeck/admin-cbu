@@ -39,6 +39,7 @@ const RegionVacancies = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [activeTitleTab, setActiveTitleTab] = useState("uz");
+  const [activeRegionTitleTab, setActiveRegionTitleTab] = useState("uz");
   const [activeRequirementsTab, setActiveRequirementsTab] = useState("uz");
   const [activeJobTasksTab, setActiveJobTasksTab] = useState("uz");
   
@@ -49,6 +50,9 @@ const RegionVacancies = () => {
     title_uz: "",
     title_cr: "",
     title_ru: "",
+    region_title_uz: "",
+    region_title_cr: "",
+    region_title_ru: "",
     requirements_uz: [{ task: "" }],
     requirements_cr: [{ task: "" }],
     requirements_ru: [{ task: "" }],
@@ -65,6 +69,7 @@ const RegionVacancies = () => {
   });
   const [editManualEditFlags, setEditManualEditFlags] = useState({
     title_cr: false,
+    region_title_cr: false,
     requirements_cr: {},
     job_tasks_cr: {},
   });
@@ -145,6 +150,9 @@ const RegionVacancies = () => {
         title_uz: fullVacancyData.title_uz || "",
         title_cr: fullVacancyData.title_cr || "",
         title_ru: fullVacancyData.title_ru || "",
+        region_title_uz: fullVacancyData.region_title_uz || "",
+        region_title_cr: fullVacancyData.region_title_cr || "",
+        region_title_ru: fullVacancyData.region_title_ru || "",
         requirements_uz: Array.isArray(fullVacancyData.requirements_uz) && fullVacancyData.requirements_uz.length > 0
           ? fullVacancyData.requirements_uz
           : [{ task: "" }],
@@ -177,6 +185,7 @@ const RegionVacancies = () => {
       });
       setEditManualEditFlags({
         title_cr: false,
+        region_title_cr: false,
         requirements_cr: {},
         job_tasks_cr: {},
       });
@@ -199,12 +208,24 @@ const RegionVacancies = () => {
         [name]: value,
         title_cr: latinToCyrillic(value),
       }));
+    } else if (name === 'region_title_uz' && !editManualEditFlags.region_title_cr) {
+      // Auto-transliterate region_title_uz to region_title_cr
+      setEditFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        region_title_cr: latinToCyrillic(value),
+      }));
     } else {
-      // If editing title_cr, mark as manually edited
+      // If editing title_cr or region_title_cr, mark as manually edited
       if (name === 'title_cr') {
         setEditManualEditFlags((prev) => ({
           ...prev,
           title_cr: true,
+        }));
+      } else if (name === 'region_title_cr') {
+        setEditManualEditFlags((prev) => ({
+          ...prev,
+          region_title_cr: true,
         }));
       }
       setEditFormData((prev) => ({
@@ -342,6 +363,9 @@ const RegionVacancies = () => {
         title_uz: editFormData.title_uz.trim(),
         title_cr: editFormData.title_cr.trim(),
         title_ru: editFormData.title_ru.trim(),
+        region_title_uz: editFormData.region_title_uz.trim(),
+        region_title_cr: editFormData.region_title_cr.trim(),
+        region_title_ru: editFormData.region_title_ru.trim(),
         requirements_uz: filteredRequirementsUz,
         requirements_cr: filteredRequirementsCr,
         requirements_ru: filteredRequirementsRu,
@@ -385,6 +409,9 @@ const RegionVacancies = () => {
         title_uz: "",
         title_cr: "",
         title_ru: "",
+        region_title_uz: "",
+        region_title_cr: "",
+        region_title_ru: "",
         requirements_uz: [{ task: "" }],
         requirements_cr: [{ task: "" }],
         requirements_ru: [{ task: "" }],
@@ -401,6 +428,7 @@ const RegionVacancies = () => {
       });
       setEditManualEditFlags({
         title_cr: false,
+        region_title_cr: false,
         requirements_cr: {},
         job_tasks_cr: {},
       });
@@ -866,6 +894,51 @@ const RegionVacancies = () => {
                             {selectedVacancy.region && ` - ${REGIONS.find(r => r.value === selectedVacancy.region)?.label || selectedVacancy.region}`}
                           </p>
                         )}
+                        {/* Region Title */}
+                        {(selectedVacancy.region_title_uz || selectedVacancy.region_title_cr || selectedVacancy.region_title_ru) && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                              Vakansiyaning to'liq nomi
+                            </p>
+                            <div className="flex space-x-2 mb-2">
+                              <button
+                                onClick={() => setActiveRegionTitleTab("uz")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeRegionTitleTab === "uz"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                UZ
+                              </button>
+                              <button
+                                onClick={() => setActiveRegionTitleTab("cr")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeRegionTitleTab === "cr"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                CR
+                              </button>
+                              <button
+                                onClick={() => setActiveRegionTitleTab("ru")}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                  activeRegionTitleTab === "ru"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                }`}
+                              >
+                                RU
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-900 dark:text-white font-medium">
+                              {activeRegionTitleTab === "uz" && (selectedVacancy.region_title_uz || "Ma'lumot yo'q")}
+                              {activeRegionTitleTab === "cr" && (selectedVacancy.region_title_cr || "Ma'lumot yo'q")}
+                              {activeRegionTitleTab === "ru" && (selectedVacancy.region_title_ru || "Ma'lumot yo'q")}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <div className="ml-4">
                         {selectedVacancy.is_active ? (
@@ -1192,6 +1265,69 @@ const RegionVacancies = () => {
                               disabled={editSaving}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
                               placeholder="Русское название"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Region Title - Multilingual */}
+                      <div className="space-y-4">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                          Vakansiyaning to'liq nomi (3 tilda)
+                        </h3>
+                        <div className="space-y-4">
+                          <div>
+                            <label
+                              htmlFor="edit_region_title_uz"
+                              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              O'zbekcha
+                            </label>
+                            <input
+                              type="text"
+                              id="edit_region_title_uz"
+                              name="region_title_uz"
+                              value={editFormData.region_title_uz}
+                              onChange={handleEditFormChange}
+                              disabled={editSaving}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                              placeholder="O'zbekcha to'liq nom"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="edit_region_title_cr"
+                              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              O'zbekcha (Kirill)
+                            </label>
+                            <input
+                              type="text"
+                              id="edit_region_title_cr"
+                              name="region_title_cr"
+                              value={editFormData.region_title_cr}
+                              onChange={handleEditFormChange}
+                              disabled={editSaving}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                              placeholder="O'zbekcha (Kirill) to'liq nom"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="edit_region_title_ru"
+                              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              Ruscha
+                            </label>
+                            <input
+                              type="text"
+                              id="edit_region_title_ru"
+                              name="region_title_ru"
+                              value={editFormData.region_title_ru}
+                              onChange={handleEditFormChange}
+                              disabled={editSaving}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                              placeholder="Полное название вакансии"
                             />
                           </div>
                         </div>

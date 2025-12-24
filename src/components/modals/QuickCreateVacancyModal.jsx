@@ -50,6 +50,9 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     title_uz: "",
     title_cr: "",
     title_ru: "",
+    region_title_uz: "",
+    region_title_cr: "",
+    region_title_ru: "",
     requirements_uz: [{ task: "" }],
     requirements_cr: [{ task: "" }],
     requirements_ru: [{ task: "" }],
@@ -66,6 +69,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
   });
   const [vacancyManualEditFlags, setVacancyManualEditFlags] = useState({
     title_cr: false,
+    region_title_cr: false,
     requirements_cr: {},
     job_tasks_cr: {},
   });
@@ -83,6 +87,9 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           title_uz: "",
           title_cr: "",
           title_ru: "",
+          region_title_uz: "",
+          region_title_cr: "",
+          region_title_ru: "",
           requirements_uz: [{ task: "" }],
           requirements_cr: [{ task: "" }],
           requirements_ru: [{ task: "" }],
@@ -99,6 +106,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         });
         setVacancyManualEditFlags({
           title_cr: false,
+          region_title_cr: false,
           requirements_cr: {},
           job_tasks_cr: {},
         });
@@ -134,6 +142,9 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           title_uz: "",
           title_cr: "",
           title_ru: "",
+          region_title_uz: "",
+          region_title_cr: "",
+          region_title_ru: "",
           requirements_uz: [{ task: "" }],
           requirements_cr: [{ task: "" }],
           requirements_ru: [{ task: "" }],
@@ -150,6 +161,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         });
         setVacancyManualEditFlags({
           title_cr: false,
+          region_title_cr: false,
           requirements_cr: {},
           job_tasks_cr: {},
         });
@@ -547,6 +559,12 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         // Only include management_id for central branch type
         ...(vacancyData.branch_type === "central" && {
           management_id: parseInt(managementData.selectedId),
+        }),
+        // Only include region_title fields for regional branch type
+        ...(vacancyData.branch_type === "regional" && {
+          region_title_uz: vacancyData.region_title_uz.trim(),
+          region_title_cr: vacancyData.region_title_cr.trim(),
+          region_title_ru: vacancyData.region_title_ru.trim(),
         }),
       };
 
@@ -1024,6 +1042,96 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                     </div>
                   </div>
                 </div>
+
+                {/* Region Title - Multilingual (only for regional branch type) */}
+                {initialBranchType === "regional" && (
+                  <div className="space-y-4">
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                      Vakansiyaning to'liq nomi (3 tilda)
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label
+                          htmlFor="vacancy_region_title_uz"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          O'zbekcha
+                        </label>
+                        <input
+                          type="text"
+                          id="vacancy_region_title_uz"
+                          value={vacancyData.region_title_uz}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setVacancyData((prev) => {
+                              // Auto-transliterate to Cyrillic if not manually edited
+                              const updated = {
+                                ...prev,
+                                region_title_uz: newValue,
+                              };
+                              if (!vacancyManualEditFlags.region_title_cr) {
+                                updated.region_title_cr = latinToCyrillic(newValue);
+                              }
+                              return updated;
+                            });
+                          }}
+                          disabled={loading}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                          placeholder="O'zbekcha to'liq nom"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="vacancy_region_title_cr"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          O'zbekcha (Kirill)
+                        </label>
+                        <input
+                          type="text"
+                          id="vacancy_region_title_cr"
+                          value={vacancyData.region_title_cr}
+                          onChange={(e) => {
+                            setVacancyData((prev) => ({
+                              ...prev,
+                              region_title_cr: e.target.value,
+                            }));
+                            // Mark as manually edited to stop auto-transliteration
+                            setVacancyManualEditFlags((prev) => ({
+                              ...prev,
+                              region_title_cr: true,
+                            }));
+                          }}
+                          disabled={loading}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                          placeholder="O'zbekcha (Kirill) to'liq nom"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="vacancy_region_title_ru"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          Ruscha
+                        </label>
+                        <input
+                          type="text"
+                          id="vacancy_region_title_ru"
+                          value={vacancyData.region_title_ru}
+                          onChange={(e) =>
+                            setVacancyData((prev) => ({
+                              ...prev,
+                              region_title_ru: e.target.value,
+                            }))
+                          }
+                          disabled={loading}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                          placeholder="Полное название вакансии"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Requirements - Multilingual with Accordion */}
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
