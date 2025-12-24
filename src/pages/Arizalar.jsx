@@ -11,6 +11,23 @@ import {
 import toast from "react-hot-toast";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 
+// Regions data with display names
+const REGIONS = [
+  { value: "toshkent", label: "Toshkent" },
+  { value: "qashqadaryo", label: "Qashqadaryo" },
+  { value: "samarqand", label: "Samarqand" },
+  { value: "navoiy", label: "Navoiy" },
+  { value: "andijon", label: "Andijon" },
+  { value: "fargona", label: "Farg'ona" },
+  { value: "namangan", label: "Namangan" },
+  { value: "surxondaryo", label: "Surxondaryo" },
+  { value: "sirdaryo", label: "Sirdaryo" },
+  { value: "jizzax", label: "Jizzax" },
+  { value: "buxoro", label: "Buxoro" },
+  { value: "xorazm", label: "Xorazm" },
+  { value: "qoraqalpogiston", label: "Qoraqalpog'iston Respublikasi" },
+];
+
 const EvalRulesModalContent = ({
   applications,
   evaluationRules,
@@ -214,6 +231,10 @@ const Arizalar = () => {
     job_id: null,
     region: null,
   });
+  const [activeTitleTab, setActiveTitleTab] = useState("uz");
+  const [activeRequirementsTab, setActiveRequirementsTab] = useState("uz");
+  const [activeJobTasksTab, setActiveJobTasksTab] = useState("uz");
+  const [activeRegionTitleTab, setActiveRegionTitleTab] = useState("uz");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -634,11 +655,20 @@ const Arizalar = () => {
     try {
       setIsModalOpen(true);
       setModalLoading(true);
+      // Reset tabs to default
+      setActiveTitleTab("uz");
+      setActiveRequirementsTab("uz");
+      setActiveJobTasksTab("uz");
+      setActiveRegionTitleTab("uz");
       const fullData = await getApplicationByIdApi(applicationId);
       setSelectedApplication(fullData);
       // Handle status mapping: backend returns "NEW" but we need to normalize it
       const normalizedStatus = (fullData?.status || "NEW").toUpperCase();
-      setStatusValue(normalizedStatus === "PENDING" ? "REVIEWING" : normalizedStatus);
+      // If status is "NEW", default to "REVIEWING" since "NEW" is not available in the select
+      const mappedStatus = normalizedStatus === "PENDING" 
+        ? "REVIEWING" 
+        : (normalizedStatus === "NEW" ? "REVIEWING" : normalizedStatus);
+      setStatusValue(mappedStatus);
     } catch (error) {
       console.error("Error fetching applications:", error);
       toast.error("Ariza ma'lumotlarini yuklashda xatolik yuz berdi");
@@ -1225,7 +1255,7 @@ const Arizalar = () => {
                   <option value="">Departament</option>
                   {hierarchyData.central.map((dept) => (
                     <option key={dept.department_id} value={dept.department_id}>
-                      {dept.department_name}
+                      {dept.department_name_uz || dept.department_name || `Departament #${dept.department_id}`}
                     </option>
                   ))}
                 </select>
@@ -1257,6 +1287,42 @@ const Arizalar = () => {
               </div>
             )}
 
+            {/* Vacancy Selection for Regional */}
+            {hierarchyFilters.type === 'regional' && 
+             hierarchyFilters.region && 
+             hierarchyData?.regional && (() => {
+              const reg = hierarchyData.regional.find(r => r.region === hierarchyFilters.region);
+              const vacancies = reg?.vacancies || [];
+              
+              if (vacancies.length > 0) {
+                return (
+                  <div key="vacancy-select-regional" className="relative min-w-[180px]">
+                    <select
+                      value={hierarchyFilters.job_id || ""}
+                      onChange={(e) => {
+                        const jobId = e.target.value ? parseInt(e.target.value) : null;
+                        setHierarchyFilters({ 
+                          ...hierarchyFilters, 
+                          job_id: jobId 
+                        });
+                        setPage(1);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Vakansiya</option>
+                      {vacancies.map((vacancy) => (
+                        <option key={vacancy.id} value={vacancy.id}>
+                          {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
+
             {/* Third Select: Management Selection (only for central with managements) */}
             {hierarchyFilters.type === 'central' && 
              hierarchyFilters.department_id && 
@@ -1283,7 +1349,7 @@ const Arizalar = () => {
                       <option value="">Boshqarma</option>
                       {dept.managements.map((mgmt) => (
                         <option key={mgmt.management_id} value={mgmt.management_id}>
-                          {mgmt.management_name}
+                          {mgmt.management_name_uz || mgmt.management_name || `Boshqarma #${mgmt.management_id}`}
                         </option>
                       ))}
                     </select>
@@ -1293,7 +1359,7 @@ const Arizalar = () => {
               return null;
             })()}
 
-            {/* Fourth Select: Vacancy Selection (only for central, not for regional) */}
+            {/* Fourth Select: Vacancy Selection for Central */}
             {hierarchyFilters.type === 'central' && hierarchyFilters.department_id && (() => {
               const dept = hierarchyData?.central?.find(d => d.department_id === hierarchyFilters.department_id);
               const hasManagements = dept?.managements && dept.managements.length > 0;
@@ -1328,7 +1394,7 @@ const Arizalar = () => {
                         <option value="">Vakansiya</option>
                         {vacancies.map((vacancy) => (
                           <option key={vacancy.id} value={vacancy.id}>
-                            {vacancy.title}
+                            {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
                           </option>
                         ))}
                       </select>
@@ -1890,7 +1956,7 @@ const Arizalar = () => {
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
               &#8203;
             </span>
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
               <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1947,180 +2013,299 @@ const Arizalar = () => {
                     </div>
                   </div>
                 ) : selectedApplication ? (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          To'liq ism
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedApplication.user?.full_name || selectedApplication.full_name || "Ma'lumot yo'q"}
-                        </p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column: Application Information */}
+                    <div className="space-y-5">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                        Ariza ma'lumotlari
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            To'liq ism
+                          </h4>
+                          <p className="text-base font-medium text-gray-900 dark:text-white">
+                            {selectedApplication.user?.full_name || selectedApplication.full_name || "Ma'lumot yo'q"}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Yosh
+                          </h4>
+                          <p className="text-base font-medium text-gray-900 dark:text-white">
+                            {(() => {
+                              const age = calculateAge(
+                                selectedApplication.data_of_birth
+                              );
+                              return age === null
+                                ? "Ma'lumot yo'q"
+                                : `${age} yosh`;
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Telefon
+                          </h4>
+                          <p className="text-base font-medium text-gray-900 dark:text-white">
+                            {selectedApplication.user?.phone_number || selectedApplication.phone || "Ma'lumot yo'q"}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Qo'shimcha ma'lumot
+                          </h4>
+                          <p className="text-base text-gray-900 dark:text-white whitespace-pre-wrap">
+                            {selectedApplication.additional_information ||
+                              "Ma'lumot yo'q"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Yosh
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {(() => {
-                            const age = calculateAge(
-                              selectedApplication.data_of_birth
-                            );
-                            return age === null
-                              ? "Ma'lumot yo'q"
-                              : `${age} yosh`;
-                          })()}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Telefon
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedApplication.user?.phone_number || selectedApplication.phone || "Ma'lumot yo'q"}
-                        </p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Qo'shimcha ma'lumot
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {selectedApplication.additional_information ||
-                            "Ma'lumot yo'q"}
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Job Information */}
-                    {selectedApplication.job && (
                       <div>
                         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Ish o'rni
+                          Ta'lim
                         </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedApplication.job.title_uz || selectedApplication.job.title || "Ma'lumot yo'q"}
-                          {selectedApplication.job.management?.name_uz && (
-                            <span className="text-gray-500 dark:text-gray-400">
-                              {" "}
-                              ({selectedApplication.job.management.name_uz}
-                              )
-                            </span>
-                          )}
+                        {selectedApplication.graduations?.length ? (
+                          <div className="space-y-3">
+                            {selectedApplication.graduations.map((g) => (
+                              <div
+                                key={g.id}
+                                className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
+                              >
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {g.university} — {g.degree}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                  {g.specialization}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {formatDateYearMonth(g.date_from)} —{" "}
+                                  {formatDateYearMonth(g.date_to)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Ish tajribasi
+                        </h4>
+                        {selectedApplication.employments?.length ? (
+                          <div className="space-y-3">
+                            {selectedApplication.employments.map((e) => (
+                              <div
+                                key={e.id}
+                                className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
+                              >
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {e.organization_name}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                  {e.position}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {formatDateYearMonth(e.date_from)} —{" "}
+                                  {formatDateYearMonth(e.date_to)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tillar
+                        </h4>
+                        {selectedApplication.languages?.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedApplication.languages.map((l) => (
+                              <span
+                                key={l.id}
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              >
+                                {l.language_name} — {translateLanguageDegree(l.degree)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Oylik maosh
+                        </h4>
+                        <p className="text-base font-medium text-gray-900 dark:text-white">
+                          {selectedApplication.monthly_salary 
+                            ? new Intl.NumberFormat('uz-UZ').format(selectedApplication.monthly_salary) + " so'm"
+                            : "Ma'lumot yo'q"}
                         </p>
                       </div>
-                    )}
 
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Ta'lim
-                      </h4>
-                      {selectedApplication.graduations?.length ? (
-                        <div className="space-y-3">
-                          {selectedApplication.graduations.map((g) => (
-                            <div
-                              key={g.id}
-                              className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
-                            >
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {g.university} — {g.degree}
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-gray-300">
-                                {g.specialization}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {formatDateYearMonth(g.date_from)} —{" "}
-                                {formatDateYearMonth(g.date_to)}
-                              </div>
-                            </div>
-                          ))}
+                      {/* Status Editor */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Holatni o'zgartirish
+                        </h4>
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={statusValue}
+                            onChange={(e) => setStatusValue(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                          >
+                            <option value="REVIEWING">Kutilmoqda</option>
+                            <option value="TEST_SCHEDULED">Qabul qilindi</option>
+                            <option value="REJECTED_DOCS">Rad etildi</option>
+                          </select>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Joriy: {getStatusBadge(selectedApplication.status)}
+                          </span>
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Ish tajribasi
-                      </h4>
-                      {selectedApplication.employments?.length ? (
-                        <div className="space-y-3">
-                          {selectedApplication.employments.map((e) => (
-                            <div
-                              key={e.id}
-                              className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
-                            >
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {e.organization_name}
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-gray-300">
-                                {e.position}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {formatDateYearMonth(e.date_from)} —{" "}
-                                {formatDateYearMonth(e.date_to)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tillar
-                      </h4>
-                      {selectedApplication.languages?.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {selectedApplication.languages.map((l) => (
-                            <span
-                              key={l.id}
-                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                            >
-                              {l.language_name} — {translateLanguageDegree(l.degree)}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Oylik maosh
-                      </h4>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedApplication.monthly_salary 
-                          ? new Intl.NumberFormat('uz-UZ').format(selectedApplication.monthly_salary) + " so'm"
-                          : "Ma'lumot yo'q"}
-                      </p>
-                    </div>
-
-                    {/* Status Editor (placed after languages) */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Holatni o'zgartirish
-                      </h4>
-                      <div className="flex items-center gap-3">
-                      <select
-                        value={statusValue}
-                        onChange={(e) => setStatusValue(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
-                      >
-                        <option value="NEW">Yangi</option>
-                        <option value="REVIEWING">Kutilmoqda</option>
-                        <option value="TEST_SCHEDULED">Qabul qilindi</option>
-                        <option value="REJECTED_DOCS">Rad etildi</option>
-                      </select>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Joriy: {getStatusBadge(selectedApplication.status)}
-                        </span>
                       </div>
                     </div>
-                  </>
+
+                    {/* Right Column: Vacancy Information */}
+                    {selectedApplication.job && (
+                      <div className="space-y-5 border-l border-gray-200 dark:border-gray-700 pl-6">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                          Vakansiya ma'lumotlari
+                        </h3>
+                        
+                        {/* Title - Large Display */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                            Vakansiya nomi
+                          </h4>
+                          <p className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                            {selectedApplication.job.title_uz || selectedApplication.job.title || "Ma'lumot yo'q"}
+                          </p>
+                          
+                          {/* Department and Management Information (for central) or Region (for regional) */}
+                          {selectedApplication.job.branch_type === "regional" && selectedApplication.job.region ? (
+                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                              <div>
+                                <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                  Hudud
+                                </h5>
+                                <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                  {(() => {
+                                    const region = REGIONS.find((r) => r.value === selectedApplication.job.region);
+                                    return region ? region.label : selectedApplication.job.region;
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (selectedApplication.job.management?.name_uz || selectedApplication.job.management?.department?.name_uz) && (
+                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                              {selectedApplication.job.management?.department?.name_uz && (
+                                <div className="mb-2">
+                                  <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                    Departament
+                                  </h5>
+                                  <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                    {selectedApplication.job.management.department.name_uz}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedApplication.job.management?.name_uz && (
+                                <div>
+                                  <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                    Boshqarma
+                                  </h5>
+                                  <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                    {selectedApplication.job.management.name_uz}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Region Title (if regional) */}
+                        {selectedApplication.job.branch_type === "regional" && 
+                         (selectedApplication.job.region_title_uz || selectedApplication.job.region_title_cr || selectedApplication.job.region_title_ru) && (
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                Vakansiyaning to'liq nomi
+                              </h4>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => setActiveRegionTitleTab("uz")}
+                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeRegionTitleTab === "uz"
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  UZ
+                                </button>
+                                <button
+                                  onClick={() => setActiveRegionTitleTab("cr")}
+                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeRegionTitleTab === "cr"
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  CR
+                                </button>
+                                <button
+                                  onClick={() => setActiveRegionTitleTab("ru")}
+                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                    activeRegionTitleTab === "ru"
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  RU
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                              {activeRegionTitleTab === "uz" && (selectedApplication.job.region_title_uz || "Ma'lumot yo'q")}
+                              {activeRegionTitleTab === "cr" && (selectedApplication.job.region_title_cr || "Ma'lumot yo'q")}
+                              {activeRegionTitleTab === "ru" && (selectedApplication.job.region_title_ru || "Ma'lumot yo'q")}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Language Requirements */}
+                        <div className="space-y-3">
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                              Ingliz tili talabi
+                            </h4>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {selectedApplication.job.lan_requirements_eng === "not_required" 
+                                ? "Talab qilinmaydi" 
+                                : selectedApplication.job.lan_requirements_eng || "Ma'lumot yo'q"}
+                            </p>
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                              Rus tili talabi
+                            </h4>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {selectedApplication.job.lan_requirements_ru === "not_required" 
+                                ? "Talab qilinmaydi" 
+                                : selectedApplication.job.lan_requirements_ru || "Ma'lumot yo'q"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : null}
               </div>
 

@@ -8,13 +8,38 @@ const NewVacancy = () => {
   const { id } = useParams(); // management ID
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  // Static requirements that are always sent to backend
+  const staticRequirements = {
+    uz: [
+      "Xalqaro va milliy sertifikatlarning mavjudligiga ustuvorlik beriladi.",
+      "Davlat tilini mukammal bilishi, barcha xat-hujjatlarni kirill va lotin alifbosida orfografik va grammatik xatolarsiz yoza olishi lozim.",
+      "O'zbekiston Respublikasining Konstitutsiyasi, \"O'zbekiston Respublikasining Markaziy banki to'g'risida\"gi, \"Banklar va bank faoliyati to'g'risida\"gi hamda bank tizimiga doir boshqa turdagi qaror va farmonlardan xabardor bo'lish lozim.",
+      "MS Office (Word, Excel, Power Point, Outlook) dasturlarida erkin ishlay olishi lozim.",
+      "Mas'uliyatli hamda jamoa bilan ishlay olishi, yangiliklarga intiluvchan, o'z ustida ishlay olishi lozim.",
+    ],
+    cr: [
+      "Халқаро ва миллий сертификатларнинг мавжудлигига устуворлик берилади.",
+      "Давлат тилини мукаммал билиши, барча хат-ҳужжатларни кирилл ва лотин алифбосида орфографик ва грамматик хатоларсиз ёза олиши лозим.",
+      "Ўзбекистон Республикасининг Конституцияси, \"Ўзбекистон Республикасининг Марказий банки тўғрисида\"ги, \"Банклар ва банк фаолияти тўғрисида\"ги ҳамда банк тизимига доир бошқа турдаги қарор ва фармонлардан хабардор бўлиш лозим.",
+      "MS Office (Word, Excel, Power Point, Outlook) дастурларида эркин ишлай олиши лозим.",
+      "Масъулиятли ҳамда жамоа билан ишлай олиши, янгиликларга интилувчан, ўз устида ишлай олиши лозим.",
+    ],
+    ru: [
+      "Приоритет отдается наличию международных и национальных сертификатов.",
+      "Отличное знание государственного языка, умение писать все письма и документы кириллицей и латинским алфавитом без орфографических и грамматических ошибок.",
+      "Знание Конституции Республики Узбекистан, Закона «О Центральном банке Республики Узбекистан», «О банках и банковской деятельности» и других постановлений и указов, касающихся банковской системы.",
+      "Умение свободно работать в программах MS Office (Word, Excel, PowerPoint, Outlook).",
+      "Ответственность, умение работать в команде, стремление к инновациям, способность к самосовершенствованию.",
+    ],
+  };
+
   const [formData, setFormData] = useState({
     title_uz: "",
     title_cr: "",
     title_ru: "",
-    requirements_uz: [{ task: "" }],
-    requirements_cr: [{ task: "" }],
-    requirements_ru: [{ task: "" }],
+    requirements_uz: staticRequirements.uz.map((req) => ({ task: req })).concat([{ task: "" }]),
+    requirements_cr: staticRequirements.cr.map((req) => ({ task: req })).concat([{ task: "" }]),
+    requirements_ru: staticRequirements.ru.map((req) => ({ task: req })).concat([{ task: "" }]),
     job_tasks_uz: [{ task: "" }],
     job_tasks_cr: [{ task: "" }],
     job_tasks_ru: [{ task: "" }],
@@ -36,11 +61,23 @@ const NewVacancy = () => {
     requirements: false,
     job_tasks: false,
   });
+  const [expandedStaticRequirements, setExpandedStaticRequirements] = useState({
+    uz: false,
+    cr: false,
+    ru: false,
+  });
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
+    }));
+  };
+
+  const toggleStaticRequirements = (lang) => {
+    setExpandedStaticRequirements((prev) => ({
+      ...prev,
+      [lang]: !prev[lang],
     }));
   };
 
@@ -132,6 +169,11 @@ const NewVacancy = () => {
 
   const removeTask = (type, lang, index) => {
     const fieldName = `${type}_${lang}`;
+    // For requirements: don't allow removing static requirements (indices 0-4)
+    // Only allow removing custom requirements (index 5 and above)
+    if (type === 'requirements' && index < 5) {
+      return; // Don't allow removing static requirements
+    }
     if (formData[fieldName].length <= 1) return;
     setFormData({
       ...formData,
@@ -367,7 +409,7 @@ const NewVacancy = () => {
                   Talablar *
                 </label>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-500">
-                  {formData.requirements_uz.length + formData.requirements_cr.length + formData.requirements_ru.length} ta
+                  {formData.requirements_uz.filter(r => r.task.trim()).length + formData.requirements_cr.filter(r => r.task.trim()).length + formData.requirements_ru.filter(r => r.task.trim()).length} ta
                 </span>
               </div>
               <svg
@@ -402,31 +444,80 @@ const NewVacancy = () => {
                         </span>
                       </div>
                       <div className="space-y-3">
-                        {requirements.map((req, index) => (
-                          <div
-                            key={index}
-                            className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                        {/* Static requirements (first 5) - accordion */}
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => toggleStaticRequirements(lang)}
+                            className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-900/40 dark:hover:to-blue-800/40 transition-all"
                           >
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                Asosiy talablar (5 ta)
+                              </span>
+                            </div>
+                            <svg
+                              className={`h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${expandedStaticRequirements[lang] ? 'rotate-180' : ''}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </button>
+                          {expandedStaticRequirements[lang] && (
+                            <div className="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                              {requirements.slice(0, 5).map((req, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+                                >
+                                  <div className="flex-shrink-0 mt-1">
+                                    <div className="w-6 h-6 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold shadow-sm">
+                                      {index + 1}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
+                                      {req.task}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Editable field (6th item - the empty one) */}
+                        {requirements.length > 5 && requirements[5] && (
+                          <div className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
                             <div className="flex-shrink-0 mt-1">
                               <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-semibold shadow-sm">
-                                {index + 1}
+                                6
                               </div>
                             </div>
                             <div className="flex-1">
                               <textarea
-                                value={req.task}
+                                value={requirements[5].task}
                                 onChange={(e) =>
-                                  handleTaskChange('requirements', lang, index, e.target.value)
+                                  handleTaskChange('requirements', lang, 5, e.target.value)
                                 }
                                 rows={3}
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm transition-all"
-                                placeholder={`${langNames[lang]} talab ${index + 1}...`}
+                                placeholder={`${langNames[lang]} talab qo'shish...`}
                               />
                             </div>
-                            {requirements.length > 1 && (
+                            {/* Allow removing 6th item only if it's empty and there are more items after it */}
+                            {(!requirements[5].task.trim() && requirements.length > 6) && (
                               <button
                                 type="button"
-                                onClick={() => removeTask('requirements', lang, index)}
+                                onClick={() => removeTask('requirements', lang, 5)}
                                 disabled={loading}
                                 className="flex-shrink-0 mt-1 p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                                 title="Talabni o'chirish"
@@ -447,7 +538,55 @@ const NewVacancy = () => {
                               </button>
                             )}
                           </div>
+                        )}
+                        
+                        {/* Additional requirements (after 6th) */}
+                        {requirements.slice(6).map((req, index) => (
+                          <div
+                            key={index + 6}
+                            className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                          >
+                            <div className="flex-shrink-0 mt-1">
+                              <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-xs font-semibold shadow-sm">
+                                {index + 7}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <textarea
+                                value={req.task}
+                                onChange={(e) =>
+                                  handleTaskChange('requirements', lang, index + 6, e.target.value)
+                                }
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm transition-all"
+                                placeholder={`${langNames[lang]} talab ${index + 7}...`}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeTask('requirements', lang, index + 6)}
+                              disabled={loading}
+                              className="flex-shrink-0 mt-1 p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                              title="Talabni o'chirish"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         ))}
+                        
+                        {/* Plus button to add more requirements */}
                         <button
                           type="button"
                           onClick={() => addTask('requirements', lang)}

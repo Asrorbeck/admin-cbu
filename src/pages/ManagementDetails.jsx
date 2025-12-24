@@ -341,6 +341,13 @@ const ManagementDetails = () => {
     });
   };
 
+  const toggleEditSection = (section) => {
+    setEditExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
   const handleEditFormSubmit = async (e) => {
     e.preventDefault();
 
