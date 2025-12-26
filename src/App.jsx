@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SnowEffect from "./components/SnowEffect";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Departments from "./pages/Departments";
@@ -416,6 +417,7 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-gray-50">
+          <SnowEffect />
           <AppRoutes />
           <Toaster position="top-right" />
         </div>
