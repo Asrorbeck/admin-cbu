@@ -90,7 +90,7 @@ const VacanciesTable = ({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12 pl-6">
                 <input
                   type="checkbox"
                   checked={
@@ -105,36 +105,36 @@ const VacanciesTable = ({
                   className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-16">
                 T/r
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-64">
                 Vakansiya nomi
               </th>
               {!hideDepartmentColumn && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-80">
                   Departament
                 </th>
               )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-40">
                 Filial turi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
                 Holati
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
                 Ingliz tili
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
                 Rus tili
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-48">
                 Test topshirish sanasi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-36">
                 Qabul sanasi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
                 Amallar
               </th>
             </tr>
@@ -145,7 +145,7 @@ const VacanciesTable = ({
                 key={item.id}
                 className="hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-2 py-4 whitespace-nowrap pl-6">
                   <input
                     type="checkbox"
                     checked={selectedIds.has(item.id)}
@@ -157,44 +157,50 @@ const VacanciesTable = ({
                     className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {index + 1}
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  {item.id}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4">
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs" title={item.title_uz || item.title || "Ma'lumot yo'q"}>
                     {item.title_uz || item.title || "Ma'lumot yo'q"}
                   </div>
                 </td>
                 {!hideDepartmentColumn && (
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-gray-100">
-                      {item.management_details?.name || "Ma'lumot yo'q"}
+                  <td className="px-4 py-4">
+                    <div className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-sm" title={item.management_details?.name_uz || item.management_details?.name || "Ma'lumot yo'q"}>
+                      {item.management_details?.name_uz || item.management_details?.name || "Ma'lumot yo'q"}
                     </div>
                   </td>
                 )}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   {getBranchTypeBadge(item.branch_type_display, item.branch_type)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   {getStatusBadge(item.is_active)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {item.lan_requirements_eng === "not_required" 
-                    ? "Talab qilinmaydi" 
-                    : (item.lan_requirements_eng || "—")}
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <div className="truncate max-w-28">
+                    {item.lan_requirements_eng_display || 
+                     (item.lan_requirements_eng === "not_required" 
+                      ? "Talab qilinmaydi" 
+                      : (item.lan_requirements_eng || "—"))}
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {item.lan_requirements_ru === "not_required" 
-                    ? "Talab qilinmaydi" 
-                    : (item.lan_requirements_ru || "—")}
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <div className="truncate max-w-28">
+                    {item.lan_requirements_ru_display || 
+                     (item.lan_requirements_ru === "not_required" 
+                      ? "Talab qilinmaydi" 
+                      : (item.lan_requirements_ru || "—"))}
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {formatDateTime(item.test_scheduled_at)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {formatDate(item.application_deadline)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleViewDetails(item)}

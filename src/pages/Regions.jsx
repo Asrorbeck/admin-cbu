@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 // Regions data with display names
 const REGIONS = [
-  { value: "toshkent", label: "Toshkent" },
+  { value: "toshkent shahar", label: "Toshkent shahar" },
+  { value: "toshkent_viloyati", label: "Toshkent viloyati" },
   { value: "qashqadaryo", label: "Qashqadaryo" },
   { value: "samarqand", label: "Samarqand" },
   { value: "navoiy", label: "Navoiy" },

@@ -108,7 +108,7 @@ const NewTest = () => {
         const vacancy = findVacancyById(id);
         if (vacancy) {
           newInfo[id] = {
-            title: vacancy.title || `Vakansiya #${id}`,
+            title: vacancy.title_uz || vacancy.title || `Vakansiya #${id}`,
             path: path,
           };
         }
@@ -809,12 +809,12 @@ const NewTest = () => {
                             const deptIndex = parseInt(navigationPath[1]);
                             const dept = hierarchyData.central?.[deptIndex];
                             if (dept) {
-                              breadcrumbItems.push({ label: dept.department_name, path: ["central", deptIndex] });
+                              breadcrumbItems.push({ label: dept.department_name_uz || dept.department_name || `Departament #${dept.department_id}`, path: ["central", deptIndex] });
                               if (navigationPath.length > 2) {
                                 const mgmtIndex = parseInt(navigationPath[2]);
                                 const mgmt = dept.managements?.[mgmtIndex];
                                 if (mgmt) {
-                                  breadcrumbItems.push({ label: mgmt.management_name, path: ["central", deptIndex, mgmtIndex] });
+                                  breadcrumbItems.push({ label: mgmt.management_name_uz || mgmt.management_name || `Boshqarma #${mgmt.management_id}`, path: ["central", deptIndex, mgmtIndex] });
                                 }
                               }
                             }
@@ -932,12 +932,12 @@ const NewTest = () => {
                                         <input
                                           type="checkbox"
                                           checked={allSelected}
-                                          onChange={() => toggleAllVacancies(dept, `Markaziy apparat > ${dept.department_name}`, dept.department_name)}
+                                          onChange={() => toggleAllVacancies(dept, `Markaziy apparat > ${dept.department_name_uz || dept.department_name || `Departament #${dept.department_id}`}`, dept.department_name_uz || dept.department_name || `Departament #${dept.department_id}`)}
                                           onClick={(e) => e.stopPropagation()}
                                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         />
                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
-                                          {dept.department_name}
+                                          {dept.department_name_uz || dept.department_name || `Departament #${dept.department_id}`}
                                         </span>
                                       </div>
                                       {hasManagements && (
@@ -982,13 +982,13 @@ const NewTest = () => {
                                     return (
                                       <div
                                         key={vacancy.id}
-                                        onClick={() => handleVacancyToggle(vacancy.id, vacancy.title, `Markaziy apparat > ${department.department_name}`)}
+                                        onClick={() => handleVacancyToggle(vacancy.id, vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`, `Markaziy apparat > ${department.department_name_uz || department.department_name || `Departament #${department.department_id}`}`)}
                                         className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center justify-between ${
                                           isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
                                         }`}
                                       >
                                         <span className={`text-sm ${isSelected ? "text-blue-900 dark:text-blue-300 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
-                                          {vacancy.title || `Vakansiya #${vacancy.id}`}
+                                          {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
                                         </span>
                                         {isSelected && (
                                           <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -1017,12 +1017,12 @@ const NewTest = () => {
                                         <input
                                           type="checkbox"
                                           checked={allSelected}
-                                          onChange={() => toggleAllVacancies(mgmt, `Markaziy apparat > ${department.department_name} > ${mgmt.management_name}`, mgmt.management_name)}
+                                          onChange={() => toggleAllVacancies(mgmt, `Markaziy apparat > ${department.department_name_uz || department.department_name || `Departament #${department.department_id}`} > ${mgmt.management_name_uz || mgmt.management_name || `Boshqarma #${mgmt.management_id}`}`, mgmt.management_name_uz || mgmt.management_name || `Boshqarma #${mgmt.management_id}`)}
                                           onClick={(e) => e.stopPropagation()}
                                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         />
                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
-                                          {mgmt.management_name}
+                                          {mgmt.management_name_uz || mgmt.management_name || `Boshqarma #${mgmt.management_id}`}
                                         </span>
                                       </div>
                                       {hasVacancies && (
@@ -1061,13 +1061,13 @@ const NewTest = () => {
                                 return (
                                   <div
                                     key={vacancy.id}
-                                    onClick={() => handleVacancyToggle(vacancy.id, vacancy.title, `Markaziy apparat > ${department.department_name} > ${management.management_name}`)}
+                                    onClick={() => handleVacancyToggle(vacancy.id, vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`, `Markaziy apparat > ${department.department_name_uz || department.department_name || `Departament #${department.department_id}`} > ${management.management_name_uz || management.management_name || `Boshqarma #${management.management_id}`}`)}
                                     className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center justify-between ${
                                       isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
                                     }`}
                                   >
                                     <span className={`text-sm ${isSelected ? "text-blue-900 dark:text-blue-300 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
-                                      {vacancy.title || `Vakansiya #${vacancy.id}`}
+                                      {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
                                     </span>
                                     {isSelected && (
                                       <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -1147,13 +1147,13 @@ const NewTest = () => {
                                 return (
                                   <div
                                     key={vacancy.id}
-                                    onClick={() => handleVacancyToggle(vacancy.id, vacancy.title, `Hududiy boshqarma > ${region.region}`)}
+                                    onClick={() => handleVacancyToggle(vacancy.id, vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`, `Hududiy boshqarma > ${region.region}`)}
                                     className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center justify-between ${
                                       isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
                                     }`}
                                   >
                                     <span className={`text-sm ${isSelected ? "text-blue-900 dark:text-blue-300 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
-                                      {vacancy.title || `Vakansiya #${vacancy.id}`}
+                                      {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
                                     </span>
                                     {isSelected && (
                                       <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">

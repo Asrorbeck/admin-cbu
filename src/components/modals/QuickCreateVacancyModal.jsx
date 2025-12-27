@@ -5,9 +5,24 @@ import {
   createDepartmentApi,
   createManagementApi,
   createVacancyApi,
+  getTestsApi,
 } from "../../utils/api";
 import { latinToCyrillic } from "../../utils/transliterate";
+import { getStaticRequirementsAsObjects, mergeStaticRequirements } from "../../utils/staticRequirements";
 import toast from "react-hot-toast";
+
+// Convert region value to backend format
+const getBackendRegionValue = (regionValue) => {
+  if (!regionValue) return null;
+  if (regionValue === "toshkent_viloyati") {
+    return "toshkent";
+  }
+  // Convert URL-friendly format to backend format
+  if (regionValue === "toshkent-shahar" || regionValue === "toshkent_shahar") {
+    return "toshkent shahar";
+  }
+  return regionValue;
+};
 
 const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType = null, initialRegion = null }) => {
   const [step, setStep] = useState(1); // 1: Department, 2: Management, 3: Vacancy
@@ -16,6 +31,11 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
   const [managements, setManagements] = useState([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loadingManagements, setLoadingManagements] = useState(false);
+  const [tests, setTests] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(true);
+  
+  // Get static requirements
+  const staticRequirements = getStaticRequirementsAsObjects();
 
   // Form data
   const [departmentData, setDepartmentData] = useState({
@@ -53,9 +73,9 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     region_title_uz: "",
     region_title_cr: "",
     region_title_ru: "",
-    requirements_uz: [{ task: "" }],
-    requirements_cr: [{ task: "" }],
-    requirements_ru: [{ task: "" }],
+    requirements_uz: [...staticRequirements.uz, { task: "" }],
+    requirements_cr: [...staticRequirements.cr, { task: "" }],
+    requirements_ru: [...staticRequirements.ru, { task: "" }],
     job_tasks_uz: [{ task: "" }],
     job_tasks_cr: [{ task: "" }],
     job_tasks_ru: [{ task: "" }],
@@ -66,6 +86,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     region: "",
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
+    test_id: "",
   });
   const [vacancyManualEditFlags, setVacancyManualEditFlags] = useState({
     title_cr: false,
@@ -83,6 +104,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
       // If regional branch type, skip to step 3 (vacancy form)
       if (initialBranchType === "regional") {
         setStep(3);
+        fetchTests(); // Fetch tests for regional vacancies too
         setVacancyData({
           title_uz: "",
           title_cr: "",
@@ -90,19 +112,20 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           region_title_uz: "",
           region_title_cr: "",
           region_title_ru: "",
-          requirements_uz: [{ task: "" }],
-          requirements_cr: [{ task: "" }],
-          requirements_ru: [{ task: "" }],
+          requirements_uz: [...staticRequirements.uz, { task: "" }],
+          requirements_cr: [...staticRequirements.cr, { task: "" }],
+          requirements_ru: [...staticRequirements.ru, { task: "" }],
           job_tasks_uz: [{ task: "" }],
           job_tasks_cr: [{ task: "" }],
           job_tasks_ru: [{ task: "" }],
           is_active: true,
           application_deadline: "",
           test_scheduled_at: "",
-          branch_type: initialBranchType || "",
+          branch_type: initialBranchType !== null && initialBranchType !== undefined ? initialBranchType : "central", // Always central if no initialBranchType
           region: initialRegion || "",
           lan_requirements_eng: "not_required",
           lan_requirements_ru: "not_required",
+          test_id: "",
         });
         setVacancyManualEditFlags({
           title_cr: false,
@@ -112,6 +135,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         });
       } else {
         fetchDepartments();
+        fetchTests();
         // Reset form when modal opens
         setStep(1);
         setDepartmentData({
@@ -145,19 +169,20 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           region_title_uz: "",
           region_title_cr: "",
           region_title_ru: "",
-          requirements_uz: [{ task: "" }],
-          requirements_cr: [{ task: "" }],
-          requirements_ru: [{ task: "" }],
+          requirements_uz: [...staticRequirements.uz, { task: "" }],
+          requirements_cr: [...staticRequirements.cr, { task: "" }],
+          requirements_ru: [...staticRequirements.ru, { task: "" }],
           job_tasks_uz: [{ task: "" }],
           job_tasks_cr: [{ task: "" }],
           job_tasks_ru: [{ task: "" }],
           is_active: true,
           application_deadline: "",
           test_scheduled_at: "",
-          branch_type: initialBranchType || "",
+          branch_type: initialBranchType !== null && initialBranchType !== undefined ? initialBranchType : "central", // Always central if no initialBranchType
           region: initialRegion || "",
           lan_requirements_eng: "not_required",
           lan_requirements_ru: "not_required",
+          test_id: "",
         });
         setVacancyManualEditFlags({
           title_cr: false,
@@ -168,6 +193,25 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
       }
     }
   }, [isOpen, initialBranchType, initialRegion]);
+
+  const fetchTests = async () => {
+    try {
+      setLoadingTests(true);
+      const data = await getTestsApi();
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const testsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setTests(testsArray);
+    } catch (error) {
+      console.error("Error fetching tests:", error);
+      toast.error("Testlarni yuklashda xatolik yuz berdi");
+      setTests([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -524,12 +568,15 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
       return;
     }
 
-    if (!vacancyData.branch_type) {
+    // If no initialBranchType, branch_type should always be "central"
+    const finalBranchType = initialBranchType !== null && initialBranchType !== undefined ? vacancyData.branch_type : "central";
+    
+    if (!finalBranchType) {
       toast.error("Filial turini tanlash shart");
       return;
     }
 
-    if (vacancyData.branch_type === "regional" && !vacancyData.region) {
+    if (finalBranchType === "regional" && !vacancyData.region) {
       toast.error("Hududni tanlash shart");
       return;
     }
@@ -554,8 +601,11 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         test_scheduled_at: vacancyData.test_scheduled_at
           ? formatDateTimeWithTimezone(vacancyData.test_scheduled_at)
           : null,
-        branch_type: vacancyData.branch_type,
-        region: vacancyData.branch_type === "central" ? null : vacancyData.region,
+        ...(vacancyData.test_id && {
+          test_ids: [parseInt(vacancyData.test_id)],
+        }),
+        branch_type: initialBranchType !== null && initialBranchType !== undefined ? vacancyData.branch_type : "central", // Always central if no initialBranchType
+        region: (initialBranchType !== null && initialBranchType !== undefined ? vacancyData.branch_type : "central") === "central" ? null : getBackendRegionValue(vacancyData.region),
         // Only include management_id for central branch type
         ...(vacancyData.branch_type === "central" && {
           management_id: parseInt(managementData.selectedId),
@@ -1387,6 +1437,36 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Test
+                    </label>
+                    {loadingTests ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                        Testlar yuklanmoqda...
+                      </div>
+                    ) : (
+                      <select
+                        value={vacancyData.test_id}
+                        onChange={(e) =>
+                          setVacancyData((prev) => ({
+                            ...prev,
+                            test_id: e.target.value,
+                          }))
+                        }
+                        disabled={loading}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                      >
+                        <option value="">Testni tanlang (ixtiyoriy)</option>
+                        {tests.map((test) => (
+                          <option key={test.id} value={test.id}>
+                            {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Test bo'lish sanasi va vaqti
                     </label>
                     <input
@@ -1409,28 +1489,46 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Filial turi *
                   </label>
-                  <select
-                    value={vacancyData.branch_type}
-                    onChange={(e) =>
-                      setVacancyData((prev) => ({
-                        ...prev,
-                        branch_type: e.target.value,
-                        // Reset region if branch_type changes to central
-                        region: e.target.value === "central" ? "" : prev.region,
-                      }))
-                    }
-                    disabled={loading || !!initialBranchType}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                  >
-                    <option value="">Filial turini tanlang</option>
-                    <option value="central">Markaziy Apparat</option>
-                    <option value="regional">Hududiy Boshqarma</option>
-                  </select>
-                  {initialBranchType && (
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Filial turi avtomatik tanlangan
-                    </p>
+                  {initialBranchType === null || initialBranchType === undefined ? (
+                    <>
+                      <input
+                        type="text"
+                        value="Markaziy Apparat"
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                      />
+                      <input
+                        type="hidden"
+                        name="branch_type"
+                        value="central"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <select
+                        value={vacancyData.branch_type}
+                        onChange={(e) =>
+                          setVacancyData((prev) => ({
+                            ...prev,
+                            branch_type: e.target.value,
+                            // Reset region if branch_type changes to central
+                            region: e.target.value === "central" ? "" : prev.region,
+                          }))
+                        }
+                        disabled={loading || !!initialBranchType}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        required
+                      >
+                        <option value="">Filial turini tanlang</option>
+                        <option value="central">Markaziy Apparat</option>
+                        <option value="regional">Hududiy Boshqarma</option>
+                      </select>
+                      {initialBranchType && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Filial turi avtomatik tanlangan
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 

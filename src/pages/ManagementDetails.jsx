@@ -8,8 +8,10 @@ import {
   getVacancyByIdApi,
   updateVacancyApi,
   deleteVacancyApi,
+  getTestsApi,
 } from "../utils/api";
 import { latinToCyrillic } from "../utils/transliterate";
+import { mergeStaticRequirements } from "../utils/staticRequirements";
 import toast from "react-hot-toast";
 
 const ManagementDetails = () => {
@@ -48,6 +50,7 @@ const ManagementDetails = () => {
     region: "",
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
+    test_id: "",
   });
   const [editManualEditFlags, setEditManualEditFlags] = useState({
     title_cr: false,
@@ -58,6 +61,8 @@ const ManagementDetails = () => {
     requirements: false,
     job_tasks: false,
   });
+  const [tests, setTests] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(true);
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
@@ -72,8 +77,28 @@ const ManagementDetails = () => {
 
   useEffect(() => {
     fetchManagementAndVacancies();
+    fetchTests();
     document.title = "Boshqarma tafsilotlari - Markaziy Bank Administratsiyasi";
   }, [id]);
+
+  const fetchTests = async () => {
+    try {
+      setLoadingTests(true);
+      const data = await getTestsApi();
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const testsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setTests(testsArray);
+    } catch (error) {
+      console.error("Error fetching tests:", error);
+      toast.error("Testlarni yuklashda xatolik yuz berdi");
+      setTests([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
 
   const fetchManagementAndVacancies = async () => {
     try {
@@ -208,15 +233,9 @@ const ManagementDetails = () => {
         title_uz: fullVacancyData.title_uz || "",
         title_cr: fullVacancyData.title_cr || "",
         title_ru: fullVacancyData.title_ru || "",
-        requirements_uz: Array.isArray(fullVacancyData.requirements_uz) && fullVacancyData.requirements_uz.length > 0
-          ? fullVacancyData.requirements_uz
-          : [{ task: "" }],
-        requirements_cr: Array.isArray(fullVacancyData.requirements_cr) && fullVacancyData.requirements_cr.length > 0
-          ? fullVacancyData.requirements_cr
-          : [{ task: "" }],
-        requirements_ru: Array.isArray(fullVacancyData.requirements_ru) && fullVacancyData.requirements_ru.length > 0
-          ? fullVacancyData.requirements_ru
-          : [{ task: "" }],
+        requirements_uz: mergeStaticRequirements(fullVacancyData.requirements_uz, "uz"),
+        requirements_cr: mergeStaticRequirements(fullVacancyData.requirements_cr, "cr"),
+        requirements_ru: mergeStaticRequirements(fullVacancyData.requirements_ru, "ru"),
         job_tasks_uz: Array.isArray(fullVacancyData.job_tasks_uz) && fullVacancyData.job_tasks_uz.length > 0
           ? fullVacancyData.job_tasks_uz
           : [{ task: "" }],
@@ -229,9 +248,10 @@ const ManagementDetails = () => {
         application_deadline: fullVacancyData.application_deadline || "",
         test_scheduled_at: testScheduledAtValue,
         is_active: fullVacancyData.is_active ?? true,
-        branch_type: fullVacancyData.branch_type || "",
-        region: fullVacancyData.region || "",
+        branch_type: "central", // Always central for management details page
+        region: "", // Always empty for central branch type
         lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
+        test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
         lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
       });
       
@@ -423,9 +443,12 @@ const ManagementDetails = () => {
         test_scheduled_at: editFormData.test_scheduled_at
           ? formatDateTimeWithTimezone(editFormData.test_scheduled_at)
           : null,
+        ...(editFormData.test_id && {
+          test_ids: [parseInt(editFormData.test_id)],
+        }),
         management_id: editingVacancy.management_details?.id || parseInt(id),
-        branch_type: editFormData.branch_type,
-        region: editFormData.branch_type === "central" ? null : editFormData.region,
+        branch_type: "central", // Always central for management details page
+        region: null, // Always null for central branch type
       };
 
       // Update vacancy via API
@@ -467,6 +490,7 @@ const ManagementDetails = () => {
         region: "",
         lan_requirements_eng: "not_required",
         lan_requirements_ru: "not_required",
+        test_id: "",
       });
       setEditManualEditFlags({
         title_cr: false,
@@ -1455,6 +1479,32 @@ const ManagementDetails = () => {
                           />
                         </div>
 
+                        {/* Test Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test
+                          </label>
+                          {loadingTests ? (
+                            <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                              Testlar yuklanmoqda...
+                            </div>
+                          ) : (
+                            <select
+                              name="test_id"
+                              value={editFormData.test_id}
+                              onChange={handleEditFormChange}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                              <option value="">Testni tanlang (ixtiyoriy)</option>
+                              {tests.map((test) => (
+                                <option key={test.id} value={test.id}>
+                                  {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+
                         {/* Test Scheduled At */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1470,54 +1520,23 @@ const ManagementDetails = () => {
                         </div>
                       </div>
 
-                      {/* Branch Type */}
+                      {/* Branch Type - Always central for management details page */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Filial turi <span className="text-red-500">*</span>
                         </label>
-                        <select
+                        <input
+                          type="text"
+                          value="Markaziy Apparat"
+                          disabled
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                        />
+                        <input
+                          type="hidden"
                           name="branch_type"
-                          value={editFormData.branch_type}
-                          onChange={handleEditFormChange}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        >
-                          <option value="">Filial turini tanlang</option>
-                          <option value="central">Markaziy Apparat</option>
-                          <option value="regional">Hududiy Boshqarma</option>
-                        </select>
+                          value="central"
+                        />
                       </div>
-
-                      {/* Region - only show if branch_type is regional */}
-                      {editFormData.branch_type === "regional" && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Hudud <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            name="region"
-                            value={editFormData.region}
-                            onChange={handleEditFormChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                          >
-                            <option value="">Hududni tanlang</option>
-                            <option value="toshkent">Toshkent</option>
-                            <option value="qashqadaryo">Qashqadaryo</option>
-                            <option value="samarqand">Samarqand</option>
-                            <option value="navoiy">Navoiy</option>
-                            <option value="andijon">Andijon</option>
-                            <option value="fargona">Farg'ona</option>
-                            <option value="namangan">Namangan</option>
-                            <option value="surxondaryo">Surxondaryo</option>
-                            <option value="sirdaryo">Sirdaryo</option>
-                            <option value="jizzax">Jizzax</option>
-                            <option value="buxoro">Buxoro</option>
-                            <option value="xorazm">Xorazm</option>
-                            <option value="qoraqalpogiston">Qoraqalpog'iston Respublikasi</option>
-                          </select>
-                        </div>
-                      )}
 
                       {/* Language Requirements */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

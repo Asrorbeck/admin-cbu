@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import VacanciesTable from "../components/tables/VacanciesTable";
 import QuickCreateVacancyModal from "../components/modals/QuickCreateVacancyModal";
-import { getVacanciesApi, getVacancyByIdApi, updateVacancyApi, deleteVacancyApi } from "../utils/api";
+import { getVacanciesApi, getVacancyByIdApi, updateVacancyApi, deleteVacancyApi, getTestsApi } from "../utils/api";
 import { latinToCyrillic } from "../utils/transliterate";
+import { getStaticRequirementsAsObjects, mergeStaticRequirements } from "../utils/staticRequirements";
 import toast from "react-hot-toast";
 
 // Regions data with display names
 const REGIONS = [
-  { value: "toshkent", label: "Toshkent" },
+  { value: "toshkent shahar", label: "Toshkent shahar" },
+  { value: "toshkent_viloyati", label: "Toshkent viloyati" },
   { value: "qashqadaryo", label: "Qashqadaryo" },
   { value: "samarqand", label: "Samarqand" },
   { value: "navoiy", label: "Navoiy" },
@@ -26,6 +28,21 @@ const REGIONS = [
 const RegionVacancies = () => {
   const { region_name } = useParams();
   const navigate = useNavigate();
+  
+  // Get static requirements
+  const staticRequirements = getStaticRequirementsAsObjects();
+
+  // Convert region value to backend format
+  const getBackendRegionValue = (regionValue) => {
+    if (regionValue === "toshkent_viloyati") {
+      return "toshkent";
+    }
+    // Convert URL-friendly format to backend format
+    if (regionValue === "toshkent-shahar" || regionValue === "toshkent_shahar") {
+      return "toshkent shahar";
+    }
+    return regionValue;
+  };
   const [vacancies, setVacancies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,9 +70,9 @@ const RegionVacancies = () => {
     region_title_uz: "",
     region_title_cr: "",
     region_title_ru: "",
-    requirements_uz: [{ task: "" }],
-    requirements_cr: [{ task: "" }],
-    requirements_ru: [{ task: "" }],
+    requirements_uz: [...staticRequirements.uz, { task: "" }],
+    requirements_cr: [...staticRequirements.cr, { task: "" }],
+    requirements_ru: [...staticRequirements.ru, { task: "" }],
     job_tasks_uz: [{ task: "" }],
     job_tasks_cr: [{ task: "" }],
     job_tasks_ru: [{ task: "" }],
@@ -66,6 +83,7 @@ const RegionVacancies = () => {
     region: region_name || "",
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
+    test_id: "",
   });
   const [editManualEditFlags, setEditManualEditFlags] = useState({
     title_cr: false,
@@ -79,23 +97,54 @@ const RegionVacancies = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
+  const [tests, setTests] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(true);
 
-  const region = REGIONS.find((r) => r.value === region_name);
-  const regionLabel = region ? region.label : region_name;
+  // Normalize region_name for lookup (handle URL-encoded spaces and variations)
+  const normalizedRegionName = region_name?.replace(/%20/g, " ").replace(/-/g, " ");
+  const region = REGIONS.find((r) => {
+    const normalizedValue = r.value.replace(/%20/g, " ").replace(/-/g, " ");
+    return normalizedValue === normalizedRegionName || r.value === region_name;
+  });
+  // If region not found but it's a toshkent shahar variation, use the correct label
+  let regionLabel = region ? region.label : region_name;
+  if (!region && (region_name === "toshkent_shahr" || region_name === "toshkent_shahar" || region_name === "toshkent-shahar" || normalizedRegionName === "toshkent shahar")) {
+    regionLabel = "Toshkent shahar";
+  }
 
   useEffect(() => {
     if (region_name) {
       fetchRegionalVacancies();
+      fetchTests();
       document.title = `${regionLabel} - Hududiy vakansiyalar - Markaziy Bank Administratsiyasi`;
     }
   }, [region_name]);
+
+  const fetchTests = async () => {
+    try {
+      setLoadingTests(true);
+      const data = await getTestsApi();
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const testsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setTests(testsArray);
+    } catch (error) {
+      console.error("Error fetching tests:", error);
+      toast.error("Testlarni yuklashda xatolik yuz berdi");
+      setTests([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
 
   const fetchRegionalVacancies = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getVacanciesApi(null, {
-        region: region_name,
+        region: getBackendRegionValue(region_name),
         branch_type: "regional",
       });
       
@@ -153,15 +202,9 @@ const RegionVacancies = () => {
         region_title_uz: fullVacancyData.region_title_uz || "",
         region_title_cr: fullVacancyData.region_title_cr || "",
         region_title_ru: fullVacancyData.region_title_ru || "",
-        requirements_uz: Array.isArray(fullVacancyData.requirements_uz) && fullVacancyData.requirements_uz.length > 0
-          ? fullVacancyData.requirements_uz
-          : [{ task: "" }],
-        requirements_cr: Array.isArray(fullVacancyData.requirements_cr) && fullVacancyData.requirements_cr.length > 0
-          ? fullVacancyData.requirements_cr
-          : [{ task: "" }],
-        requirements_ru: Array.isArray(fullVacancyData.requirements_ru) && fullVacancyData.requirements_ru.length > 0
-          ? fullVacancyData.requirements_ru
-          : [{ task: "" }],
+        requirements_uz: mergeStaticRequirements(fullVacancyData.requirements_uz, "uz"),
+        requirements_cr: mergeStaticRequirements(fullVacancyData.requirements_cr, "cr"),
+        requirements_ru: mergeStaticRequirements(fullVacancyData.requirements_ru, "ru"),
         job_tasks_uz: Array.isArray(fullVacancyData.job_tasks_uz) && fullVacancyData.job_tasks_uz.length > 0
           ? fullVacancyData.job_tasks_uz
           : [{ task: "" }],
@@ -182,6 +225,7 @@ const RegionVacancies = () => {
         region: fullVacancyData.region || region_name || "",
         lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
         lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
+        test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
       });
       setEditManualEditFlags({
         title_cr: false,
@@ -377,10 +421,13 @@ const RegionVacancies = () => {
         is_active: editFormData.is_active,
         application_deadline: editFormData.application_deadline,
         branch_type: "regional",
-        region: editFormData.region || region_name,
+        region: getBackendRegionValue(editFormData.region || region_name),
         test_scheduled_at: editFormData.test_scheduled_at
           ? formatDateTimeWithTimezone(editFormData.test_scheduled_at)
           : null,
+        ...(editFormData.test_id && {
+          test_ids: [parseInt(editFormData.test_id)],
+        }),
       };
 
       // Update vacancy via API
@@ -1581,6 +1628,32 @@ const RegionVacancies = () => {
                             required
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                           />
+                        </div>
+
+                        {/* Test Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test
+                          </label>
+                          {loadingTests ? (
+                            <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                              Testlar yuklanmoqda...
+                            </div>
+                          ) : (
+                            <select
+                              name="test_id"
+                              value={editFormData.test_id}
+                              onChange={handleEditFormChange}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                              <option value="">Testni tanlang (ixtiyoriy)</option>
+                              {tests.map((test) => (
+                                <option key={test.id} value={test.id}>
+                                  {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
 
                         {/* Test Scheduled At */}

@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import VacanciesTable from "../components/tables/VacanciesTable";
-import { getVacanciesApi, deleteVacancyApi, getVacancyByIdApi, updateVacancyApi } from "../utils/api";
+import { getVacanciesApi, deleteVacancyApi, getVacancyByIdApi, updateVacancyApi, getTestsApi } from "../utils/api";
 import { latinToCyrillic } from "../utils/transliterate";
+import { getStaticRequirementsAsObjects, mergeStaticRequirements } from "../utils/staticRequirements";
 import toast from "react-hot-toast";
 
 const Vacancies = () => {
+  // Get static requirements
+  const staticRequirements = getStaticRequirementsAsObjects();
+  
   const [vacancies, setVacancies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,9 +40,9 @@ const Vacancies = () => {
     title_uz: "",
     title_cr: "",
     title_ru: "",
-    requirements_uz: [{ task: "" }],
-    requirements_cr: [{ task: "" }],
-    requirements_ru: [{ task: "" }],
+    requirements_uz: [...staticRequirements.uz, { task: "" }],
+    requirements_cr: [...staticRequirements.cr, { task: "" }],
+    requirements_ru: [...staticRequirements.ru, { task: "" }],
     job_tasks_uz: [{ task: "" }],
     job_tasks_cr: [{ task: "" }],
     job_tasks_ru: [{ task: "" }],
@@ -49,6 +53,7 @@ const Vacancies = () => {
     region: "",
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
+    test_id: "",
   });
   const [editManualEditFlags, setEditManualEditFlags] = useState({
     title_cr: false,
@@ -61,13 +66,35 @@ const Vacancies = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
+  const [tests, setTests] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(true);
   
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchVacancies();
+    fetchTests();
     document.title = "Vakansiyalar - Markaziy Bank Administratsiyasi";
   }, [page, pageSize]);
+
+  const fetchTests = async () => {
+    try {
+      setLoadingTests(true);
+      const data = await getTestsApi();
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const testsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setTests(testsArray);
+    } catch (error) {
+      console.error("Error fetching tests:", error);
+      toast.error("Testlarni yuklashda xatolik yuz berdi");
+      setTests([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
 
   const fetchVacancies = async () => {
     try {
@@ -106,7 +133,7 @@ const Vacancies = () => {
         const q = query.trim().toLowerCase();
         const filtered = updated.filter((v) => {
           if (!q) return true;
-          const inTitle = v.title?.toLowerCase().includes(q);
+          const inTitle = (v.title_uz || v.title || "")?.toLowerCase().includes(q);
           const inDesc = v.description?.toLowerCase().includes(q);
           return inTitle || inDesc;
         });
@@ -232,15 +259,9 @@ const Vacancies = () => {
         title_uz: fullVacancyData.title_uz || "",
         title_cr: fullVacancyData.title_cr || "",
         title_ru: fullVacancyData.title_ru || "",
-        requirements_uz: Array.isArray(fullVacancyData.requirements_uz) && fullVacancyData.requirements_uz.length > 0
-          ? fullVacancyData.requirements_uz
-          : [{ task: "" }],
-        requirements_cr: Array.isArray(fullVacancyData.requirements_cr) && fullVacancyData.requirements_cr.length > 0
-          ? fullVacancyData.requirements_cr
-          : [{ task: "" }],
-        requirements_ru: Array.isArray(fullVacancyData.requirements_ru) && fullVacancyData.requirements_ru.length > 0
-          ? fullVacancyData.requirements_ru
-          : [{ task: "" }],
+        requirements_uz: mergeStaticRequirements(fullVacancyData.requirements_uz, "uz"),
+        requirements_cr: mergeStaticRequirements(fullVacancyData.requirements_cr, "cr"),
+        requirements_ru: mergeStaticRequirements(fullVacancyData.requirements_ru, "ru"),
         job_tasks_uz: Array.isArray(fullVacancyData.job_tasks_uz) && fullVacancyData.job_tasks_uz.length > 0
           ? fullVacancyData.job_tasks_uz
           : [{ task: "" }],
@@ -257,6 +278,7 @@ const Vacancies = () => {
         region: fullVacancyData.region || "",
         lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
         lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
+        test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
       });
       
       // Reset manual edit flags
@@ -447,6 +469,9 @@ const Vacancies = () => {
         test_scheduled_at: editFormData.test_scheduled_at
           ? formatDateTimeWithTimezone(editFormData.test_scheduled_at)
           : null,
+        ...(editFormData.test_id && {
+          test_ids: [parseInt(editFormData.test_id)],
+        }),
         management_id: editingVacancy.management_details?.id || editingVacancy.management,
         branch_type: editFormData.branch_type,
         region: editFormData.branch_type === "central" ? null : editFormData.region,
@@ -481,9 +506,9 @@ const Vacancies = () => {
         title_uz: "",
         title_cr: "",
         title_ru: "",
-        requirements_uz: [{ task: "" }],
-        requirements_cr: [{ task: "" }],
-        requirements_ru: [{ task: "" }],
+        requirements_uz: [...staticRequirements.uz, { task: "" }],
+        requirements_cr: [...staticRequirements.cr, { task: "" }],
+        requirements_ru: [...staticRequirements.ru, { task: "" }],
         job_tasks_uz: [{ task: "" }],
         job_tasks_cr: [{ task: "" }],
         job_tasks_ru: [{ task: "" }],
@@ -567,16 +592,37 @@ const Vacancies = () => {
             // Get full vacancy data first
             const fullVacancy = await getVacancyByIdApi(vacancy.id);
             
-            // Prepare update payload - only update provided fields
+            // Prepare update payload with new structure - only update provided fields
             const updatePayload = {
-              title: fullVacancy.title,
-              description: fullVacancy.description || "",
-              requirements: fullVacancy.requirements || "",
-              job_tasks: fullVacancy.job_tasks || "",
+              title_uz: fullVacancy.title_uz || fullVacancy.title || "",
+              title_cr: fullVacancy.title_cr || "",
+              title_ru: fullVacancy.title_ru || "",
+              requirements_uz: Array.isArray(fullVacancy.requirements_uz) && fullVacancy.requirements_uz.length > 0
+                ? fullVacancy.requirements_uz
+                : [],
+              requirements_cr: Array.isArray(fullVacancy.requirements_cr) && fullVacancy.requirements_cr.length > 0
+                ? fullVacancy.requirements_cr
+                : [],
+              requirements_ru: Array.isArray(fullVacancy.requirements_ru) && fullVacancy.requirements_ru.length > 0
+                ? fullVacancy.requirements_ru
+                : [],
+              job_tasks_uz: Array.isArray(fullVacancy.job_tasks_uz) && fullVacancy.job_tasks_uz.length > 0
+                ? fullVacancy.job_tasks_uz
+                : [],
+              job_tasks_cr: Array.isArray(fullVacancy.job_tasks_cr) && fullVacancy.job_tasks_cr.length > 0
+                ? fullVacancy.job_tasks_cr
+                : [],
+              job_tasks_ru: Array.isArray(fullVacancy.job_tasks_ru) && fullVacancy.job_tasks_ru.length > 0
+                ? fullVacancy.job_tasks_ru
+                : [],
+              lan_requirements_eng: fullVacancy.lan_requirements_eng || "not_required",
+              lan_requirements_ru: fullVacancy.lan_requirements_ru || "not_required",
               is_active: fullVacancy.is_active ?? true,
               application_deadline: bulkEditData.application_deadline || fullVacancy.application_deadline,
               test_scheduled_at: formattedTestScheduledAt || fullVacancy.test_scheduled_at,
-              management_id: fullVacancy.management_details?.id || fullVacancy.management,
+              management_id: fullVacancy.management_details?.id || fullVacancy.management || fullVacancy.management_id,
+              branch_type: fullVacancy.branch_type || "central",
+              region: fullVacancy.branch_type === "central" ? null : (fullVacancy.region || null),
             };
 
             return updateVacancyApi(vacancy.id, updatePayload);
@@ -673,9 +719,9 @@ const Vacancies = () => {
   const q = query.trim().toLowerCase();
   const filtered = safeVacancies.filter((v) => {
     if (!q) return true;
-    const inTitle = v.title?.toLowerCase().includes(q);
+    const inTitle = (v.title_uz || v.title || "")?.toLowerCase().includes(q);
     const inDesc = v.description?.toLowerCase().includes(q);
-    const inManagement = v.management_details?.name?.toLowerCase().includes(q);
+    const inManagement = (v.management_details?.name_uz || v.management_details?.name || "")?.toLowerCase().includes(q);
     return inTitle || inDesc || inManagement;
   });
 
@@ -1649,6 +1695,59 @@ const Vacancies = () => {
                         {/* Test Scheduled At */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test
+                          </label>
+                          {loadingTests ? (
+                            <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                              Testlar yuklanmoqda...
+                            </div>
+                          ) : (
+                            <select
+                              name="test_id"
+                              value={editFormData.test_id}
+                              onChange={handleEditFormChange}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                              <option value="">Testni tanlang (ixtiyoriy)</option>
+                              {tests.map((test) => (
+                                <option key={test.id} value={test.id}>
+                                  {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+
+                        {/* Test Scheduled At */}
+                        {/* Test Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test
+                          </label>
+                          {loadingTests ? (
+                            <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                              Testlar yuklanmoqda...
+                            </div>
+                          ) : (
+                            <select
+                              name="test_id"
+                              value={editFormData.test_id}
+                              onChange={handleEditFormChange}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            >
+                              <option value="">Testni tanlang (ixtiyoriy)</option>
+                              {tests.map((test) => (
+                                <option key={test.id} value={test.id}>
+                                  {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+
+                        {/* Test Scheduled At */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Test bo'lish sanasi va vaqti
                           </label>
                           <input
@@ -1778,7 +1877,7 @@ const Vacancies = () => {
                             Boshqarma
                           </p>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {editingVacancy.management_details.name}
+                            {editingVacancy.management_details.name_uz || editingVacancy.management_details.name}
                           </p>
                         </div>
                       )}

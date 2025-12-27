@@ -1,45 +1,31 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { createVacancyApi } from "../utils/api";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { createVacancyApi, getTestsApi } from "../utils/api";
 import { latinToCyrillic } from "../utils/transliterate";
+import { getStaticRequirementsAsObjects } from "../utils/staticRequirements";
 import toast from "react-hot-toast";
 
 const NewVacancy = () => {
   const { id } = useParams(); // management ID
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Check if we're on management page (not department page)
+  const isManagementPage = location.pathname.includes("/management/");
   const [loading, setLoading] = useState(false);
-  // Static requirements that are always sent to backend
-  const staticRequirements = {
-    uz: [
-      "Xalqaro va milliy sertifikatlarning mavjudligiga ustuvorlik beriladi.",
-      "Davlat tilini mukammal bilishi, barcha xat-hujjatlarni kirill va lotin alifbosida orfografik va grammatik xatolarsiz yoza olishi lozim.",
-      "O'zbekiston Respublikasining Konstitutsiyasi, \"O'zbekiston Respublikasining Markaziy banki to'g'risida\"gi, \"Banklar va bank faoliyati to'g'risida\"gi hamda bank tizimiga doir boshqa turdagi qaror va farmonlardan xabardor bo'lish lozim.",
-      "MS Office (Word, Excel, Power Point, Outlook) dasturlarida erkin ishlay olishi lozim.",
-      "Mas'uliyatli hamda jamoa bilan ishlay olishi, yangiliklarga intiluvchan, o'z ustida ishlay olishi lozim.",
-    ],
-    cr: [
-      "Халқаро ва миллий сертификатларнинг мавжудлигига устуворлик берилади.",
-      "Давлат тилини мукаммал билиши, барча хат-ҳужжатларни кирилл ва лотин алифбосида орфографик ва грамматик хатоларсиз ёза олиши лозим.",
-      "Ўзбекистон Республикасининг Конституцияси, \"Ўзбекистон Республикасининг Марказий банки тўғрисида\"ги, \"Банклар ва банк фаолияти тўғрисида\"ги ҳамда банк тизимига доир бошқа турдаги қарор ва фармонлардан хабардор бўлиш лозим.",
-      "MS Office (Word, Excel, Power Point, Outlook) дастурларида эркин ишлай олиши лозим.",
-      "Масъулиятли ҳамда жамоа билан ишлай олиши, янгиликларга интилувчан, ўз устида ишлай олиши лозим.",
-    ],
-    ru: [
-      "Приоритет отдается наличию международных и национальных сертификатов.",
-      "Отличное знание государственного языка, умение писать все письма и документы кириллицей и латинским алфавитом без орфографических и грамматических ошибок.",
-      "Знание Конституции Республики Узбекистан, Закона «О Центральном банке Республики Узбекистан», «О банках и банковской деятельности» и других постановлений и указов, касающихся банковской системы.",
-      "Умение свободно работать в программах MS Office (Word, Excel, PowerPoint, Outlook).",
-      "Ответственность, умение работать в команде, стремление к инновациям, способность к самосовершенствованию.",
-    ],
-  };
+  const [tests, setTests] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(true);
+  
+  // Get static requirements
+  const staticRequirements = getStaticRequirementsAsObjects();
 
   const [formData, setFormData] = useState({
     title_uz: "",
     title_cr: "",
     title_ru: "",
-    requirements_uz: staticRequirements.uz.map((req) => ({ task: req })).concat([{ task: "" }]),
-    requirements_cr: staticRequirements.cr.map((req) => ({ task: req })).concat([{ task: "" }]),
-    requirements_ru: staticRequirements.ru.map((req) => ({ task: req })).concat([{ task: "" }]),
+    requirements_uz: [...staticRequirements.uz, { task: "" }],
+    requirements_cr: [...staticRequirements.cr, { task: "" }],
+    requirements_ru: [...staticRequirements.ru, { task: "" }],
     job_tasks_uz: [{ task: "" }],
     job_tasks_cr: [{ task: "" }],
     job_tasks_ru: [{ task: "" }],
@@ -47,10 +33,11 @@ const NewVacancy = () => {
     application_deadline: "",
     test_scheduled_at: "",
     management_id: parseInt(id),
-    branch_type: "",
+    branch_type: isManagementPage ? "central" : "", // Always central for management page
     region: "",
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
+    test_id: "",
   });
   const [manualEditFlags, setManualEditFlags] = useState({
     title_cr: false,
@@ -83,7 +70,27 @@ const NewVacancy = () => {
 
   useEffect(() => {
     document.title = "Yangi vakansiya - Markaziy Bank Administratsiyasi";
+    fetchTests();
   }, []);
+
+  const fetchTests = async () => {
+    try {
+      setLoadingTests(true);
+      const data = await getTestsApi();
+      // Handle paginated response structure: { count, next, previous, results: [...] }
+      // or direct array response
+      const testsArray = Array.isArray(data) 
+        ? data 
+        : (data?.results || data?.data || []);
+      setTests(testsArray);
+    } catch (error) {
+      console.error("Error fetching tests:", error);
+      toast.error("Testlarni yuklashda xatolik yuz berdi");
+      setTests([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -244,12 +251,12 @@ const NewVacancy = () => {
       return;
     }
 
-    if (!formData.branch_type) {
+    if (!isManagementPage && !formData.branch_type) {
       toast.error("Filial turini tanlash shart");
       return;
     }
 
-    if (formData.branch_type === "regional" && !formData.region) {
+    if (!isManagementPage && formData.branch_type === "regional" && !formData.region) {
       toast.error("Hududni tanlash shart");
       return;
     }
@@ -270,14 +277,17 @@ const NewVacancy = () => {
         is_active: formData.is_active,
         application_deadline: formData.application_deadline,
         management_id: formData.management_id,
-        branch_type: formData.branch_type,
-        region: formData.branch_type === "central" ? null : formData.region,
+        branch_type: isManagementPage ? "central" : formData.branch_type, // Always central for management page
+        region: isManagementPage ? null : (formData.branch_type === "central" ? null : formData.region),
         lan_requirements_eng: formData.lan_requirements_eng || "not_required",
         lan_requirements_ru: formData.lan_requirements_ru || "not_required",
         ...(formData.test_scheduled_at && {
           test_scheduled_at: formatDateTimeWithTimezone(
             formData.test_scheduled_at
           ),
+        }),
+        ...(formData.test_id && {
+          test_ids: [parseInt(formData.test_id)],
         }),
       };
 
@@ -409,7 +419,13 @@ const NewVacancy = () => {
                   Talablar *
                 </label>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-500">
-                  {formData.requirements_uz.filter(r => r.task.trim()).length + formData.requirements_cr.filter(r => r.task.trim()).length + formData.requirements_ru.filter(r => r.task.trim()).length} ta
+                  {(() => {
+                    const countNonEmpty = (arr) => arr.filter(r => {
+                      const taskValue = r?.task != null ? String(r.task) : '';
+                      return taskValue.trim().length > 0;
+                    }).length;
+                    return countNonEmpty(formData.requirements_uz) + countNonEmpty(formData.requirements_cr) + countNonEmpty(formData.requirements_ru);
+                  })()} ta
                 </span>
               </div>
               <svg
@@ -724,6 +740,7 @@ const NewVacancy = () => {
           </div>
 
           {/* Application Deadline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label
               htmlFor="application_deadline"
@@ -761,6 +778,39 @@ const NewVacancy = () => {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
             />
           </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Test Selection */}
+          <div>
+            <label
+              htmlFor="test_id"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Test
+            </label>
+            {loadingTests ? (
+              <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                Testlar yuklanmoqda...
+              </div>
+            ) : (
+              <select
+                id="test_id"
+                name="test_id"
+                value={formData.test_id}
+                onChange={handleChange}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+              >
+                <option value="">Testni tanlang (ixtiyoriy)</option>
+                {tests.map((test) => (
+                  <option key={test.id} value={test.id}>
+                    {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
           {/* Branch Type */}
           <div>
@@ -770,23 +820,40 @@ const NewVacancy = () => {
             >
               Filial turi *
             </label>
-            <select
-              id="branch_type"
-              name="branch_type"
-              value={formData.branch_type}
-              onChange={handleChange}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-              required
-            >
-              <option value="">Filial turini tanlang</option>
-              <option value="central">Markaziy Apparat</option>
-              <option value="regional">Hududiy Boshqarma</option>
-            </select>
+            {isManagementPage ? (
+              <>
+                <input
+                  type="text"
+                  value="Markaziy Apparat"
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                />
+                <input
+                  type="hidden"
+                  name="branch_type"
+                  value="central"
+                />
+              </>
+            ) : (
+              <select
+                id="branch_type"
+                name="branch_type"
+                value={formData.branch_type}
+                onChange={handleChange}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                required
+              >
+                <option value="">Filial turini tanlang</option>
+                <option value="central">Markaziy Apparat</option>
+                <option value="regional">Hududiy Boshqarma</option>
+              </select>
+            )}
+          </div>
           </div>
 
-          {/* Region - only show if branch_type is regional */}
-          {formData.branch_type === "regional" && (
+          {/* Region - only show if branch_type is regional and not management page */}
+          {!isManagementPage && formData.branch_type === "regional" && (
             <div>
               <label
                 htmlFor="region"

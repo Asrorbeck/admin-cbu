@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getApplicationsApi,
@@ -216,6 +216,9 @@ const Arizalar = () => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [jshshirQuery, setJshshirQuery] = useState("");
+  // Debounced values for search
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [debouncedJshshirQuery, setDebouncedJshshirQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [availableDates, setAvailableDates] = useState([]);
   const [loadingDates, setLoadingDates] = useState(true);
@@ -236,6 +239,10 @@ const Arizalar = () => {
   const [activeJobTasksTab, setActiveJobTasksTab] = useState("uz");
   const [activeRegionTitleTab, setActiveRegionTitleTab] = useState("uz");
   const navigate = useNavigate();
+  
+  // Refs for input fields to maintain focus
+  const searchInputRef = useRef(null);
+  const jshshirInputRef = useRef(null);
 
   useEffect(() => {
     fetchDeadlineArchives();
@@ -243,13 +250,56 @@ const Arizalar = () => {
     document.title = "Arizalar - Markaziy Bank Administratsiyasi";
   }, []);
 
+  // Debounce search queries
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedJshshirQuery(jshshirQuery);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [jshshirQuery]);
+
   useEffect(() => {
     setPage(1);
-  }, [selectedDate, searchQuery, jshshirQuery, hierarchyFilters]);
+  }, [selectedDate, debouncedSearchQuery, debouncedJshshirQuery, hierarchyFilters]);
 
   useEffect(() => {
     fetchApplications();
-  }, [selectedDate, page, pageSize, searchQuery, jshshirQuery, hierarchyFilters]);
+  }, [selectedDate, page, pageSize, debouncedSearchQuery, debouncedJshshirQuery, hierarchyFilters]);
+
+  // Track which input was focused and cursor position before re-render
+  const focusedInputRef = useRef(null);
+  const cursorPositionRef = useRef({ search: 0, jshshir: 0 });
+
+  // Restore focus after data fetch completes
+  useEffect(() => {
+    if (!loading && focusedInputRef.current) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        if (focusedInputRef.current === 'search' && searchInputRef.current) {
+          searchInputRef.current.focus();
+          // Restore cursor position
+          const pos = cursorPositionRef.current.search;
+          const len = searchQuery.length;
+          const finalPos = Math.min(pos, len);
+          searchInputRef.current.setSelectionRange(finalPos, finalPos);
+        } else if (focusedInputRef.current === 'jshshir' && jshshirInputRef.current) {
+          jshshirInputRef.current.focus();
+          // Restore cursor position
+          const pos = cursorPositionRef.current.jshshir;
+          const len = jshshirQuery.length;
+          const finalPos = Math.min(pos, len);
+          jshshirInputRef.current.setSelectionRange(finalPos, finalPos);
+        }
+      });
+    }
+  }, [loading]);
 
   // Load / persist evaluation rules in localStorage
   useEffect(() => {
@@ -329,12 +379,12 @@ const Arizalar = () => {
         params.application_deadline = selectedDate;
       }
       
-      if (searchQuery.trim()) {
-        params.full_name = searchQuery.trim();
+      if (debouncedSearchQuery.trim()) {
+        params.full_name = debouncedSearchQuery.trim();
       }
       
-      if (jshshirQuery.trim()) {
-        params.jshshir = jshshirQuery.trim();
+      if (debouncedJshshirQuery.trim()) {
+        params.jshshir = debouncedJshshirQuery.trim();
       }
       
       // Add hierarchy filter params
@@ -1102,11 +1152,40 @@ const Arizalar = () => {
             </div>
             <div className="relative">
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setPage(1);
+                  // Save cursor position
+                  if (searchInputRef.current) {
+                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                  }
+                }}
+                onFocus={() => {
+                  focusedInputRef.current = 'search';
+                  if (searchInputRef.current) {
+                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                  }
+                }}
+                onBlur={(e) => {
+                  // Save cursor position before blur
+                  if (searchInputRef.current) {
+                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                  }
+                  // Don't clear immediately, wait a bit to see if it's just a re-render
+                  setTimeout(() => {
+                    if (document.activeElement !== searchInputRef.current && 
+                        document.activeElement !== jshshirInputRef.current) {
+                      focusedInputRef.current = null;
+                    }
+                  }, 200);
+                }}
+                onKeyUp={(e) => {
+                  // Save cursor position on key events
+                  if (searchInputRef.current) {
+                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                  }
                 }}
                 placeholder="Ism bo'yicha qidirish..."
                 className="w-48 px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1115,7 +1194,6 @@ const Arizalar = () => {
                 <button
                   onClick={() => {
                     setSearchQuery("");
-                    setPage(1);
                   }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   title="Tozalash"
@@ -1152,11 +1230,40 @@ const Arizalar = () => {
             </div>
             <div className="relative">
               <input
+                ref={jshshirInputRef}
                 type="text"
                 value={jshshirQuery}
                 onChange={(e) => {
                   setJshshirQuery(e.target.value);
-                  setPage(1);
+                  // Save cursor position
+                  if (jshshirInputRef.current) {
+                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                  }
+                }}
+                onFocus={() => {
+                  focusedInputRef.current = 'jshshir';
+                  if (jshshirInputRef.current) {
+                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                  }
+                }}
+                onBlur={(e) => {
+                  // Save cursor position before blur
+                  if (jshshirInputRef.current) {
+                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                  }
+                  // Don't clear immediately, wait a bit to see if it's just a re-render
+                  setTimeout(() => {
+                    if (document.activeElement !== jshshirInputRef.current && 
+                        document.activeElement !== searchInputRef.current) {
+                      focusedInputRef.current = null;
+                    }
+                  }, 200);
+                }}
+                onKeyUp={(e) => {
+                  // Save cursor position on key events
+                  if (jshshirInputRef.current) {
+                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                  }
                 }}
                 placeholder="JSHSHIR bo'yicha qidirish..."
                 className="w-48 px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1165,7 +1272,6 @@ const Arizalar = () => {
                 <button
                   onClick={() => {
                     setJshshirQuery("");
-                    setPage(1);
                   }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   title="Tozalash"
@@ -2093,9 +2199,16 @@ const Arizalar = () => {
                       </div>
 
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Ish tajribasi
-                        </h4>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Ish tajribasi
+                          </h4>
+                          {selectedApplication.employments?.length > 0 && (
+                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                              Umumiy staj: {formatExperience(getTotalExperienceMonths(selectedApplication.employments))}
+                            </span>
+                          )}
+                        </div>
                         {selectedApplication.employments?.length ? (
                           <div className="space-y-3">
                             {selectedApplication.employments.map((e) => (
@@ -2280,8 +2393,8 @@ const Arizalar = () => {
                           </div>
                         )}
 
-                        {/* Language Requirements */}
-                        <div className="space-y-3">
+                        {/* Language Requirements - Side by Side */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
                               Ingliz tili talabi
@@ -2303,6 +2416,20 @@ const Arizalar = () => {
                             </p>
                           </div>
                         </div>
+
+                        {/* Requirements - Only Uzbek */}
+                        {selectedApplication.job.requirements_uz && Array.isArray(selectedApplication.job.requirements_uz) && selectedApplication.job.requirements_uz.length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                              Talablar
+                            </h4>
+                            <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
+                              {selectedApplication.job.requirements_uz.map((req, idx) => (
+                                <li key={idx}>{req.task || req}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
