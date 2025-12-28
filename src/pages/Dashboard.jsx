@@ -13,9 +13,26 @@ import {
 import toast from "react-hot-toast";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 
+// Regions data with display names
+const REGIONS = [
+  { value: "toshkent", label: "Toshkent" },
+  { value: "qashqadaryo", label: "Qashqadaryo" },
+  { value: "samarqand", label: "Samarqand" },
+  { value: "navoiy", label: "Navoiy" },
+  { value: "andijon", label: "Andijon" },
+  { value: "fargona", label: "Farg'ona" },
+  { value: "namangan", label: "Namangan" },
+  { value: "surxondaryo", label: "Surxondaryo" },
+  { value: "sirdaryo", label: "Sirdaryo" },
+  { value: "jizzax", label: "Jizzax" },
+  { value: "buxoro", label: "Buxoro" },
+  { value: "xorazm", label: "Xorazm" },
+  { value: "qoraqalpogiston", label: "Qoraqalpog'iston Respublikasi" },
+];
+
 const Dashboard = () => {
   const [stats, setStats] = useState({
-    departments: 0, 
+    departments: 0,
     management: 0,
     vacancies: 0,
     applications: 0,
@@ -40,12 +57,18 @@ const Dashboard = () => {
   const [isUrgentBulkUpdating, setIsUrgentBulkUpdating] = useState(false);
   const [isUrgentModalOpen, setIsUrgentModalOpen] = useState(false);
   const [urgentModalLoading, setUrgentModalLoading] = useState(false);
-  const [selectedUrgentApplication, setSelectedUrgentApplication] = useState(null);
+  const [selectedUrgentApplication, setSelectedUrgentApplication] =
+    useState(null);
   const [urgentStatusValue, setUrgentStatusValue] = useState("NEW");
   const [savingUrgentStatus, setSavingUrgentStatus] = useState(false);
   const [urgentDeleteConfirmOpen, setUrgentDeleteConfirmOpen] = useState(false);
-  const [deletingUrgentApplicationId, setDeletingUrgentApplicationId] = useState(null);
+  const [deletingUrgentApplicationId, setDeletingUrgentApplicationId] =
+    useState(null);
   const [isDeletingUrgent, setIsDeletingUrgent] = useState(false);
+  const [activeTitleTab, setActiveTitleTab] = useState("uz");
+  const [activeRequirementsTab, setActiveRequirementsTab] = useState("uz");
+  const [activeJobTasksTab, setActiveJobTasksTab] = useState("uz");
+  const [activeRegionTitleTab, setActiveRegionTitleTab] = useState("uz");
 
   useEffect(() => {
     fetchStats();
@@ -75,23 +98,24 @@ const Dashboard = () => {
         ]);
 
       // Handle paginated response format: { results: [...], count: ... }
-      const departmentsArray = Array.isArray(departments) 
-        ? departments 
-        : (departments?.results || departments?.data || []);
-      const managementArray = Array.isArray(management) 
-        ? management 
-        : (management?.results || management?.data || []);
-      const vacanciesArray = Array.isArray(vacancies) 
-        ? vacancies 
-        : (vacancies?.results || vacancies?.data || []);
-      const applicationsArray = Array.isArray(applications) 
-        ? applications 
-        : (applications?.results || applications?.data || []);
+      const departmentsArray = Array.isArray(departments)
+        ? departments
+        : departments?.results || departments?.data || [];
+      const managementArray = Array.isArray(management)
+        ? management
+        : management?.results || management?.data || [];
+      const vacanciesArray = Array.isArray(vacancies)
+        ? vacancies
+        : vacancies?.results || vacancies?.data || [];
+      const applicationsArray = Array.isArray(applications)
+        ? applications
+        : applications?.results || applications?.data || [];
 
       // For applications, use count if available (paginated response), otherwise use array length
-      const applicationsCount = applications?.count !== undefined 
-        ? applications.count 
-        : applicationsArray.length;
+      const applicationsCount =
+        applications?.count !== undefined
+          ? applications.count
+          : applicationsArray.length;
 
       setStats({
         departments: departmentsArray.length,
@@ -115,21 +139,21 @@ const Dashboard = () => {
         page: urgentPage,
         page_size: urgentPageSize,
       };
-      
+
       if (urgentSearchQuery.trim()) {
         params.full_name = urgentSearchQuery.trim();
       }
-      
+
       if (urgentJshshirQuery.trim()) {
         params.jshshir = urgentJshshirQuery.trim();
       }
 
       const applicationsData = await getUrgentTestApplicationsApi(params);
-      const applicationsArray = Array.isArray(applicationsData) 
-        ? applicationsData 
-        : (applicationsData?.results || applicationsData?.data || []);
+      const applicationsArray = Array.isArray(applicationsData)
+        ? applicationsData
+        : applicationsData?.results || applicationsData?.data || [];
       setUrgentApplications(applicationsArray);
-      
+
       if (applicationsData && !Array.isArray(applicationsData)) {
         setUrgentPaginationInfo({
           count: applicationsData.count || 0,
@@ -143,11 +167,13 @@ const Dashboard = () => {
           previous: null,
         });
       }
-      
+
       setUrgentSelectedIds(new Set());
     } catch (error) {
       console.error("Error fetching urgent applications:", error);
-      toast.error("Test muddati yaqinlashgan arizalarni yuklashda xatolik yuz berdi");
+      toast.error(
+        "Test muddati yaqinlashgan arizalarni yuklashda xatolik yuz berdi"
+      );
       setUrgentApplications([]);
       setUrgentPaginationInfo({
         count: 0,
@@ -170,13 +196,13 @@ const Dashboard = () => {
     if (!dateString) return "Ma'lumot yo'q";
     const date = parseDateSafe(dateString);
     if (!date) return "Ma'lumot yo'q";
-    
+
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
-    
+
     return `${day}.${month}.${year} ${hours}:${minutes}`;
   };
 
@@ -184,11 +210,21 @@ const Dashboard = () => {
     if (!dateString) return "Ma'lumot yo'q";
     const date = parseDateSafe(dateString);
     if (!date) return "Ma'lumot yo'q";
-    
+
     const year = date.getFullYear();
     const monthNames = [
-      "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-      "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+      "yanvar",
+      "fevral",
+      "mart",
+      "aprel",
+      "may",
+      "iyun",
+      "iyul",
+      "avgust",
+      "sentabr",
+      "oktabr",
+      "noyabr",
+      "dekabr",
     ];
     const month = monthNames[date.getMonth()];
     return `${year}-yil, ${month}`;
@@ -285,10 +321,22 @@ const Dashboard = () => {
     try {
       setIsUrgentModalOpen(true);
       setUrgentModalLoading(true);
+      // Reset tabs to default
+      setActiveTitleTab("uz");
+      setActiveRequirementsTab("uz");
+      setActiveJobTasksTab("uz");
+      setActiveRegionTitleTab("uz");
       const fullData = await getApplicationByIdApi(applicationId);
       setSelectedUrgentApplication(fullData);
       const normalizedStatus = (fullData?.status || "NEW").toUpperCase();
-      setUrgentStatusValue(normalizedStatus === "PENDING" ? "REVIEWING" : normalizedStatus);
+      // If status is "NEW", default to "REVIEWING" since "NEW" is not available in the select
+      const mappedStatus =
+        normalizedStatus === "PENDING"
+          ? "REVIEWING"
+          : normalizedStatus === "NEW"
+          ? "REVIEWING"
+          : normalizedStatus;
+      setUrgentStatusValue(mappedStatus);
     } catch (error) {
       console.error("Error fetching application:", error);
       toast.error("Ariza ma'lumotlarini yuklashda xatolik yuz berdi");
@@ -308,12 +356,19 @@ const Dashboard = () => {
     try {
       setSavingUrgentStatus(true);
       const fullPayload = {
-        user_id: selectedUrgentApplication.user?.user_id || selectedUrgentApplication.user_id,
+        user_id:
+          selectedUrgentApplication.user?.user_id ||
+          selectedUrgentApplication.user_id,
         job: selectedUrgentApplication.job?.id || selectedUrgentApplication.job,
-        full_name: selectedUrgentApplication.user?.full_name || selectedUrgentApplication.full_name,
+        full_name:
+          selectedUrgentApplication.user?.full_name ||
+          selectedUrgentApplication.full_name,
         data_of_birth: selectedUrgentApplication.data_of_birth,
-        phone: selectedUrgentApplication.user?.phone_number || selectedUrgentApplication.phone,
-        additional_information: selectedUrgentApplication.additional_information,
+        phone:
+          selectedUrgentApplication.user?.phone_number ||
+          selectedUrgentApplication.phone,
+        additional_information:
+          selectedUrgentApplication.additional_information,
         jshshir: selectedUrgentApplication.jshshir,
         monthly_salary: selectedUrgentApplication.monthly_salary,
         graduations: selectedUrgentApplication.graduations || [],
@@ -334,11 +389,16 @@ const Dashboard = () => {
 
       setUrgentApplications((prev) =>
         prev.map((a) =>
-          a.id === selectedUrgentApplication.id ? { ...a, status: urgentStatusValue } : a
+          a.id === selectedUrgentApplication.id
+            ? { ...a, status: urgentStatusValue }
+            : a
         )
       );
-      setSelectedUrgentApplication((prev) => ({ ...prev, status: urgentStatusValue }));
-      
+      setSelectedUrgentApplication((prev) => ({
+        ...prev,
+        status: urgentStatusValue,
+      }));
+
       closeUrgentModal();
     } finally {
       setSavingUrgentStatus(false);
@@ -370,8 +430,12 @@ const Dashboard = () => {
     if (urgentSelectedIds.size === 0) return;
     try {
       setIsUrgentBulkUpdating(true);
-      const safeApplications = Array.isArray(urgentApplications) ? urgentApplications : [];
-      const selectedApps = safeApplications.filter((a) => urgentSelectedIds.has(a.id));
+      const safeApplications = Array.isArray(urgentApplications)
+        ? urgentApplications
+        : [];
+      const selectedApps = safeApplications.filter((a) =>
+        urgentSelectedIds.has(a.id)
+      );
       const jobsMap = new Map(selectedApps.map((a) => [a.id, a.job]));
       await toast.promise(
         Promise.all(
@@ -419,15 +483,11 @@ const Dashboard = () => {
     if (!deletingUrgentApplicationId) return;
     try {
       setIsDeletingUrgent(true);
-      await toast.promise(
-        deleteApplicationApi(deletingUrgentApplicationId),
-        {
-          loading: "O'chirilmoqda...",
-          success: "Ariza muvaffaqiyatli o'chirildi",
-          error: (err) =>
-            err?.message || "Arizani o'chirishda xatolik yuz berdi",
-        }
-      );
+      await toast.promise(deleteApplicationApi(deletingUrgentApplicationId), {
+        loading: "O'chirilmoqda...",
+        success: "Ariza muvaffaqiyatli o'chirildi",
+        error: (err) => err?.message || "Arizani o'chirishda xatolik yuz berdi",
+      });
       setUrgentApplications((prev) =>
         prev.filter((a) => a.id !== deletingUrgentApplicationId)
       );
@@ -447,15 +507,21 @@ const Dashboard = () => {
 
   // Pagination helpers
   const urgentTotalItems = urgentPaginationInfo.count;
-  const urgentTotalPages = Math.max(1, Math.ceil(urgentTotalItems / urgentPageSize));
+  const urgentTotalPages = Math.max(
+    1,
+    Math.ceil(urgentTotalItems / urgentPageSize)
+  );
   const urgentCurrentPage = urgentPage;
   const urgentStartIndex = (urgentCurrentPage - 1) * urgentPageSize + 1;
-  const urgentEndIndex = Math.min(urgentCurrentPage * urgentPageSize, urgentTotalItems);
+  const urgentEndIndex = Math.min(
+    urgentCurrentPage * urgentPageSize,
+    urgentTotalItems
+  );
 
   const getUrgentPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;
-    
+
     if (urgentTotalPages <= maxVisible) {
       for (let i = 1; i <= urgentTotalPages; i++) {
         pages.push(i);
@@ -465,33 +531,37 @@ const Dashboard = () => {
         for (let i = 1; i <= 4; i++) {
           pages.push(i);
         }
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         pages.push(urgentTotalPages);
       } else if (urgentCurrentPage >= urgentTotalPages - 2) {
         pages.push(1);
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         for (let i = urgentTotalPages - 3; i <= urgentTotalPages; i++) {
           pages.push(i);
         }
       } else {
         pages.push(1);
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         for (let i = urgentCurrentPage - 1; i <= urgentCurrentPage + 1; i++) {
           pages.push(i);
         }
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         pages.push(urgentTotalPages);
       }
     }
-    
+
     return pages;
   };
 
-  const urgentVisibleApps = Array.isArray(urgentApplications) ? urgentApplications : [];
+  const urgentVisibleApps = Array.isArray(urgentApplications)
+    ? urgentApplications
+    : [];
   const urgentAllVisibleSelected =
-    urgentVisibleApps.length > 0 && urgentVisibleApps.every((a) => urgentSelectedIds.has(a.id));
+    urgentVisibleApps.length > 0 &&
+    urgentVisibleApps.every((a) => urgentSelectedIds.has(a.id));
   const urgentSomeVisibleSelected =
-    urgentVisibleApps.some((a) => urgentSelectedIds.has(a.id)) && !urgentAllVisibleSelected;
+    urgentVisibleApps.some((a) => urgentSelectedIds.has(a.id)) &&
+    !urgentAllVisibleSelected;
 
   if (loading) {
     return (
@@ -543,7 +613,9 @@ const Dashboard = () => {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Departamentlar</p>
+              <p className="text-blue-100 text-sm font-medium">
+                Departamentlar
+              </p>
               <p className="text-3xl font-bold">{stats.departments}</p>
               <p className="text-blue-100 text-xs mt-1">Faol departamentlar</p>
             </div>
@@ -598,7 +670,7 @@ const Dashboard = () => {
         </div>
 
         {/* Vacancies Card */}
-        <div 
+        <div
           onClick={() => navigate("/vacancies")}
           className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
         >
@@ -662,7 +734,9 @@ const Dashboard = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Markaziy Apparat</p>
+              <p className="text-blue-100 text-sm font-medium">
+                Markaziy Apparat
+              </p>
               <p className="text-2xl font-bold mt-2">Departamentlar</p>
               <p className="text-blue-100 text-xs mt-1">
                 Markaziy apparat departamentlari va vakansiyalari
@@ -699,7 +773,9 @@ const Dashboard = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium">Hududiy Bosh Boshqarmalar</p>
+              <p className="text-green-100 text-sm font-medium">
+                Hududiy Bosh Boshqarmalar
+              </p>
               <p className="text-2xl font-bold mt-2">Hududlar</p>
               <p className="text-green-100 text-xs mt-1">
                 Hududiy boshqarmalar vakansiyalari
@@ -731,7 +807,8 @@ const Dashboard = () => {
             Test muddati yaqinlashgan arizalar ro'yxati
           </h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Test muddati yaqinlashgan, lekin hali kutilayotgan holatdagi arizalar
+            Test muddati yaqinlashgan, lekin hali kutilayotgan holatdagi
+            arizalar
           </p>
         </div>
 
@@ -840,7 +917,7 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                 Sahifa hajmi:
@@ -997,7 +1074,8 @@ const Dashboard = () => {
                           Test muddati yaqinlashgan arizalar yo'q
                         </h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          Hozircha test muddati yaqinlashgan arizalar mavjud emas.
+                          Hozircha test muddati yaqinlashgan arizalar mavjud
+                          emas.
                         </p>
                       </td>
                     </tr>
@@ -1008,13 +1086,18 @@ const Dashboard = () => {
                         className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => handleUrgentViewDetails(application.id)}
                       >
-                        <td 
+                        <td
                           className="px-6 py-4 whitespace-nowrap text-sm cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (e.target.type !== 'checkbox') {
-                              const isSelected = urgentSelectedIds.has(application.id);
-                              handleUrgentToggleOne(application.id, !isSelected);
+                            if (e.target.type !== "checkbox") {
+                              const isSelected = urgentSelectedIds.has(
+                                application.id
+                              );
+                              handleUrgentToggleOne(
+                                application.id,
+                                !isSelected
+                              );
                             }
                           }}
                         >
@@ -1023,7 +1106,10 @@ const Dashboard = () => {
                             checked={urgentSelectedIds.has(application.id)}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) =>
-                              handleUrgentToggleOne(application.id, e.target.checked)
+                              handleUrgentToggleOne(
+                                application.id,
+                                e.target.checked
+                              )
                             }
                           />
                         </td>
@@ -1032,25 +1118,40 @@ const Dashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {application.user?.full_name || application.full_name || "Ma'lumot yo'q"}
+                            {application.user?.full_name ||
+                              application.full_name ||
+                              "Ma'lumot yo'q"}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 w-40 max-w-[180px]">
                           <span
                             className="block overflow-hidden text-ellipsis"
-                            title={application.job?.title || ""}
+                            title={
+                              application.job?.title_uz ||
+                              application.job?.title ||
+                              ""
+                            }
                           >
-                            {truncateText(application.job?.title || "—", 40)}
+                            {truncateText(
+                              application.job?.title_uz ||
+                                application.job?.title ||
+                                "—",
+                              40
+                            )}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {(() => {
                             const age = calculateAge(application.data_of_birth);
-                            return age === null ? "Ma'lumot yo'q" : `${age} yosh`;
+                            return age === null
+                              ? "Ma'lumot yo'q"
+                              : `${age} yosh`;
                           })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {application.user?.phone_number || application.phone || "Ma'lumot yo'q"}
+                          {application.user?.phone_number ||
+                            application.phone ||
+                            "Ma'lumot yo'q"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {application.jshshir || "Ma'lumot yo'q"}
@@ -1068,7 +1169,9 @@ const Dashboard = () => {
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-gray-500">Ma'lumot yo'q</span>
+                              <span className="text-gray-500">
+                                Ma'lumot yo'q
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1083,13 +1186,15 @@ const Dashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {formatDateTime(application.created_at)}
                         </td>
-                        <td 
+                        <td
                           className="px-6 py-4 whitespace-nowrap text-sm font-medium"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleUrgentViewDetails(application.id)}
+                              onClick={() =>
+                                handleUrgentViewDetails(application.id)
+                              }
                               onClickCapture={(e) => e.stopPropagation()}
                               className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                               title="Tafsilotlar"
@@ -1115,7 +1220,9 @@ const Dashboard = () => {
                               </svg>
                             </button>
                             <button
-                              onClick={(e) => handleUrgentDeleteClick(application.id, e)}
+                              onClick={(e) =>
+                                handleUrgentDeleteClick(application.id, e)
+                              }
                               className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                               title="O'chirish"
                             >
@@ -1157,10 +1264,10 @@ const Dashboard = () => {
                   >
                     Oldingi
                   </button>
-                  
+
                   <div className="flex items-center gap-1">
                     {getUrgentPageNumbers().map((pageNum, index) => {
-                      if (pageNum === 'ellipsis') {
+                      if (pageNum === "ellipsis") {
                         return (
                           <span
                             key={`ellipsis-${index}`}
@@ -1170,7 +1277,7 @@ const Dashboard = () => {
                           </span>
                         );
                       }
-                      
+
                       const isActive = pageNum === urgentCurrentPage;
                       return (
                         <button
@@ -1178,8 +1285,8 @@ const Dashboard = () => {
                           onClick={() => setUrgentPage(pageNum)}
                           className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                             isActive
-                              ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600'
-                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              ? "bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600"
+                              : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                           }`}
                         >
                           {pageNum}
@@ -1187,7 +1294,7 @@ const Dashboard = () => {
                       );
                     })}
                   </div>
-                  
+
                   <button
                     className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     disabled={!urgentPaginationInfo.next}
@@ -1213,7 +1320,7 @@ const Dashboard = () => {
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
               &#8203;
             </span>
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
               <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1270,178 +1377,390 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ) : selectedUrgentApplication ? (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          To'liq ism
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedUrgentApplication.user?.full_name || selectedUrgentApplication.full_name || "Ma'lumot yo'q"}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Yosh
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {(() => {
-                            const age = calculateAge(
-                              selectedUrgentApplication.data_of_birth
-                            );
-                            return age === null
-                              ? "Ma'lumot yo'q"
-                              : `${age} yosh`;
-                          })()}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Telefon
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedUrgentApplication.user?.phone_number || selectedUrgentApplication.phone || "Ma'lumot yo'q"}
-                        </p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                          Qo'shimcha ma'lumot
-                        </h4>
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {selectedUrgentApplication.additional_information ||
-                            "Ma'lumot yo'q"}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column: Application Information */}
+                    <div className="space-y-5">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                        Ariza ma'lumotlari
+                      </h3>
 
-                    {selectedUrgentApplication.job && (
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            To'liq ism
+                          </h4>
+                          <p className="text-base font-medium text-gray-900 dark:text-white">
+                            {selectedUrgentApplication.user?.full_name ||
+                              selectedUrgentApplication.full_name ||
+                              "Ma'lumot yo'q"}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Yosh
+                          </h4>
+                          <p className="text-base font-medium text-gray-900 dark:text-white">
+                            {(() => {
+                              const age = calculateAge(
+                                selectedUrgentApplication.data_of_birth
+                              );
+                              return age === null
+                                ? "Ma'lumot yo'q"
+                                : `${age} yosh`;
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Telefon
+                          </h4>
+                          <p className="text-base font-medium text-gray-900 dark:text-white">
+                            {selectedUrgentApplication.user?.phone_number ||
+                              selectedUrgentApplication.phone ||
+                              "Ma'lumot yo'q"}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                            Qo'shimcha ma'lumot
+                          </h4>
+                          <p className="text-base text-gray-900 dark:text-white whitespace-pre-wrap">
+                            {selectedUrgentApplication.additional_information ||
+                              "Ma'lumot yo'q"}
+                          </p>
+                        </div>
+                      </div>
+
                       <div>
                         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Ish o'rni
+                          Ta'lim
                         </h4>
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {selectedUrgentApplication.job.title || "Ma'lumot yo'q"}
-                          {selectedUrgentApplication.job.management_details?.name && (
-                            <span className="text-gray-500 dark:text-gray-400">
-                              {" "}
-                              ({selectedUrgentApplication.job.management_details.name}
-                              )
+                        {selectedUrgentApplication.graduations?.length ? (
+                          <div className="space-y-3">
+                            {selectedUrgentApplication.graduations.map((g) => (
+                              <div
+                                key={g.id}
+                                className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
+                              >
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {g.university} — {g.degree}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                  {g.specialization}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {formatDateYearMonth(g.date_from)} —{" "}
+                                  {formatDateYearMonth(g.date_to)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Ish tajribasi
+                          </h4>
+                          {selectedUrgentApplication.employments?.length >
+                            0 && (
+                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                              Umumiy staj:{" "}
+                              {formatExperience(
+                                getTotalExperienceMonths(
+                                  selectedUrgentApplication.employments
+                                )
+                              )}
                             </span>
                           )}
+                        </div>
+                        {selectedUrgentApplication.employments?.length ? (
+                          <div className="space-y-3">
+                            {selectedUrgentApplication.employments.map((e) => (
+                              <div
+                                key={e.id}
+                                className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
+                              >
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {e.organization_name}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                  {e.position}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {formatDateYearMonth(e.date_from)} —{" "}
+                                  {formatDateYearMonth(e.date_to)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tillar
+                        </h4>
+                        {selectedUrgentApplication.languages?.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedUrgentApplication.languages.map((l) => (
+                              <span
+                                key={l.id}
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              >
+                                {l.language_name} —{" "}
+                                {translateLanguageDegree(l.degree)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Oylik maosh
+                        </h4>
+                        <p className="text-base font-medium text-gray-900 dark:text-white">
+                          {selectedUrgentApplication.monthly_salary
+                            ? new Intl.NumberFormat("uz-UZ").format(
+                                selectedUrgentApplication.monthly_salary
+                              ) + " so'm"
+                            : "Ma'lumot yo'q"}
                         </p>
                       </div>
-                    )}
 
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Ta'lim
-                      </h4>
-                      {selectedUrgentApplication.graduations?.length ? (
-                        <div className="space-y-3">
-                          {selectedUrgentApplication.graduations.map((g) => (
-                            <div
-                              key={g.id}
-                              className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
-                            >
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {g.university} — {g.degree}
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-gray-300">
-                                {g.specialization}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {formatDateYearMonth(g.date_from)} —{" "}
-                                {formatDateYearMonth(g.date_to)}
-                              </div>
-                            </div>
-                          ))}
+                      {/* Status Editor */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Holatni o'zgartirish
+                        </h4>
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={urgentStatusValue}
+                            onChange={(e) =>
+                              setUrgentStatusValue(e.target.value)
+                            }
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                          >
+                            <option value="REVIEWING">Kutilmoqda</option>
+                            <option value="TEST_SCHEDULED">
+                              Qabul qilindi
+                            </option>
+                            <option value="REJECTED_DOCS">Rad etildi</option>
+                          </select>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Joriy:{" "}
+                            {getStatusBadge(selectedUrgentApplication.status)}
+                          </span>
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Ish tajribasi
-                      </h4>
-                      {selectedUrgentApplication.employments?.length ? (
-                        <div className="space-y-3">
-                          {selectedUrgentApplication.employments.map((e) => (
-                            <div
-                              key={e.id}
-                              className="p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40"
-                            >
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {e.organization_name}
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-gray-300">
-                                {e.position}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {formatDateYearMonth(e.date_from)} —{" "}
-                                {formatDateYearMonth(e.date_to)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tillar
-                      </h4>
-                      {selectedUrgentApplication.languages?.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {selectedUrgentApplication.languages.map((l) => (
-                            <span
-                              key={l.id}
-                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                            >
-                              {l.language_name} — {translateLanguageDegree(l.degree)}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Ma'lumot yo'q</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Oylik maosh
-                      </h4>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedUrgentApplication.monthly_salary 
-                          ? new Intl.NumberFormat('uz-UZ').format(selectedUrgentApplication.monthly_salary) + " so'm"
-                          : "Ma'lumot yo'q"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Holatni o'zgartirish
-                      </h4>
-                      <div className="flex items-center gap-3">
-                        <select
-                          value={urgentStatusValue}
-                          onChange={(e) => setUrgentStatusValue(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
-                        >
-                          <option value="NEW">Yangi</option>
-                          <option value="REVIEWING">Kutilmoqda</option>
-                          <option value="TEST_SCHEDULED">Qabul qilindi</option>
-                          <option value="REJECTED_DOCS">Rad etildi</option>
-                        </select>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Joriy: {getStatusBadge(selectedUrgentApplication.status)}
-                        </span>
                       </div>
                     </div>
-                  </>
+
+                    {/* Right Column: Vacancy Information */}
+                    {selectedUrgentApplication.job && (
+                      <div className="space-y-5 border-l border-gray-200 dark:border-gray-700 pl-6">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                          Vakansiya ma'lumotlari
+                        </h3>
+
+                        {/* Title - Large Display */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                            Vakansiya nomi
+                          </h4>
+                          <p className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                            {selectedUrgentApplication.job.title_uz ||
+                              selectedUrgentApplication.job.title ||
+                              "Ma'lumot yo'q"}
+                          </p>
+
+                          {/* Department and Management Information (for central) or Region (for regional) */}
+                          {selectedUrgentApplication.job.branch_type ===
+                            "regional" &&
+                          selectedUrgentApplication.job.region ? (
+                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                              <div>
+                                <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                  Hudud
+                                </h5>
+                                <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                  {(() => {
+                                    const region = REGIONS.find(
+                                      (r) =>
+                                        r.value ===
+                                        selectedUrgentApplication.job.region
+                                    );
+                                    return region
+                                      ? region.label
+                                      : selectedUrgentApplication.job.region;
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            (selectedUrgentApplication.job.management
+                              ?.name_uz ||
+                              selectedUrgentApplication.job.management
+                                ?.department?.name_uz) && (
+                              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                {selectedUrgentApplication.job.management
+                                  ?.department?.name_uz && (
+                                  <div className="mb-2">
+                                    <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                      Departament
+                                    </h5>
+                                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                      {
+                                        selectedUrgentApplication.job.management
+                                          .department.name_uz
+                                      }
+                                    </p>
+                                  </div>
+                                )}
+                                {selectedUrgentApplication.job.management
+                                  ?.name_uz && (
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                      Boshqarma
+                                    </h5>
+                                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                      {
+                                        selectedUrgentApplication.job.management
+                                          .name_uz
+                                      }
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          )}
+                        </div>
+
+                        {/* Region Title (if regional) */}
+                        {selectedUrgentApplication.job.branch_type ===
+                          "regional" &&
+                          (selectedUrgentApplication.job.region_title_uz ||
+                            selectedUrgentApplication.job.region_title_cr ||
+                            selectedUrgentApplication.job.region_title_ru) && (
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  Vakansiyaning to'liq nomi
+                                </h4>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() =>
+                                      setActiveRegionTitleTab("uz")
+                                    }
+                                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                      activeRegionTitleTab === "uz"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                    }`}
+                                  >
+                                    UZ
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setActiveRegionTitleTab("cr")
+                                    }
+                                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                      activeRegionTitleTab === "cr"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                    }`}
+                                  >
+                                    CR
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setActiveRegionTitleTab("ru")
+                                    }
+                                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                      activeRegionTitleTab === "ru"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                    }`}
+                                  >
+                                    RU
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                {activeRegionTitleTab === "uz" &&
+                                  (selectedUrgentApplication.job
+                                    .region_title_uz ||
+                                    "Ma'lumot yo'q")}
+                                {activeRegionTitleTab === "cr" &&
+                                  (selectedUrgentApplication.job
+                                    .region_title_cr ||
+                                    "Ma'lumot yo'q")}
+                                {activeRegionTitleTab === "ru" &&
+                                  (selectedUrgentApplication.job
+                                    .region_title_ru ||
+                                    "Ma'lumot yo'q")}
+                              </p>
+                            </div>
+                          )}
+
+                        {/* Language Requirements - Side by Side */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                              Ingliz tili talabi
+                            </h4>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {selectedUrgentApplication.job
+                                .lan_requirements_eng === "not_required"
+                                ? "Talab qilinmaydi"
+                                : selectedUrgentApplication.job
+                                    .lan_requirements_eng || "Ma'lumot yo'q"}
+                            </p>
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                              Rus tili talabi
+                            </h4>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {selectedUrgentApplication.job
+                                .lan_requirements_ru === "not_required"
+                                ? "Talab qilinmaydi"
+                                : selectedUrgentApplication.job
+                                    .lan_requirements_ru || "Ma'lumot yo'q"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Requirements - Only Uzbek */}
+                        {selectedUrgentApplication.job.requirements_uz &&
+                          Array.isArray(
+                            selectedUrgentApplication.job.requirements_uz
+                          ) &&
+                          selectedUrgentApplication.job.requirements_uz.length >
+                            0 && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                                Talablar
+                              </h4>
+                              <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
+                                {selectedUrgentApplication.job.requirements_uz.map(
+                                  (req, idx) => (
+                                    <li key={idx}>{req.task || req}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
                 ) : null}
               </div>
 
@@ -1481,4 +1800,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

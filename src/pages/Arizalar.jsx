@@ -206,6 +206,7 @@ const Arizalar = () => {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [evaluationRules, setEvaluationRules] = useState({});
   const [evaluationFilter, setEvaluationFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -239,7 +240,7 @@ const Arizalar = () => {
   const [activeJobTasksTab, setActiveJobTasksTab] = useState("uz");
   const [activeRegionTitleTab, setActiveRegionTitleTab] = useState("uz");
   const navigate = useNavigate();
-  
+
   // Refs for input fields to maintain focus
   const searchInputRef = useRef(null);
   const jshshirInputRef = useRef(null);
@@ -267,11 +268,24 @@ const Arizalar = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedDate, debouncedSearchQuery, debouncedJshshirQuery, hierarchyFilters]);
+  }, [
+    selectedDate,
+    debouncedSearchQuery,
+    debouncedJshshirQuery,
+    hierarchyFilters,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     fetchApplications();
-  }, [selectedDate, page, pageSize, debouncedSearchQuery, debouncedJshshirQuery, hierarchyFilters]);
+  }, [
+    selectedDate,
+    page,
+    pageSize,
+    debouncedSearchQuery,
+    debouncedJshshirQuery,
+    hierarchyFilters,
+  ]);
 
   // Track which input was focused and cursor position before re-render
   const focusedInputRef = useRef(null);
@@ -282,14 +296,17 @@ const Arizalar = () => {
     if (!loading && focusedInputRef.current) {
       // Use requestAnimationFrame to ensure DOM is updated
       requestAnimationFrame(() => {
-        if (focusedInputRef.current === 'search' && searchInputRef.current) {
+        if (focusedInputRef.current === "search" && searchInputRef.current) {
           searchInputRef.current.focus();
           // Restore cursor position
           const pos = cursorPositionRef.current.search;
           const len = searchQuery.length;
           const finalPos = Math.min(pos, len);
           searchInputRef.current.setSelectionRange(finalPos, finalPos);
-        } else if (focusedInputRef.current === 'jshshir' && jshshirInputRef.current) {
+        } else if (
+          focusedInputRef.current === "jshshir" &&
+          jshshirInputRef.current
+        ) {
           jshshirInputRef.current.focus();
           // Restore cursor position
           const pos = cursorPositionRef.current.jshshir;
@@ -347,12 +364,16 @@ const Arizalar = () => {
       const archivesData = await getDeadlineArchivesApi();
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
-      const archivesArray = Array.isArray(archivesData) 
-        ? archivesData 
-        : (archivesData?.results || archivesData?.data || []);
-      
+      const archivesArray = Array.isArray(archivesData)
+        ? archivesData
+        : archivesData?.results || archivesData?.data || [];
+
       // Extract unique dates from the archives
-      const dates = [...new Set(archivesArray.map(archive => archive.application_deadline))];
+      const dates = [
+        ...new Set(
+          archivesArray.map((archive) => archive.application_deadline)
+        ),
+      ];
       // Sort dates in descending order (newest first)
       dates.sort((a, b) => new Date(b) - new Date(a));
       setAvailableDates(dates);
@@ -374,19 +395,19 @@ const Arizalar = () => {
         page: page,
         page_size: pageSize,
       };
-      
+
       if (selectedDate) {
         params.application_deadline = selectedDate;
       }
-      
+
       if (debouncedSearchQuery.trim()) {
         params.full_name = debouncedSearchQuery.trim();
       }
-      
+
       if (debouncedJshshirQuery.trim()) {
         params.jshshir = debouncedJshshirQuery.trim();
       }
-      
+
       // Add hierarchy filter params
       if (hierarchyFilters.department_id) {
         params.department_id = hierarchyFilters.department_id;
@@ -401,11 +422,11 @@ const Arizalar = () => {
       const applicationsData = await getApplicationsApi(params);
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
-      const applicationsArray = Array.isArray(applicationsData) 
-        ? applicationsData 
-        : (applicationsData?.results || applicationsData?.data || []);
+      const applicationsArray = Array.isArray(applicationsData)
+        ? applicationsData
+        : applicationsData?.results || applicationsData?.data || [];
       setApplications(applicationsArray);
-      
+
       // Save pagination info
       if (applicationsData && !Array.isArray(applicationsData)) {
         setPaginationInfo({
@@ -420,7 +441,7 @@ const Arizalar = () => {
           previous: null,
         });
       }
-      
+
       setSelectedIds(new Set());
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -447,13 +468,13 @@ const Arizalar = () => {
     if (!dateString) return "Ma'lumot yo'q";
     const date = parseDateSafe(dateString);
     if (!date) return "Ma'lumot yo'q";
-    
+
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
-    
+
     return `${day}.${month}.${year} ${hours}:${minutes}`;
   };
 
@@ -461,11 +482,21 @@ const Arizalar = () => {
     if (!dateString) return "Ma'lumot yo'q";
     const date = parseDateSafe(dateString);
     if (!date) return "Ma'lumot yo'q";
-    
+
     const year = date.getFullYear();
     const monthNames = [
-      "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-      "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+      "yanvar",
+      "fevral",
+      "mart",
+      "aprel",
+      "may",
+      "iyun",
+      "iyul",
+      "avgust",
+      "sentabr",
+      "oktabr",
+      "noyabr",
+      "dekabr",
     ];
     const month = monthNames[date.getMonth()];
     return `${year}-yil, ${month}`;
@@ -669,7 +700,13 @@ const Arizalar = () => {
         let placed = false;
         for (const g of local) {
           if (
-            g.some((m) => nameSimilarity(m.user?.full_name || m.full_name || "", item.user?.full_name || item.full_name || "") >= 0.7)
+            g.some(
+              (m) =>
+                nameSimilarity(
+                  m.user?.full_name || m.full_name || "",
+                  item.user?.full_name || item.full_name || ""
+                ) >= 0.7
+            )
           ) {
             g.push(item);
             placed = true;
@@ -715,9 +752,12 @@ const Arizalar = () => {
       // Handle status mapping: backend returns "NEW" but we need to normalize it
       const normalizedStatus = (fullData?.status || "NEW").toUpperCase();
       // If status is "NEW", default to "REVIEWING" since "NEW" is not available in the select
-      const mappedStatus = normalizedStatus === "PENDING" 
-        ? "REVIEWING" 
-        : (normalizedStatus === "NEW" ? "REVIEWING" : normalizedStatus);
+      const mappedStatus =
+        normalizedStatus === "PENDING"
+          ? "REVIEWING"
+          : normalizedStatus === "NEW"
+          ? "REVIEWING"
+          : normalizedStatus;
       setStatusValue(mappedStatus);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -738,11 +778,14 @@ const Arizalar = () => {
     try {
       setSavingStatus(true);
       const fullPayload = {
-        user_id: selectedApplication.user?.user_id || selectedApplication.user_id,
+        user_id:
+          selectedApplication.user?.user_id || selectedApplication.user_id,
         job: selectedApplication.job?.id || selectedApplication.job,
-        full_name: selectedApplication.user?.full_name || selectedApplication.full_name,
+        full_name:
+          selectedApplication.user?.full_name || selectedApplication.full_name,
         data_of_birth: selectedApplication.data_of_birth,
-        phone: selectedApplication.user?.phone_number || selectedApplication.phone,
+        phone:
+          selectedApplication.user?.phone_number || selectedApplication.phone,
         additional_information: selectedApplication.additional_information,
         jshshir: selectedApplication.jshshir,
         monthly_salary: selectedApplication.monthly_salary,
@@ -768,7 +811,7 @@ const Arizalar = () => {
         )
       );
       setSelectedApplication((prev) => ({ ...prev, status: statusValue }));
-      
+
       // Close modal after successful save
       closeModal();
     } finally {
@@ -803,7 +846,9 @@ const Arizalar = () => {
     try {
       setIsBulkUpdating(true);
       const safeApplications = Array.isArray(applications) ? applications : [];
-      const selectedApps = safeApplications.filter((a) => selectedIds.has(a.id));
+      const selectedApps = safeApplications.filter((a) =>
+        selectedIds.has(a.id)
+      );
       const jobsMap = new Map(selectedApps.map((a) => [a.id, a.job]));
       await toast.promise(
         Promise.all(
@@ -852,15 +897,11 @@ const Arizalar = () => {
     if (!deletingApplicationId) return;
     try {
       setIsDeleting(true);
-      await toast.promise(
-        deleteApplicationApi(deletingApplicationId),
-        {
-          loading: "O'chirilmoqda...",
-          success: "Ariza muvaffaqiyatli o'chirildi",
-          error: (err) =>
-            err?.message || "Arizani o'chirishda xatolik yuz berdi",
-        }
-      );
+      await toast.promise(deleteApplicationApi(deletingApplicationId), {
+        loading: "O'chirilmoqda...",
+        success: "Ariza muvaffaqiyatli o'chirildi",
+        error: (err) => err?.message || "Arizani o'chirishda xatolik yuz berdi",
+      });
       setApplications((prev) =>
         prev.filter((a) => a.id !== deletingApplicationId)
       );
@@ -878,36 +919,70 @@ const Arizalar = () => {
     setDeletingApplicationId(null);
   };
 
-  // Frontend filtering (evaluation filter only - search and jshshir handled by backend)
+  // Helper function to check if status is "pending" (NEW, PENDING, REVIEWING)
+  const isPendingStatus = (status) => {
+    const s = (status || "").toUpperCase();
+    return s === "NEW" || s === "PENDING" || s === "REVIEWING";
+  };
+
+  // Helper function to normalize status for filtering
+  const normalizeStatusForFilter = (status) => {
+    const s = (status || "").toUpperCase();
+    if (s === "NEW" || s === "PENDING" || s === "REVIEWING") return "pending";
+    if (s === "TEST_SCHEDULED") return "test_scheduled";
+    if (s === "REJECTED_DOCS" || s === "REJECTED") return "rejected";
+    return s.toLowerCase();
+  };
+
+  // Frontend filtering (evaluation filter and status filter - search and jshshir handled by backend)
   const safeApplications = Array.isArray(applications) ? applications : [];
-  const filteredApps = safeApplications.filter((a) => {
-    // If evaluation rules are set (o'lchash rejimi qo'yilgan), filter by selected vacancy
-    const hasEvaluationRules = Object.keys(evaluationRules).length > 0;
-    if (hasEvaluationRules && a.job && a.job.id) {
-      // Only show applications for vacancies that have evaluation rules
-      if (!evaluationRules[a.job.id]) {
-        return false;
+  const filteredApps = safeApplications
+    .filter((a) => {
+      // Status filter
+      if (statusFilter !== "all") {
+        const appStatus = normalizeStatusForFilter(a.status);
+        if (appStatus !== statusFilter) {
+          return false;
+        }
       }
-    }
-    
-    const evalResult = evaluateApplication(a);
-    if (evaluationFilter === "good") return evalResult.status === "good";
-    if (evaluationFilter === "bad") return evalResult.status === "bad";
-    return true;
-  });
-  
+
+      // If evaluation rules are set (o'lchash rejimi qo'yilgan), filter by selected vacancy
+      const hasEvaluationRules = Object.keys(evaluationRules).length > 0;
+      if (hasEvaluationRules && a.job && a.job.id) {
+        // Only show applications for vacancies that have evaluation rules
+        if (!evaluationRules[a.job.id]) {
+          return false;
+        }
+      }
+
+      const evalResult = evaluateApplication(a);
+      if (evaluationFilter === "good") return evalResult.status === "good";
+      if (evaluationFilter === "bad") return evalResult.status === "bad";
+      return true;
+    })
+    .sort((a, b) => {
+      // Sort: pending status (NEW, PENDING, REVIEWING) first, then others
+      const aIsPending = isPendingStatus(a.status);
+      const bIsPending = isPendingStatus(b.status);
+
+      if (aIsPending && !bIsPending) return -1;
+      if (!aIsPending && bIsPending) return 1;
+      // If both are pending or both are not, maintain original order
+      return 0;
+    });
+
   // Backend pagination info
   const totalItems = paginationInfo.count;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const currentPage = page;
   const startIndex = (currentPage - 1) * pageSize + 1;
   const endIndex = Math.min(currentPage * pageSize, totalItems);
-  
+
   // Calculate page numbers to display
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5; // Maximum number of page buttons to show
-    
+
     if (totalPages <= maxVisible) {
       // Show all pages if total is less than maxVisible
       for (let i = 1; i <= totalPages; i++) {
@@ -920,30 +995,30 @@ const Arizalar = () => {
         for (let i = 1; i <= 4; i++) {
           pages.push(i);
         }
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         pages.push(totalPages);
       } else if (currentPage >= totalPages - 2) {
         // Show last pages
         pages.push(1);
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         for (let i = totalPages - 3; i <= totalPages; i++) {
           pages.push(i);
         }
       } else {
         // Show middle pages
         pages.push(1);
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         for (let i = currentPage - 1; i <= currentPage + 1; i++) {
           pages.push(i);
         }
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
-  
+
   const visibleApps = filteredApps; // All filtered apps from current page
   const allVisibleSelected =
     visibleApps.length > 0 && visibleApps.every((a) => selectedIds.has(a.id));
@@ -1017,7 +1092,6 @@ const Arizalar = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-4">
-          
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Ishga arizalar
@@ -1029,34 +1103,34 @@ const Arizalar = () => {
         </div>
         <div className="mt-3 sm:mt-0 flex items-center gap-3">
           {/* Duplicates alert (page-level) */}
-      {duplicateGroups.length > 0 && (
-        <div className="flex items-center justify-end ">
-          <button
-            type="button"
-            onClick={() => setDuplicatesOpen(true)}
-            className="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs sm:text-sm font-medium rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors"
-            title="Bir xillik aniqlanmoqda"
-          >
-            <svg
-              className="h-4 w-4 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-              />
-            </svg>
-            Bir xillik aniqlanmoqda
-            <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-amber-500 text-white text-[10px]">
-              {duplicateGroups.length}
-            </span>
-          </button>
-        </div>
-      )}
+          {duplicateGroups.length > 0 && (
+            <div className="flex items-center justify-end ">
+              <button
+                type="button"
+                onClick={() => setDuplicatesOpen(true)}
+                className="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs sm:text-sm font-medium rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors"
+                title="Bir xillik aniqlanmoqda"
+              >
+                <svg
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                  />
+                </svg>
+                Bir xillik aniqlanmoqda
+                <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-amber-500 text-white text-[10px]">
+                  {duplicateGroups.length}
+                </span>
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setIsEvalModalOpen(true)}
@@ -1079,6 +1153,24 @@ const Arizalar = () => {
               <option value="all">Barchasi</option>
               <option value="good">Faqat mos</option>
               <option value="bad">Faqat mos emas</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 dark:text-gray-400">
+              Holat:
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
+            >
+              <option value="all">Barchasi</option>
+              <option value="pending">Kutilmoqda</option>
+              <option value="test_scheduled">Qabul qilindi</option>
+              <option value="rejected">Rad etildi</option>
             </select>
           </div>
         </div>
@@ -1111,8 +1203,18 @@ const Arizalar = () => {
                     const dateObj = new Date(date + "T00:00:00");
                     const day = dateObj.getDate();
                     const monthNames = [
-                      "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-                      "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+                      "yanvar",
+                      "fevral",
+                      "mart",
+                      "aprel",
+                      "may",
+                      "iyun",
+                      "iyul",
+                      "avgust",
+                      "sentabr",
+                      "oktabr",
+                      "noyabr",
+                      "dekabr",
                     ];
                     const month = monthNames[dateObj.getMonth()];
                     const year = dateObj.getFullYear();
@@ -1159,24 +1261,29 @@ const Arizalar = () => {
                   setSearchQuery(e.target.value);
                   // Save cursor position
                   if (searchInputRef.current) {
-                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.search =
+                      searchInputRef.current.selectionStart || 0;
                   }
                 }}
                 onFocus={() => {
-                  focusedInputRef.current = 'search';
+                  focusedInputRef.current = "search";
                   if (searchInputRef.current) {
-                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.search =
+                      searchInputRef.current.selectionStart || 0;
                   }
                 }}
                 onBlur={(e) => {
                   // Save cursor position before blur
                   if (searchInputRef.current) {
-                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.search =
+                      searchInputRef.current.selectionStart || 0;
                   }
                   // Don't clear immediately, wait a bit to see if it's just a re-render
                   setTimeout(() => {
-                    if (document.activeElement !== searchInputRef.current && 
-                        document.activeElement !== jshshirInputRef.current) {
+                    if (
+                      document.activeElement !== searchInputRef.current &&
+                      document.activeElement !== jshshirInputRef.current
+                    ) {
                       focusedInputRef.current = null;
                     }
                   }, 200);
@@ -1184,7 +1291,8 @@ const Arizalar = () => {
                 onKeyUp={(e) => {
                   // Save cursor position on key events
                   if (searchInputRef.current) {
-                    cursorPositionRef.current.search = searchInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.search =
+                      searchInputRef.current.selectionStart || 0;
                   }
                 }}
                 placeholder="Ism bo'yicha qidirish..."
@@ -1237,24 +1345,29 @@ const Arizalar = () => {
                   setJshshirQuery(e.target.value);
                   // Save cursor position
                   if (jshshirInputRef.current) {
-                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.jshshir =
+                      jshshirInputRef.current.selectionStart || 0;
                   }
                 }}
                 onFocus={() => {
-                  focusedInputRef.current = 'jshshir';
+                  focusedInputRef.current = "jshshir";
                   if (jshshirInputRef.current) {
-                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.jshshir =
+                      jshshirInputRef.current.selectionStart || 0;
                   }
                 }}
                 onBlur={(e) => {
                   // Save cursor position before blur
                   if (jshshirInputRef.current) {
-                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.jshshir =
+                      jshshirInputRef.current.selectionStart || 0;
                   }
                   // Don't clear immediately, wait a bit to see if it's just a re-render
                   setTimeout(() => {
-                    if (document.activeElement !== jshshirInputRef.current && 
-                        document.activeElement !== searchInputRef.current) {
+                    if (
+                      document.activeElement !== jshshirInputRef.current &&
+                      document.activeElement !== searchInputRef.current
+                    ) {
                       focusedInputRef.current = null;
                     }
                   }, 200);
@@ -1262,7 +1375,8 @@ const Arizalar = () => {
                 onKeyUp={(e) => {
                   // Save cursor position on key events
                   if (jshshirInputRef.current) {
-                    cursorPositionRef.current.jshshir = jshshirInputRef.current.selectionStart || 0;
+                    cursorPositionRef.current.jshshir =
+                      jshshirInputRef.current.selectionStart || 0;
                   }
                 }}
                 placeholder="JSHSHIR bo'yicha qidirish..."
@@ -1306,7 +1420,7 @@ const Arizalar = () => {
                 </svg>
               )}
             </div>
-            
+
             {/* Hierarchy Filter - Inline with search bars */}
             {/* First Select: Type Selection */}
             <div className="relative min-w-[180px]">
@@ -1315,20 +1429,20 @@ const Arizalar = () => {
                 onChange={(e) => {
                   const newType = e.target.value || null;
                   if (newType) {
-                    setHierarchyFilters({ 
-                      type: newType, 
-                      department_id: null, 
-                      management_id: null, 
-                      job_id: null, 
-                      region: null 
+                    setHierarchyFilters({
+                      type: newType,
+                      department_id: null,
+                      management_id: null,
+                      job_id: null,
+                      region: null,
                     });
                   } else {
-                    setHierarchyFilters({ 
-                      type: null, 
-                      department_id: null, 
-                      management_id: null, 
-                      job_id: null, 
-                      region: null 
+                    setHierarchyFilters({
+                      type: null,
+                      department_id: null,
+                      management_id: null,
+                      job_id: null,
+                      region: null,
                     });
                   }
                   setPage(1);
@@ -1342,17 +1456,19 @@ const Arizalar = () => {
             </div>
 
             {/* Second Select: Department/Region Selection */}
-            {hierarchyFilters.type === 'central' && hierarchyData?.central && (
+            {hierarchyFilters.type === "central" && hierarchyData?.central && (
               <div className="relative min-w-[180px]">
                 <select
                   value={hierarchyFilters.department_id || ""}
                   onChange={(e) => {
-                    const deptId = e.target.value ? parseInt(e.target.value) : null;
-                    setHierarchyFilters({ 
-                      ...hierarchyFilters, 
-                      department_id: deptId, 
-                      management_id: null, 
-                      job_id: null 
+                    const deptId = e.target.value
+                      ? parseInt(e.target.value)
+                      : null;
+                    setHierarchyFilters({
+                      ...hierarchyFilters,
+                      department_id: deptId,
+                      management_id: null,
+                      job_id: null,
                     });
                     setPage(1);
                   }}
@@ -1361,137 +1477,66 @@ const Arizalar = () => {
                   <option value="">Departament</option>
                   {hierarchyData.central.map((dept) => (
                     <option key={dept.department_id} value={dept.department_id}>
-                      {dept.department_name_uz || dept.department_name || `Departament #${dept.department_id}`}
+                      {dept.department_name_uz ||
+                        dept.department_name ||
+                        `Departament #${dept.department_id}`}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {hierarchyFilters.type === 'regional' && hierarchyData?.regional && (
-              <div className="relative min-w-[180px]">
-                <select
-                  value={hierarchyFilters.region || ""}
-                  onChange={(e) => {
-                    const region = e.target.value || null;
-                    setHierarchyFilters({ 
-                      ...hierarchyFilters, 
-                      region, 
-                      job_id: null 
-                    });
-                    setPage(1);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Viloyat</option>
-                  {hierarchyData.regional.map((reg) => (
-                    <option key={reg.region} value={reg.region}>
-                      {reg.region}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {hierarchyFilters.type === "regional" &&
+              hierarchyData?.regional && (
+                <div className="relative min-w-[180px]">
+                  <select
+                    value={hierarchyFilters.region || ""}
+                    onChange={(e) => {
+                      const region = e.target.value || null;
+                      setHierarchyFilters({
+                        ...hierarchyFilters,
+                        region,
+                        job_id: null,
+                      });
+                      setPage(1);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Viloyat</option>
+                    {hierarchyData.regional.map((reg) => (
+                      <option key={reg.region} value={reg.region}>
+                        {reg.region}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
             {/* Vacancy Selection for Regional */}
-            {hierarchyFilters.type === 'regional' && 
-             hierarchyFilters.region && 
-             hierarchyData?.regional && (() => {
-              const reg = hierarchyData.regional.find(r => r.region === hierarchyFilters.region);
-              const vacancies = reg?.vacancies || [];
-              
-              if (vacancies.length > 0) {
-                return (
-                  <div key="vacancy-select-regional" className="relative min-w-[180px]">
-                    <select
-                      value={hierarchyFilters.job_id || ""}
-                      onChange={(e) => {
-                        const jobId = e.target.value ? parseInt(e.target.value) : null;
-                        setHierarchyFilters({ 
-                          ...hierarchyFilters, 
-                          job_id: jobId 
-                        });
-                        setPage(1);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Vakansiya</option>
-                      {vacancies.map((vacancy) => (
-                        <option key={vacancy.id} value={vacancy.id}>
-                          {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+            {hierarchyFilters.type === "regional" &&
+              hierarchyFilters.region &&
+              hierarchyData?.regional &&
+              (() => {
+                const reg = hierarchyData.regional.find(
+                  (r) => r.region === hierarchyFilters.region
                 );
-              }
-              
-              return null;
-            })()}
+                const vacancies = reg?.vacancies || [];
 
-            {/* Third Select: Management Selection (only for central with managements) */}
-            {hierarchyFilters.type === 'central' && 
-             hierarchyFilters.department_id && 
-             hierarchyData?.central && (() => {
-              const dept = hierarchyData.central.find(d => d.department_id === hierarchyFilters.department_id);
-              const hasManagements = dept?.managements && dept.managements.length > 0;
-              
-              if (hasManagements) {
-                return (
-                  <div key="management-select" className="relative min-w-[180px]">
-                    <select
-                      value={hierarchyFilters.management_id || ""}
-                      onChange={(e) => {
-                        const mgmtId = e.target.value ? parseInt(e.target.value) : null;
-                        setHierarchyFilters({ 
-                          ...hierarchyFilters, 
-                          management_id: mgmtId, 
-                          job_id: null 
-                        });
-                        setPage(1);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Boshqarma</option>
-                      {dept.managements.map((mgmt) => (
-                        <option key={mgmt.management_id} value={mgmt.management_id}>
-                          {mgmt.management_name_uz || mgmt.management_name || `Boshqarma #${mgmt.management_id}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
-            {/* Fourth Select: Vacancy Selection for Central */}
-            {hierarchyFilters.type === 'central' && hierarchyFilters.department_id && (() => {
-              const dept = hierarchyData?.central?.find(d => d.department_id === hierarchyFilters.department_id);
-              const hasManagements = dept?.managements && dept.managements.length > 0;
-              
-              // Show vacancy select if:
-              // 1. Department has managements AND management is selected
-              // 2. Department has no managements (direct vacancies)
-              const shouldShow = hasManagements 
-                ? hierarchyFilters.management_id 
-                : true;
-              
-              if (shouldShow) {
-                const vacancies = hasManagements 
-                  ? dept.managements.find(m => m.management_id === hierarchyFilters.management_id)?.vacancies || []
-                  : dept?.vacancies || [];
-                
                 if (vacancies.length > 0) {
                   return (
-                    <div key="vacancy-select-central" className="relative min-w-[180px]">
+                    <div
+                      key="vacancy-select-regional"
+                      className="relative min-w-[180px]"
+                    >
                       <select
                         value={hierarchyFilters.job_id || ""}
                         onChange={(e) => {
-                          const jobId = e.target.value ? parseInt(e.target.value) : null;
-                          setHierarchyFilters({ 
-                            ...hierarchyFilters, 
-                            job_id: jobId 
+                          const jobId = e.target.value
+                            ? parseInt(e.target.value)
+                            : null;
+                          setHierarchyFilters({
+                            ...hierarchyFilters,
+                            job_id: jobId,
                           });
                           setPage(1);
                         }}
@@ -1500,23 +1545,146 @@ const Arizalar = () => {
                         <option value="">Vakansiya</option>
                         {vacancies.map((vacancy) => (
                           <option key={vacancy.id} value={vacancy.id}>
-                            {vacancy.title_uz || vacancy.title || `Vakansiya #${vacancy.id}`}
+                            {vacancy.title_uz ||
+                              vacancy.title ||
+                              `Vakansiya #${vacancy.id}`}
                           </option>
                         ))}
                       </select>
                     </div>
                   );
                 }
-              }
-              
-              return null;
-            })()}
+
+                return null;
+              })()}
+
+            {/* Third Select: Management Selection (only for central with managements) */}
+            {hierarchyFilters.type === "central" &&
+              hierarchyFilters.department_id &&
+              hierarchyData?.central &&
+              (() => {
+                const dept = hierarchyData.central.find(
+                  (d) => d.department_id === hierarchyFilters.department_id
+                );
+                const hasManagements =
+                  dept?.managements && dept.managements.length > 0;
+
+                if (hasManagements) {
+                  return (
+                    <div
+                      key="management-select"
+                      className="relative min-w-[180px]"
+                    >
+                      <select
+                        value={hierarchyFilters.management_id || ""}
+                        onChange={(e) => {
+                          const mgmtId = e.target.value
+                            ? parseInt(e.target.value)
+                            : null;
+                          setHierarchyFilters({
+                            ...hierarchyFilters,
+                            management_id: mgmtId,
+                            job_id: null,
+                          });
+                          setPage(1);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Boshqarma</option>
+                        {dept.managements.map((mgmt) => (
+                          <option
+                            key={mgmt.management_id}
+                            value={mgmt.management_id}
+                          >
+                            {mgmt.management_name_uz ||
+                              mgmt.management_name ||
+                              `Boshqarma #${mgmt.management_id}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+            {/* Fourth Select: Vacancy Selection for Central */}
+            {hierarchyFilters.type === "central" &&
+              hierarchyFilters.department_id &&
+              (() => {
+                const dept = hierarchyData?.central?.find(
+                  (d) => d.department_id === hierarchyFilters.department_id
+                );
+                const hasManagements =
+                  dept?.managements && dept.managements.length > 0;
+
+                // Show vacancy select if:
+                // 1. Department has managements AND management is selected
+                // 2. Department has no managements (direct vacancies)
+                const shouldShow = hasManagements
+                  ? hierarchyFilters.management_id
+                  : true;
+
+                if (shouldShow) {
+                  const vacancies = hasManagements
+                    ? dept.managements.find(
+                        (m) =>
+                          m.management_id === hierarchyFilters.management_id
+                      )?.vacancies || []
+                    : dept?.vacancies || [];
+
+                  if (vacancies.length > 0) {
+                    return (
+                      <div
+                        key="vacancy-select-central"
+                        className="relative min-w-[180px]"
+                      >
+                        <select
+                          value={hierarchyFilters.job_id || ""}
+                          onChange={(e) => {
+                            const jobId = e.target.value
+                              ? parseInt(e.target.value)
+                              : null;
+                            setHierarchyFilters({
+                              ...hierarchyFilters,
+                              job_id: jobId,
+                            });
+                            setPage(1);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Vakansiya</option>
+                          {vacancies.map((vacancy) => (
+                            <option key={vacancy.id} value={vacancy.id}>
+                              {vacancy.title_uz ||
+                                vacancy.title ||
+                                `Vakansiya #${vacancy.id}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  }
+                }
+
+                return null;
+              })()}
 
             {/* Clear button for hierarchy filter */}
-            {(hierarchyFilters.type || hierarchyFilters.department_id || hierarchyFilters.management_id || hierarchyFilters.job_id || hierarchyFilters.region) && (
+            {(hierarchyFilters.type ||
+              hierarchyFilters.department_id ||
+              hierarchyFilters.management_id ||
+              hierarchyFilters.job_id ||
+              hierarchyFilters.region) && (
               <button
                 onClick={() => {
-                  setHierarchyFilters({ type: null, department_id: null, management_id: null, job_id: null, region: null });
+                  setHierarchyFilters({
+                    type: null,
+                    department_id: null,
+                    management_id: null,
+                    job_id: null,
+                    region: null,
+                  });
                   setPage(1);
                 }}
                 className="px-2.5 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -1529,14 +1697,29 @@ const Arizalar = () => {
             {/* Loading state */}
             {loadingHierarchy && (
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
               </div>
             )}
           </div>
-          
+
           {/* Right side: Page Size */}
           <div className="flex items-center gap-2">
             <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
@@ -1654,12 +1837,12 @@ const Arizalar = () => {
                   className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => handleViewDetails(application.id)}
                 >
-                  <td 
+                  <td
                     className="px-6 py-4 whitespace-nowrap text-sm cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       // Toggle checkbox if click is not directly on the checkbox
-                      if (e.target.type !== 'checkbox') {
+                      if (e.target.type !== "checkbox") {
                         const isSelected = selectedIds.has(application.id);
                         handleToggleOne(application.id, !isSelected);
                       }
@@ -1680,7 +1863,9 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {application.user?.full_name || application.full_name || "Ma'lumot yo'q"}
+                        {application.user?.full_name ||
+                          application.full_name ||
+                          "Ma'lumot yo'q"}
                       </div>
                       {isDuplicate(application) && (
                         <span
@@ -1715,9 +1900,18 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 w-40 max-w-[180px]">
                     <span
                       className="block overflow-hidden text-ellipsis"
-                      title={application.job?.title_uz || application.job?.title || ""}
+                      title={
+                        application.job?.title_uz ||
+                        application.job?.title ||
+                        ""
+                      }
                     >
-                      {truncateText(application.job?.title_uz || application.job?.title || "—", 40)}
+                      {truncateText(
+                        application.job?.title_uz ||
+                          application.job?.title ||
+                          "—",
+                        40
+                      )}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -1727,7 +1921,9 @@ const Arizalar = () => {
                     })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {application.user?.phone_number || application.phone || "Ma'lumot yo'q"}
+                    {application.user?.phone_number ||
+                      application.phone ||
+                      "Ma'lumot yo'q"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {application.jshshir || "Ma'lumot yo'q"}
@@ -1793,7 +1989,7 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatDateTime(application.created_at)}
                   </td>
-                  <td 
+                  <td
                     className="px-6 py-4 whitespace-nowrap text-sm font-medium"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1865,11 +2061,11 @@ const Arizalar = () => {
             >
               Oldingi
             </button>
-            
+
             {/* Page number buttons */}
             <div className="flex items-center gap-1">
               {getPageNumbers().map((pageNum, index) => {
-                if (pageNum === 'ellipsis') {
+                if (pageNum === "ellipsis") {
                   return (
                     <span
                       key={`ellipsis-${index}`}
@@ -1879,7 +2075,7 @@ const Arizalar = () => {
                     </span>
                   );
                 }
-                
+
                 const isActive = pageNum === currentPage;
                 return (
                   <button
@@ -1887,8 +2083,8 @@ const Arizalar = () => {
                     onClick={() => setPage(pageNum)}
                     className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                       isActive
-                        ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600'
-                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        ? "bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600"
+                        : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                     }`}
                   >
                     {pageNum}
@@ -1896,7 +2092,7 @@ const Arizalar = () => {
                 );
               })}
             </div>
-            
+
             <button
               className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               disabled={!paginationInfo.next}
@@ -1980,7 +2176,10 @@ const Arizalar = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {items[0]?.user?.full_name || items[0]?.full_name || "Ma'lumot yo'q"} — {items[0]?.data_of_birth}
+                            {items[0]?.user?.full_name ||
+                              items[0]?.full_name ||
+                              "Ma'lumot yo'q"}{" "}
+                            — {items[0]?.data_of_birth}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             {items.length} ta ariza
@@ -1993,12 +2192,18 @@ const Arizalar = () => {
                             key={a.id}
                             className="bg-gray-50 dark:bg-gray-700/40 rounded p-3 text-sm text-gray-800 dark:text-gray-200"
                           >
-                            <div className="font-semibold">{a.user?.full_name || a.full_name || "Ma'lumot yo'q"}</div>
+                            <div className="font-semibold">
+                              {a.user?.full_name ||
+                                a.full_name ||
+                                "Ma'lumot yo'q"}
+                            </div>
                             <div className="text-xs text-gray-500">
                               {a.data_of_birth}
                             </div>
                             <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-                              {a.user?.phone_number || a.phone || "Ma'lumot yo'q"}
+                              {a.user?.phone_number ||
+                                a.phone ||
+                                "Ma'lumot yo'q"}
                             </div>
                             <div className="mt-2">
                               <button
@@ -2125,14 +2330,16 @@ const Arizalar = () => {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                         Ariza ma'lumotlari
                       </h3>
-                      
+
                       <div className="grid grid-cols-1 gap-4">
                         <div>
                           <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
                             To'liq ism
                           </h4>
                           <p className="text-base font-medium text-gray-900 dark:text-white">
-                            {selectedApplication.user?.full_name || selectedApplication.full_name || "Ma'lumot yo'q"}
+                            {selectedApplication.user?.full_name ||
+                              selectedApplication.full_name ||
+                              "Ma'lumot yo'q"}
                           </p>
                         </div>
                         <div>
@@ -2155,7 +2362,9 @@ const Arizalar = () => {
                             Telefon
                           </h4>
                           <p className="text-base font-medium text-gray-900 dark:text-white">
-                            {selectedApplication.user?.phone_number || selectedApplication.phone || "Ma'lumot yo'q"}
+                            {selectedApplication.user?.phone_number ||
+                              selectedApplication.phone ||
+                              "Ma'lumot yo'q"}
                           </p>
                         </div>
                         <div>
@@ -2205,7 +2414,12 @@ const Arizalar = () => {
                           </h4>
                           {selectedApplication.employments?.length > 0 && (
                             <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                              Umumiy staj: {formatExperience(getTotalExperienceMonths(selectedApplication.employments))}
+                              Umumiy staj:{" "}
+                              {formatExperience(
+                                getTotalExperienceMonths(
+                                  selectedApplication.employments
+                                )
+                              )}
                             </span>
                           )}
                         </div>
@@ -2245,7 +2459,8 @@ const Arizalar = () => {
                                 key={l.id}
                                 className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                               >
-                                {l.language_name} — {translateLanguageDegree(l.degree)}
+                                {l.language_name} —{" "}
+                                {translateLanguageDegree(l.degree)}
                               </span>
                             ))}
                           </div>
@@ -2259,8 +2474,10 @@ const Arizalar = () => {
                           Oylik maosh
                         </h4>
                         <p className="text-base font-medium text-gray-900 dark:text-white">
-                          {selectedApplication.monthly_salary 
-                            ? new Intl.NumberFormat('uz-UZ').format(selectedApplication.monthly_salary) + " so'm"
+                          {selectedApplication.monthly_salary
+                            ? new Intl.NumberFormat("uz-UZ").format(
+                                selectedApplication.monthly_salary
+                              ) + " so'm"
                             : "Ma'lumot yo'q"}
                         </p>
                       </div>
@@ -2277,7 +2494,9 @@ const Arizalar = () => {
                             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
                           >
                             <option value="REVIEWING">Kutilmoqda</option>
-                            <option value="TEST_SCHEDULED">Qabul qilindi</option>
+                            <option value="TEST_SCHEDULED">
+                              Qabul qilindi
+                            </option>
                             <option value="REJECTED_DOCS">Rad etildi</option>
                           </select>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -2293,18 +2512,21 @@ const Arizalar = () => {
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                           Vakansiya ma'lumotlari
                         </h3>
-                        
+
                         {/* Title - Large Display */}
                         <div>
                           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                             Vakansiya nomi
                           </h4>
                           <p className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                            {selectedApplication.job.title_uz || selectedApplication.job.title || "Ma'lumot yo'q"}
+                            {selectedApplication.job.title_uz ||
+                              selectedApplication.job.title ||
+                              "Ma'lumot yo'q"}
                           </p>
-                          
+
                           {/* Department and Management Information (for central) or Region (for regional) */}
-                          {selectedApplication.job.branch_type === "regional" && selectedApplication.job.region ? (
+                          {selectedApplication.job.branch_type === "regional" &&
+                          selectedApplication.job.region ? (
                             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                               <div>
                                 <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
@@ -2312,86 +2534,118 @@ const Arizalar = () => {
                                 </h5>
                                 <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
                                   {(() => {
-                                    const region = REGIONS.find((r) => r.value === selectedApplication.job.region);
-                                    return region ? region.label : selectedApplication.job.region;
+                                    const region = REGIONS.find(
+                                      (r) =>
+                                        r.value ===
+                                        selectedApplication.job.region
+                                    );
+                                    return region
+                                      ? region.label
+                                      : selectedApplication.job.region;
                                   })()}
                                 </p>
                               </div>
                             </div>
-                          ) : (selectedApplication.job.management?.name_uz || selectedApplication.job.management?.department?.name_uz) && (
-                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                              {selectedApplication.job.management?.department?.name_uz && (
-                                <div className="mb-2">
-                                  <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
-                                    Departament
-                                  </h5>
-                                  <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                                    {selectedApplication.job.management.department.name_uz}
-                                  </p>
-                                </div>
-                              )}
-                              {selectedApplication.job.management?.name_uz && (
-                                <div>
-                                  <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
-                                    Boshqarma
-                                  </h5>
-                                  <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                                    {selectedApplication.job.management.name_uz}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
+                          ) : (
+                            (selectedApplication.job.management?.name_uz ||
+                              selectedApplication.job.management?.department
+                                ?.name_uz) && (
+                              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                {selectedApplication.job.management?.department
+                                  ?.name_uz && (
+                                  <div className="mb-2">
+                                    <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                      Departament
+                                    </h5>
+                                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                      {
+                                        selectedApplication.job.management
+                                          .department.name_uz
+                                      }
+                                    </p>
+                                  </div>
+                                )}
+                                {selectedApplication.job.management
+                                  ?.name_uz && (
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                                      Boshqarma
+                                    </h5>
+                                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                                      {
+                                        selectedApplication.job.management
+                                          .name_uz
+                                      }
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )
                           )}
                         </div>
 
                         {/* Region Title (if regional) */}
-                        {selectedApplication.job.branch_type === "regional" && 
-                         (selectedApplication.job.region_title_uz || selectedApplication.job.region_title_cr || selectedApplication.job.region_title_ru) && (
-                          <div>
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                Vakansiyaning to'liq nomi
-                              </h4>
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => setActiveRegionTitleTab("uz")}
-                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                    activeRegionTitleTab === "uz"
-                                      ? "bg-blue-600 text-white"
-                                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                                  }`}
-                                >
-                                  UZ
-                                </button>
-                                <button
-                                  onClick={() => setActiveRegionTitleTab("cr")}
-                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                    activeRegionTitleTab === "cr"
-                                      ? "bg-blue-600 text-white"
-                                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                                  }`}
-                                >
-                                  CR
-                                </button>
-                                <button
-                                  onClick={() => setActiveRegionTitleTab("ru")}
-                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                    activeRegionTitleTab === "ru"
-                                      ? "bg-blue-600 text-white"
-                                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                                  }`}
-                                >
-                                  RU
-                                </button>
+                        {selectedApplication.job.branch_type === "regional" &&
+                          (selectedApplication.job.region_title_uz ||
+                            selectedApplication.job.region_title_cr ||
+                            selectedApplication.job.region_title_ru) && (
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  Vakansiyaning to'liq nomi
+                                </h4>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() =>
+                                      setActiveRegionTitleTab("uz")
+                                    }
+                                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                      activeRegionTitleTab === "uz"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                    }`}
+                                  >
+                                    UZ
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setActiveRegionTitleTab("cr")
+                                    }
+                                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                      activeRegionTitleTab === "cr"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                    }`}
+                                  >
+                                    CR
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setActiveRegionTitleTab("ru")
+                                    }
+                                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                                      activeRegionTitleTab === "ru"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                    }`}
+                                  >
+                                    RU
+                                  </button>
+                                </div>
                               </div>
+                              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                {activeRegionTitleTab === "uz" &&
+                                  (selectedApplication.job.region_title_uz ||
+                                    "Ma'lumot yo'q")}
+                                {activeRegionTitleTab === "cr" &&
+                                  (selectedApplication.job.region_title_cr ||
+                                    "Ma'lumot yo'q")}
+                                {activeRegionTitleTab === "ru" &&
+                                  (selectedApplication.job.region_title_ru ||
+                                    "Ma'lumot yo'q")}
+                              </p>
                             </div>
-                            <p className="text-xl font-bold text-gray-900 dark:text-white">
-                              {activeRegionTitleTab === "uz" && (selectedApplication.job.region_title_uz || "Ma'lumot yo'q")}
-                              {activeRegionTitleTab === "cr" && (selectedApplication.job.region_title_cr || "Ma'lumot yo'q")}
-                              {activeRegionTitleTab === "ru" && (selectedApplication.job.region_title_ru || "Ma'lumot yo'q")}
-                            </p>
-                          </div>
-                        )}
+                          )}
 
                         {/* Language Requirements - Side by Side */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2400,9 +2654,11 @@ const Arizalar = () => {
                               Ingliz tili talabi
                             </h4>
                             <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {selectedApplication.job.lan_requirements_eng === "not_required" 
-                                ? "Talab qilinmaydi" 
-                                : selectedApplication.job.lan_requirements_eng || "Ma'lumot yo'q"}
+                              {selectedApplication.job.lan_requirements_eng ===
+                              "not_required"
+                                ? "Talab qilinmaydi"
+                                : selectedApplication.job
+                                    .lan_requirements_eng || "Ma'lumot yo'q"}
                             </p>
                           </div>
                           <div>
@@ -2410,26 +2666,35 @@ const Arizalar = () => {
                               Rus tili talabi
                             </h4>
                             <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {selectedApplication.job.lan_requirements_ru === "not_required" 
-                                ? "Talab qilinmaydi" 
-                                : selectedApplication.job.lan_requirements_ru || "Ma'lumot yo'q"}
+                              {selectedApplication.job.lan_requirements_ru ===
+                              "not_required"
+                                ? "Talab qilinmaydi"
+                                : selectedApplication.job.lan_requirements_ru ||
+                                  "Ma'lumot yo'q"}
                             </p>
                           </div>
                         </div>
 
                         {/* Requirements - Only Uzbek */}
-                        {selectedApplication.job.requirements_uz && Array.isArray(selectedApplication.job.requirements_uz) && selectedApplication.job.requirements_uz.length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                              Talablar
-                            </h4>
-                            <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
-                              {selectedApplication.job.requirements_uz.map((req, idx) => (
-                                <li key={idx}>{req.task || req}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                        {selectedApplication.job.requirements_uz &&
+                          Array.isArray(
+                            selectedApplication.job.requirements_uz
+                          ) &&
+                          selectedApplication.job.requirements_uz.length >
+                            0 && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                                Talablar
+                              </h4>
+                              <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
+                                {selectedApplication.job.requirements_uz.map(
+                                  (req, idx) => (
+                                    <li key={idx}>{req.task || req}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>
