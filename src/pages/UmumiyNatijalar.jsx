@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import EditOverallResultsModal from "../components/modals/EditOverallResultsModal";
 import SendInterviewNotificationModal from "../components/modals/SendInterviewNotificationModal";
+import { getAttemptsApi } from "../utils/api";
 
 const UmumiyNatijalar = () => {
   // Get today's date in YYYY-MM-DD format
@@ -41,70 +42,109 @@ const UmumiyNatijalar = () => {
     try {
       setLoading(true);
       setError(null);
-      // TODO: Replace with actual API call when endpoint is available
-      // For now, using mock data
-      const mockData = generateMockData(selectedDate);
-      setResults(mockData);
+
+      if (!selectedDate) {
+        setResults([]);
+        setPage(1);
+        setLoading(false);
+        return;
+      }
+
+      // Call API with selected date
+      const response = await getAttemptsApi({
+        end_time: selectedDate,
+      });
+
+      // Extract results from API response
+      const attempts = response?.results || [];
+
+      // Map API response to component format and filter by overall_result === true
+      const mappedResults = attempts
+        .filter((attempt) => attempt.overall_result === true)
+        .map((attempt) => {
+          // Determine interview type from interview_details (when available)
+          let interviewType = null;
+
+          // When interview_details is ready, use this:
+          if (attempt.interview_details?.interview_type) {
+            interviewType =
+              attempt.interview_details.interview_type === "online"
+                ? "onlayn"
+                : attempt.interview_details.interview_type === "offline"
+                ? "oflayn"
+                : null;
+          }
+          // For now, if interview_details is not available, it will remain null (showing "Kutilmoqda")
+
+          // Calculate test score and percentage
+          const testScore = attempt.score || 0;
+          // If score is <= 100, assume max_score is 100 (percentage-based)
+          // Otherwise, calculate based on total_questions
+          let testMaxScore = 100;
+          if (testScore > 100 && attempt.test?.total_questions) {
+            // If score > 100, it might be points-based, estimate max_score
+            testMaxScore = attempt.test.total_questions * 10; // Rough estimate
+          }
+          // Calculate percentage: if score <= 100, it might already be a percentage
+          // Otherwise, calculate as (score / max_score) * 100
+          const testPercentage =
+            testScore <= 100
+              ? parseFloat(testScore.toFixed(2))
+              : testMaxScore > 0
+              ? parseFloat(((testScore / testMaxScore) * 100).toFixed(2))
+              : 0;
+
+          return {
+            id: attempt.id,
+            user_name:
+              attempt.application?.full_name ||
+              attempt.chat?.full_name ||
+              "Ma'lumot yo'q",
+            phone_number:
+              attempt.chat?.phone_number ||
+              attempt.application?.phone_number ||
+              "Ma'lumot yo'q",
+            vacancy_title:
+              attempt.application?.vacancy?.title_uz || "Ma'lumot yo'q",
+            test_score: testScore,
+            test_max_score: testMaxScore,
+            test_percentage: testPercentage,
+            test_passed: attempt.is_passed || false,
+            test_date: attempt.end_time || attempt.start_time,
+            russian_level: attempt.actual_russian_level || null,
+            english_level: attempt.actual_english_level || null,
+            required_russian_level:
+              attempt.application?.vacancy?.lan_requirements_ru || null,
+            required_english_level:
+              attempt.application?.vacancy?.lan_requirements_eng || null,
+            meeting_attended: attempt.attend !== null ? attempt.attend : false,
+            language_interview_passed:
+              attempt.overall_result === true && attempt.attend === true,
+            language_interview_date:
+              attempt.interview_details?.interview_date ||
+              attempt.meeting_details?.meet_date ||
+              attempt.end_time ||
+              null,
+            interview_type: interviewType,
+            overall_passed: attempt.overall_result === true,
+            created_at: attempt.end_time || attempt.start_time,
+            // Store original attempt data for potential updates
+            _originalAttempt: attempt,
+          };
+        });
+
+      setResults(mappedResults);
       setPage(1);
     } catch (error) {
       console.error("Error fetching overall results:", error);
-      setError(error.message);
+      setError(
+        error.message || "Umumiy natijalarni yuklashda xatolik yuz berdi"
+      );
       toast.error("Umumiy natijalarni yuklashda xatolik yuz berdi");
+      setResults([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock data for testing
-  const generateMockData = (date) => {
-    const names = [
-      "Ali Valiyev",
-      "Dilshod Karimov",
-      "Malika Toshmatova",
-      "Javohir Rahimov",
-      "Gulnoza Yusupova",
-      "Bahodir Qodirov",
-      "Sevara Alimova",
-      "Temur Bekov",
-    ];
-    const vacancies = [
-      "Moliya mutaxassisi",
-      "IT mutaxassisi",
-      "Xodimlar bo'limi mutaxassisi",
-      "Audit mutaxassisi",
-    ];
-
-    const interviewTypes = ["onlayn", "oflayn", null]; // 3 xil holat
-    
-    return names.map((name, index) => {
-      const testScore = Math.floor(Math.random() * 30) + 70; // 70-100
-      const testPassed = testScore >= 70;
-      const requiredRus = ["B1", "B2", "B1", "C1", "B1"][index % 5];
-      const requiredEng = ["B1", "B1", "B2", "B1", "C1"][index % 5];
-      const interviewType = interviewTypes[index % 3]; // 3 xil holatni aylantirib
-      
-      return {
-        id: index + 1,
-        user_name: name,
-        phone_number: `+998${Math.floor(Math.random() * 90000000) + 10000000}`, // +998XXXXXXXXX format
-        vacancy_title: vacancies[index % vacancies.length],
-        test_score: testScore,
-        test_max_score: 100,
-        test_percentage: testScore,
-        test_passed: testPassed,
-        test_date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-        russian_level: "B2",
-        english_level: "B1",
-        required_russian_level: requiredRus,
-        required_english_level: requiredEng,
-        meeting_attended: true,
-        language_interview_passed: true,
-        language_interview_date: date || selectedDate,
-        interview_type: interviewType, // onlayn, oflayn, yoki null
-        overall_passed: testPassed && true,
-        created_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      };
-    }).filter(r => r.overall_passed); // Only show those who passed both
   };
 
   const handleEditResults = (user) => {
@@ -126,17 +166,17 @@ const UmumiyNatijalar = () => {
     setIsNotificationModalOpen(false);
   };
 
-  // Filter results by selected date
+  // Filter results by selected date (now handled by API, but keeping for search filtering)
   const filterByDate = (result) => {
     if (!selectedDate) return true;
-    
+
     const resultDate = result.language_interview_date || result.test_date;
     if (!resultDate) return false;
-    
+
     try {
       const date = new Date(resultDate);
       const selected = new Date(selectedDate);
-      
+
       // Compare only date part (ignore time)
       return (
         date.getFullYear() === selected.getFullYear() &&
@@ -158,20 +198,25 @@ const UmumiyNatijalar = () => {
     // Prepare data for Excel
     const excelData = filtered.map((result, index) => ({
       "T/r": index + 1,
-      "Foydalanuvchi": result.user_name || "Ma'lumot yo'q",
+      Foydalanuvchi: result.user_name || "Ma'lumot yo'q",
       "Telefon raqami": result.phone_number || "Ma'lumot yo'q",
-      "Vakansiya": result.vacancy_title || "Ma'lumot yo'q",
-      "Test balli": `${result.test_score || 0} / ${result.test_max_score || 100}`,
+      Vakansiya: result.vacancy_title || "Ma'lumot yo'q",
+      "Test balli": `${result.test_score || 0} / ${
+        result.test_max_score || 100
+      }`,
       "Test foizi": `${result.test_percentage || 0}%`,
       "Test holati": result.test_passed ? "O'tdi" : "O'tmadi",
       "Rus tili": result.russian_level || "Ma'lumot yo'q",
       "Ingliz tili": result.english_level || "Ma'lumot yo'q",
-      "Til suhbati holati": result.language_interview_passed ? "O'tdi" : "O'tmadi",
-      "Suhbat shakli": result.interview_type === "onlayn" 
-        ? "Onlayn" 
-        : result.interview_type === "oflayn" 
-        ? "Oflayn" 
-        : "Hali javob bermadi",
+      "Til suhbati holati": result.language_interview_passed
+        ? "O'tdi"
+        : "Kutilmoqda",
+      "Suhbat shakli":
+        result.interview_type === "onlayn"
+          ? "Onlayn"
+          : result.interview_type === "oflayn"
+          ? "Oflayn"
+          : "Kutilmoqda",
       "Test sanasi": formatDate(result.test_date),
       "Til suhbati sanasi": formatDate(result.language_interview_date),
     }));
@@ -273,12 +318,12 @@ const UmumiyNatijalar = () => {
   // Filter and paginate results
   const q = query.trim().toLowerCase();
   const filtered = results.filter((result) => {
-    // Date filter
+    // Date filter (API already filters by date, but keeping for consistency)
     if (!filterByDate(result)) return false;
-    
-    // Only show those who passed both
+
+    // Only show those who passed overall (API already filters, but keeping for safety)
     if (!result.overall_passed) return false;
-    
+
     // Search filter
     if (q) {
       const inUserName = result.user_name?.toLowerCase().includes(q);
@@ -425,7 +470,7 @@ const UmumiyNatijalar = () => {
             </svg>
             Excel yuklab olish
           </button>
-          
+
           <label className="text-sm text-gray-600 dark:text-gray-400">
             Sahifa hajmi:
           </label>
@@ -514,16 +559,15 @@ const UmumiyNatijalar = () => {
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {result.user_name || "Ma'lumot yo'q"}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {result.phone_number || "Ma'lumot yo'q"}
-                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {result.vacancy_title || "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-gray-100">
-                          {result.test_score || 0} / {result.test_max_score || 100} ({result.test_percentage || 0}%)
+                          {result.test_score || 0} /{" "}
+                          {result.test_max_score || 100} (
+                          {result.test_percentage || 0}%)
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {formatDate(result.test_date)}
@@ -531,7 +575,8 @@ const UmumiyNatijalar = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-gray-100">
-                          Rus: {result.russian_level || "N/A"}, Eng: {result.english_level || "N/A"}
+                          Rus: {result.russian_level || "N/A"}, Eng:{" "}
+                          {result.english_level || "N/A"}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {formatDate(result.language_interview_date)}
@@ -548,13 +593,13 @@ const UmumiyNatijalar = () => {
                           </span>
                         ) : (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                            Hali javob bermadi
+                            Kutilmoqda
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          O'tdi
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                          Kutilmoqda
                         </span>
                       </td>
                     </tr>
@@ -624,4 +669,3 @@ const UmumiyNatijalar = () => {
 };
 
 export default UmumiyNatijalar;
-

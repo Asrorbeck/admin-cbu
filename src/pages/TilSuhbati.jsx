@@ -24,13 +24,13 @@ const TilSuhbati = () => {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Initialize selectedDate from URL params or use today's date
   const getInitialDate = () => {
     const dateParam = searchParams.get("date");
     return dateParam || getTodayDate();
   };
-  
+
   const [selectedDate, setSelectedDate] = useState(getInitialDate());
   const [showPassedOnly, setShowPassedOnly] = useState(false);
   const [isSendLinkModalOpen, setIsSendLinkModalOpen] = useState(false);
@@ -98,19 +98,33 @@ const TilSuhbati = () => {
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
       const paginated = filtered.slice(startIndex, endIndex);
-      
-      const allSelected = paginated.length > 0 && paginated.every((r) => selectedUserIds.includes(r.id));
-      const someSelected = paginated.some((r) => selectedUserIds.includes(r.id));
-      
+
+      const allSelected =
+        paginated.length > 0 &&
+        paginated.every((r) => selectedUserIds.includes(r.id));
+      const someSelected = paginated.some((r) =>
+        selectedUserIds.includes(r.id)
+      );
+
       selectAllCheckboxRef.current.indeterminate = someSelected && !allSelected;
     }
-  }, [selectedUserIds, results, query, showPassedOnly, selectedDate, page, pageSize, loading, error]);
+  }, [
+    selectedUserIds,
+    results,
+    query,
+    showPassedOnly,
+    selectedDate,
+    page,
+    pageSize,
+    loading,
+    error,
+  ]);
 
   const fetchResults = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       if (!selectedDate) {
         setResults([]);
         setPage(1);
@@ -131,31 +145,54 @@ const TilSuhbati = () => {
       // Map API response to component's expected structure
       const mappedResults = attempts.map((attempt) => {
         // Get vacancy title from application if available, otherwise use test title
-        const vacancyTitle = attempt.application?.job?.title || 
-                            attempt.application?.vacancy?.title ||
-                            attempt.test?.title || 
-                            "Ma'lumot yo'q";
+        const vacancyTitle =
+          attempt.application?.job?.title ||
+          attempt.application?.vacancy?.title_uz ||
+          attempt.application?.vacancy?.title_ru ||
+          attempt.application?.vacancy?.title ||
+          attempt.test?.title ||
+          "Ma'lumot yo'q";
 
-        // Get required language levels from vacancy (requirements_ru and requirements_en)
-        // These can be "not_required" or actual levels like "A1", "A2", etc.
-        const requirementsRu = attempt.application?.vacancy?.requirements_ru;
-        const requirementsEn = attempt.application?.vacancy?.requirements_en;
-        
-        // Convert "not_required" to null, otherwise use the level
-        const requiredRussianLevel = requirementsRu && requirementsRu !== "not_required" ? requirementsRu : null;
-        const requiredEnglishLevel = requirementsEn && requirementsEn !== "not_required" ? requirementsEn : null;
+        // Get required language levels from vacancy (lan_requirements_ru and lan_requirements_eng)
+        // These can be "not_required" or actual levels like "A1", "A2", "B1", etc.
+        const requirementsRu =
+          attempt.application?.vacancy?.lan_requirements_ru;
+        const requirementsEn =
+          attempt.application?.vacancy?.lan_requirements_eng;
+
+        // Convert "not_required" or empty/null to null, otherwise use the level
+        // Ensure we're working with strings (not arrays or objects)
+        const requiredRussianLevel =
+          typeof requirementsRu === "string" &&
+          requirementsRu !== "not_required" &&
+          requirementsRu.trim() !== ""
+            ? requirementsRu.trim()
+            : null;
+        const requiredEnglishLevel =
+          typeof requirementsEn === "string" &&
+          requirementsEn !== "not_required" &&
+          requirementsEn.trim() !== ""
+            ? requirementsEn.trim()
+            : null;
 
         // Extract meeting details from API response
         const meetingDetails = attempt.meeting_details || null;
         const meetLinkSent = meetingDetails !== null;
 
+        // Extract user languages (self-assessment)
+        const userLanguages = attempt.user_languages || null;
+
         return {
           id: attempt.id,
-          user_name: attempt.chat?.full_name || attempt.chat?.username || "Ma'lumot yo'q",
+          user_name:
+            attempt.chat?.full_name ||
+            attempt.chat?.username ||
+            "Ma'lumot yo'q",
           phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
           vacancy_title: vacancyTitle,
           test_passed: attempt.is_passed || false,
-          test_date: attempt.start_time || attempt.end_time || new Date().toISOString(),
+          test_date:
+            attempt.start_time || attempt.end_time || new Date().toISOString(),
           interview_date: selectedDate, // Use selected date as interview date
           meet_link: meetingDetails?.meet_link || null,
           meet_link_sent: meetLinkSent,
@@ -167,12 +204,19 @@ const TilSuhbati = () => {
           english_level: attempt.actual_english_level || null, // From API
           required_russian_level: requiredRussianLevel,
           required_english_level: requiredEnglishLevel,
-          overall_result: attempt.overall_result !== null ? attempt.overall_result : null, // From API
-          passed: attempt.overall_result !== null ? attempt.overall_result : null, // Use overall_result as passed
-          status: attempt.overall_result !== null 
-            ? (attempt.overall_result ? "passed" : "rejected")
-            : null,
-          created_at: attempt.start_time || attempt.end_time || new Date().toISOString(),
+          user_languages: userLanguages, // User's self-assessment of languages
+          overall_result:
+            attempt.overall_result !== null ? attempt.overall_result : null, // From API
+          passed:
+            attempt.overall_result !== null ? attempt.overall_result : null, // Use overall_result as passed
+          status:
+            attempt.overall_result !== null
+              ? attempt.overall_result
+                ? "passed"
+                : "rejected"
+              : null,
+          created_at:
+            attempt.start_time || attempt.end_time || new Date().toISOString(),
           attempt_data: attempt, // Store original attempt data for reference
         };
       });
@@ -237,7 +281,7 @@ const TilSuhbati = () => {
     );
     setIsEditModalOpen(false);
     setSelectedUser(null);
-    toast.success("Til suhbati natijalari muvaffaqiyatli saqlandi");
+    // Toast is already shown in EditLanguageInterviewModal component
   };
 
   // Handle user selection
@@ -258,9 +302,7 @@ const TilSuhbati = () => {
 
     setResults((prev) =>
       prev.map((r) =>
-        selectedUserIds.includes(r.id)
-          ? { ...r, meeting_attended: false }
-          : r
+        selectedUserIds.includes(r.id) ? { ...r, meeting_attended: false } : r
       )
     );
     setSelectedUserIds([]);
@@ -301,7 +343,7 @@ const TilSuhbati = () => {
     }
     setIsSendLinkModalOpen(false);
     setSelectedUser(null);
-    
+
     // Navigate to /til-suhbati with the selected date as URL parameter (testdan o'tgan sana)
     if (meetLinkData && selectedDate) {
       setSearchParams({ date: selectedDate });
@@ -363,7 +405,7 @@ const TilSuhbati = () => {
     try {
       const date = new Date(dateString);
       // Check if it's just a date (YYYY-MM-DD) or includes time
-      if (dateString.includes('T') || dateString.includes(' ')) {
+      if (dateString.includes("T") || dateString.includes(" ")) {
         return new Intl.DateTimeFormat("uz-UZ", {
           year: "numeric",
           month: "long",
@@ -389,10 +431,20 @@ const TilSuhbati = () => {
     if (!dateString) return "Ma'lumot yo'q";
     try {
       // Parse YYYY-MM-DD format
-      const [year, month, day] = dateString.split('-');
+      const [year, month, day] = dateString.split("-");
       const monthNames = [
-        "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-        "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+        "yanvar",
+        "fevral",
+        "mart",
+        "aprel",
+        "may",
+        "iyun",
+        "iyul",
+        "avgust",
+        "sentabr",
+        "oktabr",
+        "noyabr",
+        "dekabr",
       ];
       const monthIndex = parseInt(month, 10) - 1;
       return `${parseInt(day, 10)} ${monthNames[monthIndex]}, ${year}`;
@@ -408,8 +460,18 @@ const TilSuhbati = () => {
       const date = new Date(dateString);
       const day = date.getDate();
       const monthNames = [
-        "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-        "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+        "yanvar",
+        "fevral",
+        "mart",
+        "aprel",
+        "may",
+        "iyun",
+        "iyul",
+        "avgust",
+        "sentabr",
+        "oktabr",
+        "noyabr",
+        "dekabr",
       ];
       const month = monthNames[date.getMonth()];
       return `${day} ${month}`;
@@ -517,15 +579,19 @@ const TilSuhbati = () => {
 
   // Check if all visible users are selected (moved here to access paginated)
   // Calculate selection states (for use in render)
-  const allSelected = paginated.length > 0 && paginated.every((r) => selectedUserIds.includes(r.id));
+  const allSelected =
+    paginated.length > 0 &&
+    paginated.every((r) => selectedUserIds.includes(r.id));
   const someSelected = paginated.some((r) => selectedUserIds.includes(r.id));
 
   // Get unique Google Meet interview dates from filtered results
-  const meetInterviewDates = [...new Set(
-    filtered
-      .filter((r) => r.meeting_details && r.meeting_details.meet_date)
-      .map((r) => r.meeting_details.meet_date)
-  )].sort();
+  const meetInterviewDates = [
+    ...new Set(
+      filtered
+        .filter((r) => r.meeting_details && r.meeting_details.meet_date)
+        .map((r) => r.meeting_details.meet_date)
+    ),
+  ].sort();
 
   return (
     <div className="space-y-6">
@@ -871,9 +937,6 @@ const TilSuhbati = () => {
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {result.user_name || "Ma'lumot yo'q"}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {result.phone_number || "Ma'lumot yo'q"}
-                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {result.vacancy_title || "Ma'lumot yo'q"}
@@ -938,18 +1001,22 @@ const TilSuhbati = () => {
                         {result.meeting_details ? (
                           <div>
                             <div className="font-medium">
-                              {result.meet_interview_date ? formatMeetingDate(result.meet_interview_date) : "Ma'lumot yo'q"}
+                              {result.meet_interview_date
+                                ? formatMeetingDate(result.meet_interview_date)
+                                : "Ma'lumot yo'q"}
                             </div>
                             {result.meet_interview_time && (
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {result.meet_interview_time.length > 5 
-                                  ? result.meet_interview_time.substring(0, 5) 
+                                {result.meet_interview_time.length > 5
+                                  ? result.meet_interview_time.substring(0, 5)
                                   : result.meet_interview_time}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-gray-400 italic">Ma'lumot yo'q</span>
+                          <span className="text-gray-400 italic">
+                            Ma'lumot yo'q
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

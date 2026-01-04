@@ -193,13 +193,60 @@ const EditLanguageInterviewModal = ({ isOpen, onClose, user, onSave }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-2">
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
               Foydalanuvchi: {user?.user_name || "Ma'lumot yo'q"}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Vakansiya: {user?.vacancy_title || "Ma'lumot yo'q"}
             </p>
+            
+            {/* User Languages - Self Assessment */}
+            {user?.user_languages && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Foydalanuvchi o'zi bergan baho:
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {user.user_languages.russian && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Rus tili:
+                      </p>
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                        {user.user_languages.russian.level_display || 
+                         user.user_languages.russian.level || 
+                         "Ma'lumot yo'q"}
+                      </p>
+                    </div>
+                  )}
+                  {user.user_languages.english && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Ingliz tili:
+                      </p>
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                        {user.user_languages.english.level_display || 
+                         user.user_languages.english.level || 
+                         "Ma'lumot yo'q"}
+                      </p>
+                    </div>
+                  )}
+                  {user.user_languages.uzbek && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        O'zbek tili:
+                      </p>
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                        {user.user_languages.uzbek.level_display || 
+                         user.user_languages.uzbek.level || 
+                         "Ma'lumot yo'q"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Meeting Attended Checkbox */}
