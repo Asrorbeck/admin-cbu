@@ -142,44 +142,59 @@ const TilSuhbati = () => {
         ? response
         : response?.results || response?.data || [];
 
+      // Helper function to safely extract string value from potentially object values
+      const getStringValue = (value) => {
+        if (!value) return null;
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object') {
+          // If it's an object, try to extract a meaningful string value
+          return value.title || value.name || value.task || value.level || String(value);
+        }
+        return String(value);
+      };
+
       // Map API response to component's expected structure
       const mappedResults = attempts.map((attempt) => {
-        // Get vacancy title from application if available, otherwise use test title
-        const vacancyTitle =
-          attempt.application?.job?.title ||
-          attempt.application?.vacancy?.title_uz ||
+        // Get vacancy title from application - new structure uses title_uz, title_ru, title_cr
+        const vacancyTitle = 
+          attempt.application?.vacancy?.title_uz || 
           attempt.application?.vacancy?.title_ru ||
+          attempt.application?.vacancy?.title_cr ||
+          attempt.application?.job?.title ||
           attempt.application?.vacancy?.title ||
           attempt.test?.title ||
           "Ma'lumot yo'q";
 
-        // Get required language levels from vacancy (lan_requirements_ru and lan_requirements_eng)
+        // Get required language levels from vacancy - new structure uses lan_requirements_ru and lan_requirements_eng
         // These can be "not_required" or actual levels like "A1", "A2", "B1", etc.
-        const requirementsRu =
-          attempt.application?.vacancy?.lan_requirements_ru;
-        const requirementsEn =
-          attempt.application?.vacancy?.lan_requirements_eng;
-
+        const lanRequirementsRu = attempt.application?.vacancy?.lan_requirements_ru;
+        const lanRequirementsEng = attempt.application?.vacancy?.lan_requirements_eng;
+        
         // Convert "not_required" or empty/null to null, otherwise use the level
         // Ensure we're working with strings (not arrays or objects)
         const requiredRussianLevel =
-          typeof requirementsRu === "string" &&
-          requirementsRu !== "not_required" &&
-          requirementsRu.trim() !== ""
-            ? requirementsRu.trim()
+          typeof lanRequirementsRu === "string" &&
+          lanRequirementsRu !== "not_required" &&
+          lanRequirementsRu.trim() !== ""
+            ? lanRequirementsRu.trim()
             : null;
         const requiredEnglishLevel =
-          typeof requirementsEn === "string" &&
-          requirementsEn !== "not_required" &&
-          requirementsEn.trim() !== ""
-            ? requirementsEn.trim()
+          typeof lanRequirementsEng === "string" &&
+          lanRequirementsEng !== "not_required" &&
+          lanRequirementsEng.trim() !== ""
+            ? lanRequirementsEng.trim()
             : null;
 
         // Extract meeting details from API response
         const meetingDetails = attempt.meeting_details || null;
         const meetLinkSent = meetingDetails !== null;
 
-        // Extract user languages (self-assessment)
+        // Get actual language levels - ONLY from actual_russian_level and actual_english_level
+        // These are set by admin after evaluation, user_languages is just informational
+        const russianLevel = attempt.actual_russian_level;
+        const englishLevel = attempt.actual_english_level;
+        
+        // Extract user languages (self-assessment) for informational purposes
         const userLanguages = attempt.user_languages || null;
 
         return {
@@ -197,14 +212,14 @@ const TilSuhbati = () => {
           meet_link: meetingDetails?.meet_link || null,
           meet_link_sent: meetLinkSent,
           meet_interview_date: meetingDetails?.meet_date || null,
-          meet_interview_time: meetingDetails?.meet_time || null,
+          meet_interview_time: meetingDetails?.meet_time ? getStringValue(meetingDetails.meet_time) : null,
           meeting_details: meetingDetails, // Store full meeting details
           meeting_attended: attempt.attend !== null ? attempt.attend : null, // From API
-          russian_level: attempt.actual_russian_level || null, // From API
-          english_level: attempt.actual_english_level || null, // From API
+          russian_level: russianLevel ? String(russianLevel) : null, // From actual_russian_level - set by admin after evaluation
+          english_level: englishLevel ? String(englishLevel) : null, // From actual_english_level - set by admin after evaluation
           required_russian_level: requiredRussianLevel,
           required_english_level: requiredEnglishLevel,
-          user_languages: userLanguages, // User's self-assessment of languages
+          user_languages: userLanguages, // User's self-assessment of languages (informational only)
           overall_result:
             attempt.overall_result !== null ? attempt.overall_result : null, // From API
           passed:
@@ -281,7 +296,7 @@ const TilSuhbati = () => {
     );
     setIsEditModalOpen(false);
     setSelectedUser(null);
-    // Toast is already shown in EditLanguageInterviewModal component
+    toast.success("Til suhbati natijalari muvaffaqiyatli saqlandi");
   };
 
   // Handle user selection
@@ -361,22 +376,30 @@ const TilSuhbati = () => {
       return;
     }
 
+    // Helper to safely get string value
+    const safeString = (value) => {
+      if (!value) return "Ma'lumot yo'q";
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object') {
+        return value.title || value.name || value.task || value.level || String(value);
+      }
+      return String(value);
+    };
+
     // Prepare data for Excel
     const excelData = dataToExport.map((result, index) => ({
       "T/r": index + 1,
-      Foydalanuvchi: result.user_name || "Ma'lumot yo'q",
-      "Telefon raqami": result.phone_number || "Ma'lumot yo'q",
-      Vakansiya: result.vacancy_title || "Ma'lumot yo'q",
-      "Rus tili": result.russian_level || "Ma'lumot yo'q",
-      "Ingliz tili": result.english_level || "Ma'lumot yo'q",
-      "Talab qilinadigan rus tili":
-        result.required_russian_level || "Ma'lumot yo'q",
-      "Talab qilinadigan ingliz tili":
-        result.required_english_level || "Ma'lumot yo'q",
+      Foydalanuvchi: safeString(result.user_name),
+      "Telefon raqami": safeString(result.phone_number),
+      Vakansiya: safeString(result.vacancy_title),
+      "Rus tili": safeString(result.russian_level),
+      "Ingliz tili": safeString(result.english_level),
+      "Talab qilinadigan rus tili": safeString(result.required_russian_level),
+      "Talab qilinadigan ingliz tili": safeString(result.required_english_level),
       Holat:
         result.meeting_attended === false
           ? "Rad etildi (Meetingga qatnashmadi)"
-          : result.russian_level && result.english_level
+          : result.russian_level && typeof result.russian_level === 'string' && result.english_level && typeof result.english_level === 'string'
           ? result.passed
             ? "O'tdi"
             : "Rad etildi"
@@ -942,24 +965,28 @@ const TilSuhbati = () => {
                         {result.vacancy_title || "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.russian_level || (
+                        {result.russian_level && typeof result.russian_level === 'string' ? (
+                          result.russian_level
+                        ) : (
                           <span className="text-gray-400 italic">
                             Tanlanmagan
                           </span>
                         )}
-                        {result.required_russian_level && (
+                        {result.required_russian_level && typeof result.required_russian_level === 'string' && (
                           <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
                             (Talab: {result.required_russian_level})
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.english_level || (
+                        {result.english_level && typeof result.english_level === 'string' ? (
+                          result.english_level
+                        ) : (
                           <span className="text-gray-400 italic">
                             Tanlanmagan
                           </span>
                         )}
-                        {result.required_english_level && (
+                        {result.required_english_level && typeof result.required_english_level === 'string' && (
                           <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
                             (Talab: {result.required_english_level})
                           </span>
@@ -970,7 +997,7 @@ const TilSuhbati = () => {
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
                             Rad etildi (Meetingga qatnashmadi)
                           </span>
-                        ) : result.russian_level && result.english_level ? (
+                        ) : result.russian_level && typeof result.russian_level === 'string' && result.english_level && typeof result.english_level === 'string' ? (
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               result.passed
@@ -1005,7 +1032,7 @@ const TilSuhbati = () => {
                                 ? formatMeetingDate(result.meet_interview_date)
                                 : "Ma'lumot yo'q"}
                             </div>
-                            {result.meet_interview_time && (
+                            {result.meet_interview_time && typeof result.meet_interview_time === 'string' && (
                               <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {result.meet_interview_time.length > 5
                                   ? result.meet_interview_time.substring(0, 5)

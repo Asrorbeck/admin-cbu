@@ -138,7 +138,6 @@ const EditLanguageInterviewModal = ({ isOpen, onClose, user, onSave }) => {
       };
 
       onSave && onSave(updatedUser);
-      toast.success("Til suhbati natijalari muvaffaqiyatli saqlandi");
       onClose();
     } catch (error) {
       console.error("Error saving language interview results:", error);
@@ -248,6 +247,56 @@ const EditLanguageInterviewModal = ({ isOpen, onClose, user, onSave }) => {
               </div>
             )}
           </div>
+
+          {/* User Languages Information */}
+          {user?.attempt_data?.user_languages && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                Foydalanuvchi til bilimi (informatsiya):
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {user.attempt_data.user_languages.russian && (
+                  <div className="bg-white dark:bg-gray-800 rounded-md p-3 border border-blue-200 dark:border-blue-700">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Rus tili
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {user.attempt_data.user_languages.russian.level_display || 
+                       user.attempt_data.user_languages.russian.level || 
+                       "Ma'lumot yo'q"}
+                    </p>
+                  </div>
+                )}
+                {user.attempt_data.user_languages.english && (
+                  <div className="bg-white dark:bg-gray-800 rounded-md p-3 border border-blue-200 dark:border-blue-700">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Ingliz tili
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {user.attempt_data.user_languages.english.level_display || 
+                       user.attempt_data.user_languages.english.level || 
+                       "Ma'lumot yo'q"}
+                    </p>
+                  </div>
+                )}
+                {user.attempt_data.user_languages.uzbek && (
+                  <div className="bg-white dark:bg-gray-800 rounded-md p-3 border border-blue-200 dark:border-blue-700">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      O'zbek tili
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {user.attempt_data.user_languages.uzbek.level_display || 
+                       user.attempt_data.user_languages.uzbek.level || 
+                       "Ma'lumot yo'q"}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                Bu ma'lumotlar faqat informatsiya uchun. Baholash uchun yuqoridagi maydonlardan foydalaning.
+              </p>
+            </div>
+          )}
 
           {/* Meeting Attended Checkbox */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">

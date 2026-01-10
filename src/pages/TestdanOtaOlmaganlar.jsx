@@ -40,13 +40,14 @@ const TestdanOtaOlmaganlar = () => {
         const canRetake = restriction.days_remaining <= 0;
         const daysUntilRetake = restriction.days_remaining || 0;
         
+        const jobTitle = restriction.application_info?.job_title_uz || restriction.application_info?.job_title || "Ma'lumot yo'q";
         return {
           id: restriction.id,
           jshshir: restriction.jshshir || "Ma'lumot yo'q",
-          user_name: restriction.application_info?.job_title ? `Ariza: ${restriction.application_info.job_title}` : "Ma'lumot yo'q",
+          user_name: jobTitle !== "Ma'lumot yo'q" ? `Ariza: ${jobTitle}` : "Ma'lumot yo'q",
           user_email: restriction.jshshir || "Ma'lumot yo'q",
           phone_number: restriction.jshshir || "Ma'lumot yo'q",
-          test_title: restriction.application_info?.job_title || "Ma'lumot yo'q",
+          test_title: jobTitle,
           test_id: restriction.related_application || null,
           failed_date: restriction.last_failed_test_date || new Date().toISOString(),
           score: restriction.test_score || 0,
@@ -292,7 +293,8 @@ const TestdanOtaOlmaganlar = () => {
     if (q) {
       const inJshshir = result.jshshir?.toLowerCase().includes(q);
       const inTestTitle = result.test_title?.toLowerCase().includes(q);
-      const inJobTitle = result.application_info?.job_title?.toLowerCase().includes(q);
+      const jobTitle = result.application_info?.job_title_uz || result.application_info?.job_title || "";
+      const inJobTitle = jobTitle.toLowerCase().includes(q);
       if (!inJshshir && !inTestTitle && !inJobTitle) return false;
     }
     return true;
@@ -490,7 +492,7 @@ const TestdanOtaOlmaganlar = () => {
                         {result.jshshir || "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.test_title || result.application_info?.job_title || "Ma'lumot yo'q"}
+                        {result.test_title || result.application_info?.job_title_uz || result.application_info?.job_title || "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {result.score !== undefined ? result.score : "Ma'lumot yo'q"}

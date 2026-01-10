@@ -417,7 +417,7 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-gray-50">
-          <SnowEffect />
+          {/* <SnowEffect /> */}
           <AppRoutes />
           <Toaster position="top-right" />
         </div>

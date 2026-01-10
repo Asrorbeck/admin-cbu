@@ -605,7 +605,42 @@ const Arizalar = () => {
     if (s === "rejected_docs" || s === "rejected") {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-          Rad etildi
+          Rad etildi (hujjatlar)
+        </span>
+      );
+    }
+    if (s === "rejected_experience") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          Rad etildi (ish tajribasi)
+        </span>
+      );
+    }
+    if (s === "rejected_not_suitable") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          Rad etildi (vakantga mos emas)
+        </span>
+      );
+    }
+    if (s === "rejected_restriction") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          Rad etildi (3 oylik cheklov)
+        </span>
+      );
+    }
+    if (s === "rejected_defects") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          Rad etildi (ariza kamchiliklari)
+        </span>
+      );
+    }
+    if (s === "rejected_student") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          Rad etildi (Talaba)
         </span>
       );
     }
@@ -627,9 +662,24 @@ const Arizalar = () => {
     const deadline = application?.job?.application_deadline;
     const testAt = application?.job?.test_scheduled_at;
     const now = new Date();
+    // Set time to start of today (00:00:00) for date-only comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const d1 = parseDateSafe(deadline);
     const d2 = parseDateSafe(testAt);
-    return (d1 && now > d1) || (d2 && now > d2);
+    
+    // Check if deadline is before today (not including today)
+    const deadlineExpired = d1 && (() => {
+      const deadlineDate = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+      return deadlineDate < today;
+    })();
+    
+    // Check if test date is before today (not including today)
+    const testExpired = d2 && (() => {
+      const testDate = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
+      return testDate < today;
+    })();
+    
+    return deadlineExpired || testExpired;
   };
 
   // Fuzzy duplicate detection (>=70% similar name AND same date_of_birth)
@@ -930,7 +980,7 @@ const Arizalar = () => {
     const s = (status || "").toUpperCase();
     if (s === "NEW" || s === "PENDING" || s === "REVIEWING") return "pending";
     if (s === "TEST_SCHEDULED") return "test_scheduled";
-    if (s === "REJECTED_DOCS" || s === "REJECTED") return "rejected";
+    if (s === "REJECTED_DOCS" || s === "REJECTED" || s === "REJECTED_EXPERIENCE" || s === "REJECTED_NOT_SUITABLE" || s === "REJECTED_RESTRICTION" || s === "REJECTED_DEFECTS" || s === "REJECTED_STUDENT") return "rejected";
     return s.toLowerCase();
   };
 
@@ -1757,7 +1807,11 @@ const Arizalar = () => {
               <option value="NEW">Yangi</option>
               <option value="REVIEWING">Kutilmoqda</option>
               <option value="TEST_SCHEDULED">Qabul qilindi</option>
-              <option value="REJECTED_DOCS">Rad etildi</option>
+              <option value="REJECTED_EXPERIENCE">Rad etildi (ish tajribasi)</option>
+              <option value="REJECTED_NOT_SUITABLE">Rad etildi (vakantga mos emas)</option>
+              <option value="REJECTED_RESTRICTION">Rad etildi (3 oylik cheklov)</option>
+              <option value="REJECTED_DEFECTS">Rad etildi (ariza kamchiliklari)</option>
+              <option value="REJECTED_STUDENT">Rad etildi (Talaba)</option>
             </select>
             <button
               onClick={handleBulkUpdate}
@@ -2497,7 +2551,11 @@ const Arizalar = () => {
                             <option value="TEST_SCHEDULED">
                               Qabul qilindi
                             </option>
-                            <option value="REJECTED_DOCS">Rad etildi</option>
+                            <option value="REJECTED_EXPERIENCE">Rad etildi (ish tajribasi)</option>
+                            <option value="REJECTED_NOT_SUITABLE">Rad etildi (vakantga mos emas)</option>
+                            <option value="REJECTED_RESTRICTION">Rad etildi (3 oylik cheklov)</option>
+                            <option value="REJECTED_DEFECTS">Rad etildi (ariza kamchiliklari)</option>
+                            <option value="REJECTED_STUDENT">Rad etildi (Talaba)</option>
                           </select>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             Joriy: {getStatusBadge(selectedApplication.status)}

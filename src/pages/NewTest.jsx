@@ -9,14 +9,14 @@ const NewTest = () => {
   const [hierarchyData, setHierarchyData] = useState(null);
   const [loadingHierarchy, setLoadingHierarchy] = useState(true);
   const [isVacancyDropdownOpen, setIsVacancyDropdownOpen] = useState(false);
-  
+ 
   // Navigation state for hierarchy
   const [navigationPath, setNavigationPath] = useState([]); // ['central'|'regional', deptIndex?, managementIndex?]
   const [selectedVacancyInfo, setSelectedVacancyInfo] = useState({}); // Map of vacancyId -> {title, path}
   const [formData, setFormData] = useState({
     title: "",
     duration: "",
-    pass_score: "",
+    pass_score: "50",
     max_violations: "",
     vacancy_ids: [],
     is_active: true,
@@ -290,10 +290,23 @@ const NewTest = () => {
   const handleChoiceChange = (questionIndex, choiceIndex, field, value) => {
     const updatedQuestions = [...formData.questions];
     const updatedChoices = [...updatedQuestions[questionIndex].choices];
-    updatedChoices[choiceIndex] = {
-      ...updatedChoices[choiceIndex],
-      [field]: value,
-    };
+    
+    // If changing is_correct to true, set all other choices to false (radio button behavior)
+    if (field === "is_correct" && value === true) {
+      updatedChoices.forEach((choice, idx) => {
+        if (idx === choiceIndex) {
+          choice.is_correct = true;
+        } else {
+          choice.is_correct = false;
+        }
+      });
+    } else {
+      updatedChoices[choiceIndex] = {
+        ...updatedChoices[choiceIndex],
+        [field]: value,
+      };
+    }
+    
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
       choices: updatedChoices,
@@ -467,19 +480,17 @@ const NewTest = () => {
         return;
       }
 
-      // For single choice questions, ensure only one correct answer
-      if (!question.is_multiple_choice) {
-        const correctAnswersCount = validChoices.filter(
-          (c) => c.is_correct
-        ).length;
-        if (correctAnswersCount > 1) {
-          toast.error(
-            `${
-              i + 1
-            }-savol bittalik variantlik savol, faqat 1 ta to'g'ri javob bo'lishi kerak`
-          );
-          return;
-        }
+      // Ensure only one correct answer per question
+      const correctAnswersCount = validChoices.filter(
+        (c) => c.is_correct
+      ).length;
+      if (correctAnswersCount > 1) {
+        toast.error(
+          `${
+            i + 1
+          }-savol uchun faqat 1 ta to'g'ri javob bo'lishi kerak`
+        );
+        return;
       }
     }
 
@@ -1274,11 +1285,6 @@ const NewTest = () => {
                             }{" "}
                             ta variant
                           </p>
-                          {question.is_multiple_choice && (
-                            <span className="px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded">
-                              Ko'p variantlik
-                            </span>
-                          )}
                           {question.image && (
                             <span className="px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 rounded flex items-center space-x-1">
                               <svg
@@ -1323,28 +1329,6 @@ const NewTest = () => {
                         </svg>
                       </button>
                     )}
-                  </div>
-
-                  {/* Question Settings */}
-                  <div className="mb-4 flex items-center space-x-4 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={question.is_multiple_choice || false}
-                        onChange={(e) =>
-                          handleQuestionChange(
-                            questionIndex,
-                            "is_multiple_choice",
-                            e.target.checked
-                          )
-                        }
-                        disabled={loading}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-                      />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Ko'p variantlik savol (bir nechta to'g'ri javob)
-                      </span>
-                    </label>
                   </div>
 
                   {/* Question Text */}
@@ -1445,16 +1429,9 @@ const NewTest = () => {
                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                           Javob variantlari *
                         </label>
-                        {question.is_multiple_choice && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            Bir nechta to'g'ri javob belgilash mumkin
-                          </p>
-                        )}
-                        {!question.is_multiple_choice && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Faqat 1 ta to'g'ri javob belgilash mumkin
-                          </p>
-                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Faqat 1 ta to'g'ri javob belgilash mumkin
+                        </p>
                       </div>
                       <button
                         type="button"
@@ -1490,38 +1467,22 @@ const NewTest = () => {
                           }`}
                         >
                           <div className="flex items-center space-x-3 flex-1">
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={choice.is_correct}
-                                onChange={(e) =>
-                                  handleChoiceChange(
-                                    questionIndex,
-                                    choiceIndex,
-                                    "is_correct",
-                                    e.target.checked
-                                  )
-                                }
-                                disabled={loading}
-                                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:opacity-50"
-                                title="To'g'ri javobni belgilash"
-                              />
-                              {choice.is_correct && (
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                  <svg
-                                    className="h-3 w-3 text-white"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
+                            <input
+                              type="radio"
+                              name={`question-${questionIndex}`}
+                              checked={choice.is_correct}
+                              onChange={(e) =>
+                                handleChoiceChange(
+                                  questionIndex,
+                                  choiceIndex,
+                                  "is_correct",
+                                  e.target.checked
+                                )
+                              }
+                              disabled={loading}
+                              className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer disabled:opacity-50"
+                              title="To'g'ri javobni belgilash"
+                            />
                             <div className="flex-1">
                               <input
                                 type="text"
