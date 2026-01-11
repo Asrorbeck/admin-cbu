@@ -111,15 +111,20 @@ const Dashboard = () => {
         ? applications
         : applications?.results || applications?.data || [];
 
-      // For applications, use count if available (paginated response), otherwise use array length
+      // For departments and applications, use count if available (paginated response), otherwise use array length
+      const departmentsCount =
+        departments?.count !== undefined
+          ? departments.count
+          : departmentsArray.length;
+
       const applicationsCount =
         applications?.count !== undefined
           ? applications.count
           : applicationsArray.length;
 
       setStats({
-        departments: departmentsArray.length,
-        management: managementArray.length,
+        departments: departmentsCount,
+        management: 14,
         vacancies: vacanciesArray.length,
         applications: applicationsCount,
       });
@@ -610,7 +615,10 @@ const Dashboard = () => {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Departments Card */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div
+          onClick={() => navigate("/central/departments")}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">
@@ -644,10 +652,15 @@ const Dashboard = () => {
         </div>
 
         {/* Management Card */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div
+          onClick={() => navigate("/region")}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Boshqarmalar</p>
+              <p className="text-blue-100 text-sm font-medium">
+                Hududiy Bosh Boshqarmalar
+              </p>
               <p className="text-3xl font-bold">{stats.management}</p>
               <p className="text-blue-100 text-xs mt-1">Tashkilotlar</p>
             </div>
@@ -699,7 +712,10 @@ const Dashboard = () => {
         </div>
 
         {/* Applications Card */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div
+          onClick={() => navigate("/arizalar")}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">Arizalar</p>

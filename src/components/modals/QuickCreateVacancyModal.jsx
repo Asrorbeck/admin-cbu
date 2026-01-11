@@ -87,6 +87,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
     test_id: "",
+    quantity: "1",
   });
   const [vacancyManualEditFlags, setVacancyManualEditFlags] = useState({
     title_cr: false,
@@ -126,6 +127,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           lan_requirements_eng: "not_required",
           lan_requirements_ru: "not_required",
           test_id: "",
+          quantity: "1",
         });
         setVacancyManualEditFlags({
           title_cr: false,
@@ -183,6 +185,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
           lan_requirements_eng: "not_required",
           lan_requirements_ru: "not_required",
           test_id: "",
+          quantity: "1",
         });
         setVacancyManualEditFlags({
           title_cr: false,
@@ -216,7 +219,7 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
   const fetchDepartments = async () => {
     try {
       setLoadingDepartments(true);
-      const data = await getDepartmentsApi();
+      const data = await getDepartmentsApi({ page_size: 50 });
       // Handle paginated response format: { results: [...], count: ... }
       const departmentsArray = Array.isArray(data) 
         ? data 
@@ -604,6 +607,9 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
         ...(vacancyData.test_id && {
           test_ids: [parseInt(vacancyData.test_id)],
         }),
+        quantity: vacancyData.quantity && vacancyData.quantity !== "" && !isNaN(parseInt(vacancyData.quantity, 10))
+          ? parseInt(vacancyData.quantity, 10)
+          : 1,
         branch_type: initialBranchType !== null && initialBranchType !== undefined ? vacancyData.branch_type : "central", // Always central if no initialBranchType
         region: (initialBranchType !== null && initialBranchType !== undefined ? vacancyData.branch_type : "central") === "central" ? null : getBackendRegionValue(vacancyData.region),
         // Only include management_id for central branch type
@@ -1624,6 +1630,33 @@ const QuickCreateVacancyModal = ({ isOpen, onClose, onSuccess, initialBranchType
                       <option value="C2">C2</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Quantity */}
+                <div>
+                  <label
+                    htmlFor="quantity"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Vakant soni
+                  </label>
+                  <input
+                    type="number"
+                    id="quantity"
+                    value={vacancyData.quantity}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVacancyData((prev) => ({
+                        ...prev,
+                        quantity: value === "" ? "1" : isNaN(parseInt(value, 10)) ? "1" : value,
+                      }));
+                    }}
+                    disabled={loading}
+                    min="1"
+                    step="1"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Vakant sonini kiriting (masalan: 5)"
+                  />
                 </div>
 
                 <div className="flex items-center">

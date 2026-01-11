@@ -42,33 +42,33 @@ const TestNatijalari = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Build API params
       const params = {
         page: page,
         page_size: pageSize,
       };
-      
+
       // Add date filter (end_time)
       if (selectedDate) {
         params.end_time = selectedDate;
       }
-      
+
       // Add status filter
       if (statusFilter !== "all") {
         params.status = statusFilter;
       }
-      
+
       // Add passed filter
       if (passedFilter !== "all") {
         params.is_passed = passedFilter === "passed";
       }
-      
+
       const data = await getAttemptsApi(params);
       // Handle paginated response structure: { count, next, previous, results: [...] }
-      const resultsArray = Array.isArray(data) 
-        ? data 
-        : (data?.results || data?.data || []);
+      const resultsArray = Array.isArray(data)
+        ? data
+        : data?.results || data?.data || [];
       setResults(resultsArray);
       setTotalCount(data?.count || resultsArray.length);
     } catch (error) {
@@ -96,16 +96,22 @@ const TestNatijalari = () => {
       return {
         "T/r": index + 1,
         "Test nomi": result.test?.title || "Ma'lumot yo'q",
-        "Foydalanuvchi": result.chat?.full_name || result.chat?.username || "Ma'lumot yo'q",
-        "Telefon": result.chat?.phone_number || "Ma'lumot yo'q",
-        "Foiz": result.score !== undefined && result.score !== null ? `${result.score}%` : "Ma'lumot yo'q",
-        "O'tish foizi": result.test?.pass_score ? `${result.test.pass_score}%` : "Ma'lumot yo'q",
+        Foydalanuvchi:
+          result.chat?.full_name || result.chat?.username || "Ma'lumot yo'q",
+        Telefon: result.chat?.phone_number || "Ma'lumot yo'q",
+        Foiz:
+          result.score !== undefined && result.score !== null
+            ? `${result.score}%`
+            : "Ma'lumot yo'q",
+        "O'tish foizi": result.test?.pass_score
+          ? `${result.test.pass_score}%`
+          : "Ma'lumot yo'q",
         "Vaqt (soniya)": result.duration || 0,
-        "Buzilishlar": result.violations_count || 0,
+        Buzilishlar: result.violations_count || 0,
         "Boshlanish vaqti": formatDate(result.start_time),
         "Tugash vaqti": formatDate(result.end_time),
-        "Holat": result.is_passed ? "O'tdi" : "O'tmadi",
-        "Status": result.status_display || result.status || "Noma'lum",
+        Holat: result.is_passed ? "O'tdi" : "O'tmadi",
+        Status: result.status_display || result.status || "Noma'lum",
       };
     });
 
@@ -176,11 +182,17 @@ const TestNatijalari = () => {
 
   const formatDuration = (seconds) => {
     if (!seconds && seconds !== 0) return "Ma'lumot yo'q";
-    if (seconds < 60) return `${seconds} soniya`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (remainingSeconds === 0) return `${minutes} daqiqa`;
-    return `${minutes} daqiqa ${remainingSeconds} soniya`;
+    const totalMinutes = Math.floor(seconds / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) {
+      return `${minutes} daqiqa`;
+    } else if (minutes === 0) {
+      return `${hours} soat`;
+    } else {
+      return `${hours} soat ${minutes} daqiqa`;
+    }
   };
 
   if (loading) {
@@ -261,7 +273,7 @@ const TestNatijalari = () => {
   // Backend handles pagination, so we use results directly
   const total = totalCount || filtered.length;
   const paginated = filtered; // Backend already paginated
-  const showingStart = total === 0 ? 0 : ((page - 1) * pageSize) + 1;
+  const showingStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingEnd = Math.min(page * pageSize, total);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -305,7 +317,7 @@ const TestNatijalari = () => {
           {/* Date Picker */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-              Sana: 
+              Sana:
             </label>
             <input
               type="date"
@@ -406,7 +418,7 @@ const TestNatijalari = () => {
             </svg>
             Excel yuklab olish
           </button>
-          
+
           <label className="text-sm text-gray-600 dark:text-gray-400">
             Sahifa hajmi:
           </label>
@@ -504,7 +516,9 @@ const TestNatijalari = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         <div>
                           <div className="font-medium">
-                            {result.chat?.full_name || result.chat?.username || "Ma'lumot yo'q"}
+                            {result.chat?.full_name ||
+                              result.chat?.username ||
+                              "Ma'lumot yo'q"}
                           </div>
                           {result.chat?.phone_number && (
                             <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -519,12 +533,11 @@ const TestNatijalari = () => {
                           : "Ma'lumot yo'q"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.duration !== undefined && result.duration !== null
-                          ? `${result.duration} s`
-                          : "Ma'lumot yo'q"}
+                        {formatDuration(result.duration)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.violations_count !== undefined && result.violations_count !== null
+                        {result.violations_count !== undefined &&
+                        result.violations_count !== null
                           ? result.violations_count
                           : 0}
                       </td>
@@ -664,7 +677,8 @@ const TestNatijalari = () => {
                         Savollar soni
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedResult.test?.total_questions || "Ma'lumot yo'q"}
+                        {selectedResult.test?.total_questions ||
+                          "Ma'lumot yo'q"}
                       </p>
                     </div>
                     <div>
@@ -672,7 +686,9 @@ const TestNatijalari = () => {
                         O'tish foizi
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedResult.test?.pass_score ? `${selectedResult.test.pass_score}%` : "Ma'lumot yo'q"}
+                        {selectedResult.test?.pass_score
+                          ? `${selectedResult.test.pass_score}%`
+                          : "Ma'lumot yo'q"}
                       </p>
                     </div>
                     <div>
@@ -697,7 +713,9 @@ const TestNatijalari = () => {
                         To'liq ism
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedResult.chat?.full_name || selectedResult.chat?.username || "Ma'lumot yo'q"}
+                        {selectedResult.chat?.full_name ||
+                          selectedResult.chat?.username ||
+                          "Ma'lumot yo'q"}
                       </p>
                     </div>
                     <div>
@@ -738,7 +756,8 @@ const TestNatijalari = () => {
                         Foiz
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white font-medium">
-                        {selectedResult.score !== undefined && selectedResult.score !== null
+                        {selectedResult.score !== undefined &&
+                        selectedResult.score !== null
                           ? `${selectedResult.score}%`
                           : "Ma'lumot yo'q"}
                       </p>
@@ -748,7 +767,7 @@ const TestNatijalari = () => {
                         O'tish foizi
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white font-medium">
-                        {selectedResult.test?.pass_score 
+                        {selectedResult.test?.pass_score
                           ? `${selectedResult.test.pass_score}%`
                           : "Ma'lumot yo'q"}
                       </p>
@@ -766,7 +785,8 @@ const TestNatijalari = () => {
                         Buzilishlar soni
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedResult.violations_count !== undefined && selectedResult.violations_count !== null
+                        {selectedResult.violations_count !== undefined &&
+                        selectedResult.violations_count !== null
                           ? selectedResult.violations_count
                           : 0}
                       </p>
@@ -790,7 +810,9 @@ const TestNatijalari = () => {
                         Status
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedResult.status_display || selectedResult.status || "Ma'lumot yo'q"}
+                        {selectedResult.status_display ||
+                          selectedResult.status ||
+                          "Ma'lumot yo'q"}
                       </p>
                     </div>
                   </div>
@@ -858,4 +880,3 @@ const TestNatijalari = () => {
 };
 
 export default TestNatijalari;
-

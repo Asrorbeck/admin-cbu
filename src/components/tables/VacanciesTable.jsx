@@ -12,6 +12,8 @@ const VacanciesTable = ({
   onToggleAll,
   onToggleOne,
   hideDepartmentColumn = false,
+  hideCheckboxColumn = false,
+  clickableRows = false,
 }) => {
   const navigate = useNavigate();
 
@@ -90,21 +92,23 @@ const VacanciesTable = ({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12 pl-6">
-                <input
-                  type="checkbox"
-                  checked={
-                    vacancies.length > 0 &&
-                    vacancies.every((v) => selectedIds.has(v.id))
-                  }
-                  onChange={(e) => {
-                    if (onToggleAll) {
-                      onToggleAll(e.target.checked);
+              {!hideCheckboxColumn && (
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12 pl-6">
+                  <input
+                    type="checkbox"
+                    checked={
+                      vacancies.length > 0 &&
+                      vacancies.every((v) => selectedIds.has(v.id))
                     }
-                  }}
-                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-              </th>
+                    onChange={(e) => {
+                      if (onToggleAll) {
+                        onToggleAll(e.target.checked);
+                      }
+                    }}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                </th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-16">
                 T/r
               </th>
@@ -143,20 +147,23 @@ const VacanciesTable = ({
             {Array.isArray(vacancies) && vacancies.map((item, index) => (
               <tr
                 key={item.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${clickableRows ? 'cursor-pointer' : ''}`}
+                onClick={clickableRows ? () => handleViewDetails(item) : undefined}
               >
-                <td className="px-2 py-4 whitespace-nowrap pl-6">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(item.id)}
-                    onChange={(e) => {
-                      if (onToggleOne) {
-                        onToggleOne(item.id, e.target.checked);
-                      }
-                    }}
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
-                </td>
+                {!hideCheckboxColumn && (
+                  <td className="px-2 py-4 whitespace-nowrap pl-6" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={(e) => {
+                        if (onToggleOne) {
+                          onToggleOne(item.id, e.target.checked);
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                  </td>
+                )}
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {item.id}
                 </td>
@@ -200,33 +207,35 @@ const VacanciesTable = ({
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {formatDate(item.application_deadline)}
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleViewDetails(item)}
-                      className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
-                      title="Tafsilotlar"
-                    >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                    {!clickableRows && (
+                      <button
+                        onClick={() => handleViewDetails(item)}
+                        className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+                        title="Tafsilotlar"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
-                    </button>
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEdit(item)}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"

@@ -84,6 +84,7 @@ const RegionVacancies = () => {
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
     test_id: "",
+    quantity: "",
   });
   const [editManualEditFlags, setEditManualEditFlags] = useState({
     title_cr: false,
@@ -226,6 +227,7 @@ const RegionVacancies = () => {
         lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
         lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
         test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
+        quantity: fullVacancyData.quantity ? String(fullVacancyData.quantity) : "1",
       });
       setEditManualEditFlags({
         title_cr: false,
@@ -272,10 +274,17 @@ const RegionVacancies = () => {
           region_title_cr: true,
         }));
       }
-      setEditFormData((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      }));
+      setEditFormData((prev) => {
+        const newData = {
+          ...prev,
+          [name]: type === "checkbox" ? checked : value,
+        };
+        // Handle number input for quantity
+        if (name === "quantity") {
+          newData.quantity = value === "" ? "1" : isNaN(parseInt(value, 10)) ? "1" : value;
+        }
+        return newData;
+      });
     }
   };
 
@@ -428,6 +437,9 @@ const RegionVacancies = () => {
         ...(editFormData.test_id && {
           test_ids: [parseInt(editFormData.test_id)],
         }),
+        quantity: editFormData.quantity && editFormData.quantity !== "" && !isNaN(parseInt(editFormData.quantity, 10))
+          ? parseInt(editFormData.quantity, 10)
+          : 1,
       };
 
       // Update vacancy via API
@@ -472,6 +484,8 @@ const RegionVacancies = () => {
         region: region_name || "",
         lan_requirements_eng: "not_required",
         lan_requirements_ru: "not_required",
+        test_id: "",
+        quantity: "",
       });
       setEditManualEditFlags({
         title_cr: false,
@@ -1728,6 +1742,28 @@ const RegionVacancies = () => {
                             <option value="C2">C2</option>
                           </select>
                         </div>
+                      </div>
+
+                      {/* Quantity */}
+                      <div>
+                        <label
+                          htmlFor="quantity"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                          Vakant soni
+                        </label>
+                        <input
+                          type="number"
+                          id="quantity"
+                          name="quantity"
+                          value={editFormData.quantity}
+                          onChange={handleEditFormChange}
+                          disabled={editSaving}
+                          min="1"
+                          step="1"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder="Vakant sonini kiriting (masalan: 5)"
+                        />
                       </div>
 
                       {/* Is Active */}

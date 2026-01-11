@@ -51,6 +51,7 @@ const ManagementDetails = () => {
     lan_requirements_eng: "not_required",
     lan_requirements_ru: "not_required",
     test_id: "",
+    quantity: "",
   });
   const [editManualEditFlags, setEditManualEditFlags] = useState({
     title_cr: false,
@@ -87,9 +88,9 @@ const ManagementDetails = () => {
       const data = await getTestsApi();
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
-      const testsArray = Array.isArray(data) 
-        ? data 
-        : (data?.results || data?.data || []);
+      const testsArray = Array.isArray(data)
+        ? data
+        : data?.results || data?.data || [];
       setTests(testsArray);
     } catch (error) {
       console.error("Error fetching tests:", error);
@@ -120,9 +121,9 @@ const ManagementDetails = () => {
       try {
         const vacanciesData = await getVacanciesApi(id);
         // Handle paginated response format: { results: [...], count: ... }
-        const vacanciesArray = Array.isArray(vacanciesData) 
-          ? vacanciesData 
-          : (vacanciesData?.results || vacanciesData?.data || []);
+        const vacanciesArray = Array.isArray(vacanciesData)
+          ? vacanciesData
+          : vacanciesData?.results || vacanciesData?.data || [];
         setVacancies(vacanciesArray);
       } catch (vacancyError) {
         console.warn("Vacancies API not available:", vacancyError);
@@ -233,28 +234,51 @@ const ManagementDetails = () => {
         title_uz: fullVacancyData.title_uz || "",
         title_cr: fullVacancyData.title_cr || "",
         title_ru: fullVacancyData.title_ru || "",
-        requirements_uz: mergeStaticRequirements(fullVacancyData.requirements_uz, "uz"),
-        requirements_cr: mergeStaticRequirements(fullVacancyData.requirements_cr, "cr"),
-        requirements_ru: mergeStaticRequirements(fullVacancyData.requirements_ru, "ru"),
-        job_tasks_uz: Array.isArray(fullVacancyData.job_tasks_uz) && fullVacancyData.job_tasks_uz.length > 0
-          ? fullVacancyData.job_tasks_uz
-          : [{ task: "" }],
-        job_tasks_cr: Array.isArray(fullVacancyData.job_tasks_cr) && fullVacancyData.job_tasks_cr.length > 0
-          ? fullVacancyData.job_tasks_cr
-          : [{ task: "" }],
-        job_tasks_ru: Array.isArray(fullVacancyData.job_tasks_ru) && fullVacancyData.job_tasks_ru.length > 0
-          ? fullVacancyData.job_tasks_ru
-          : [{ task: "" }],
+        requirements_uz: mergeStaticRequirements(
+          fullVacancyData.requirements_uz,
+          "uz"
+        ),
+        requirements_cr: mergeStaticRequirements(
+          fullVacancyData.requirements_cr,
+          "cr"
+        ),
+        requirements_ru: mergeStaticRequirements(
+          fullVacancyData.requirements_ru,
+          "ru"
+        ),
+        job_tasks_uz:
+          Array.isArray(fullVacancyData.job_tasks_uz) &&
+          fullVacancyData.job_tasks_uz.length > 0
+            ? fullVacancyData.job_tasks_uz
+            : [{ task: "" }],
+        job_tasks_cr:
+          Array.isArray(fullVacancyData.job_tasks_cr) &&
+          fullVacancyData.job_tasks_cr.length > 0
+            ? fullVacancyData.job_tasks_cr
+            : [{ task: "" }],
+        job_tasks_ru:
+          Array.isArray(fullVacancyData.job_tasks_ru) &&
+          fullVacancyData.job_tasks_ru.length > 0
+            ? fullVacancyData.job_tasks_ru
+            : [{ task: "" }],
         application_deadline: fullVacancyData.application_deadline || "",
         test_scheduled_at: testScheduledAtValue,
         is_active: fullVacancyData.is_active ?? true,
         branch_type: "central", // Always central for management details page
         region: "", // Always empty for central branch type
-        lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
-        test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
-        lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
+        lan_requirements_eng:
+          fullVacancyData.lan_requirements_eng || "not_required",
+        test_id:
+          fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0
+            ? String(fullVacancyData.test_ids[0])
+            : "",
+        lan_requirements_ru:
+          fullVacancyData.lan_requirements_ru || "not_required",
+        quantity: fullVacancyData.quantity
+          ? String(fullVacancyData.quantity)
+          : "1",
       });
-      
+
       // Reset manual edit flags
       setEditManualEditFlags({
         title_cr: false,
@@ -272,9 +296,9 @@ const ManagementDetails = () => {
 
   const handleEditFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     // Auto-transliterate title_uz to title_cr
-    if (name === 'title_uz' && !editManualEditFlags.title_cr) {
+    if (name === "title_uz" && !editManualEditFlags.title_cr) {
       setEditFormData((prev) => ({
         ...prev,
         [name]: value,
@@ -282,7 +306,7 @@ const ManagementDetails = () => {
       }));
     } else {
       // If editing title_cr, mark as manually edited
-      if (name === 'title_cr') {
+      if (name === "title_cr") {
         setEditManualEditFlags((prev) => ({
           ...prev,
           title_cr: true,
@@ -297,6 +321,11 @@ const ManagementDetails = () => {
         if (name === "branch_type" && value === "central") {
           newData.region = "";
         }
+        // Handle number input for quantity
+        if (name === "quantity") {
+          newData.quantity =
+            value === "" ? "1" : isNaN(parseInt(value, 10)) ? "1" : value;
+        }
         return newData;
       });
     }
@@ -306,12 +335,13 @@ const ManagementDetails = () => {
     const fieldName = `${type}_${lang}`;
     const updated = [...editFormData[fieldName]];
     updated[index] = { task: value };
-    
+
     // Auto-transliterate Uzbek Latin tasks to Cyrillic
-    if (lang === 'uz') {
+    if (lang === "uz") {
       const taskKey = `${type}_${index}`;
-      const isManuallyEdited = editManualEditFlags[`${type}_cr`]?.[taskKey] || false;
-      
+      const isManuallyEdited =
+        editManualEditFlags[`${type}_cr`]?.[taskKey] || false;
+
       if (!isManuallyEdited) {
         const cyrillicFieldName = `${type}_cr`;
         const cyrillicTasks = [...editFormData[cyrillicFieldName]];
@@ -320,17 +350,17 @@ const ManagementDetails = () => {
           cyrillicTasks.push({ task: "" });
         }
         cyrillicTasks[index] = { task: latinToCyrillic(value) };
-        setEditFormData({ 
-          ...editFormData, 
+        setEditFormData({
+          ...editFormData,
           [fieldName]: updated,
           [cyrillicFieldName]: cyrillicTasks,
         });
         return;
       }
     }
-    
+
     // If Cyrillic task is being edited, mark as manually edited
-    if (lang === 'cr') {
+    if (lang === "cr") {
       const taskKey = `${type}_${index}`;
       setEditManualEditFlags((prev) => ({
         ...prev,
@@ -340,7 +370,7 @@ const ManagementDetails = () => {
         },
       }));
     }
-    
+
     setEditFormData({ ...editFormData, [fieldName]: updated });
   };
 
@@ -446,6 +476,12 @@ const ManagementDetails = () => {
         ...(editFormData.test_id && {
           test_ids: [parseInt(editFormData.test_id)],
         }),
+        quantity:
+          editFormData.quantity &&
+          editFormData.quantity !== "" &&
+          !isNaN(parseInt(editFormData.quantity, 10))
+            ? parseInt(editFormData.quantity, 10)
+            : 1,
         management_id: editingVacancy.management_details?.id || parseInt(id),
         branch_type: "central", // Always central for management details page
         region: null, // Always null for central branch type
@@ -491,6 +527,7 @@ const ManagementDetails = () => {
         lan_requirements_eng: "not_required",
         lan_requirements_ru: "not_required",
         test_id: "",
+        quantity: "",
       });
       setEditManualEditFlags({
         title_cr: false,
@@ -695,9 +732,12 @@ const ManagementDetails = () => {
             </div>
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {activeNameTab === "uz" && (management.name_uz || "Ma'lumot yo'q")}
-                {activeNameTab === "cr" && (management.name_cr || "Ma'lumot yo'q")}
-                {activeNameTab === "ru" && (management.name_ru || "Ma'lumot yo'q")}
+                {activeNameTab === "uz" &&
+                  (management.name_uz || "Ma'lumot yo'q")}
+                {activeNameTab === "cr" &&
+                  (management.name_cr || "Ma'lumot yo'q")}
+                {activeNameTab === "ru" &&
+                  (management.name_ru || "Ma'lumot yo'q")}
               </p>
             </div>
           </div>
@@ -765,6 +805,8 @@ const ManagementDetails = () => {
             onDelete={handleDeleteVacancy}
             onViewDetails={handleViewVacancyDetails}
             hideDepartmentColumn={true}
+            hideCheckboxColumn={true}
+            clickableRows={true}
           />
         )}
       </div>
@@ -888,14 +930,19 @@ const ManagementDetails = () => {
                             </div>
                           </div>
                           <p className="text-xl font-bold text-gray-900 dark:text-white">
-                            {activeTitleTab === "uz" && (selectedVacancy.title_uz || "Ma'lumot yo'q")}
-                            {activeTitleTab === "cr" && (selectedVacancy.title_cr || "Ma'lumot yo'q")}
-                            {activeTitleTab === "ru" && (selectedVacancy.title_ru || "Ma'lumot yo'q")}
+                            {activeTitleTab === "uz" &&
+                              (selectedVacancy.title_uz || "Ma'lumot yo'q")}
+                            {activeTitleTab === "cr" &&
+                              (selectedVacancy.title_cr || "Ma'lumot yo'q")}
+                            {activeTitleTab === "ru" &&
+                              (selectedVacancy.title_ru || "Ma'lumot yo'q")}
                           </p>
                         </div>
                         {selectedVacancy.management_details && (
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {selectedVacancy.management_details.name_uz || selectedVacancy.management_details.name || "Noma'lum"}
+                            {selectedVacancy.management_details.name_uz ||
+                              selectedVacancy.management_details.name ||
+                              "Noma'lum"}
                           </p>
                         )}
                       </div>
@@ -915,9 +962,15 @@ const ManagementDetails = () => {
                     {/* Main Info Grid */}
                     <div className="space-y-4">
                       {/* Requirements with Tabs */}
-                      {((selectedVacancy.requirements_uz && Array.isArray(selectedVacancy.requirements_uz) && selectedVacancy.requirements_uz.length > 0) ||
-                        (selectedVacancy.requirements_cr && Array.isArray(selectedVacancy.requirements_cr) && selectedVacancy.requirements_cr.length > 0) ||
-                        (selectedVacancy.requirements_ru && Array.isArray(selectedVacancy.requirements_ru) && selectedVacancy.requirements_ru.length > 0)) && (
+                      {((selectedVacancy.requirements_uz &&
+                        Array.isArray(selectedVacancy.requirements_uz) &&
+                        selectedVacancy.requirements_uz.length > 0) ||
+                        (selectedVacancy.requirements_cr &&
+                          Array.isArray(selectedVacancy.requirements_cr) &&
+                          selectedVacancy.requirements_cr.length > 0) ||
+                        (selectedVacancy.requirements_ru &&
+                          Array.isArray(selectedVacancy.requirements_ru) &&
+                          selectedVacancy.requirements_ru.length > 0)) && (
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <h5 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
@@ -957,23 +1010,38 @@ const ManagementDetails = () => {
                             </div>
                           </div>
                           <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
-                            {activeRequirementsTab === "uz" && selectedVacancy.requirements_uz?.map((req, idx) => (
-                              <li key={idx}>{req.task || req}</li>
-                            ))}
-                            {activeRequirementsTab === "cr" && selectedVacancy.requirements_cr?.map((req, idx) => (
-                              <li key={idx}>{req.task || req}</li>
-                            ))}
-                            {activeRequirementsTab === "ru" && selectedVacancy.requirements_ru?.map((req, idx) => (
-                              <li key={idx}>{req.task || req}</li>
-                            ))}
+                            {activeRequirementsTab === "uz" &&
+                              selectedVacancy.requirements_uz?.map(
+                                (req, idx) => (
+                                  <li key={idx}>{req.task || req}</li>
+                                )
+                              )}
+                            {activeRequirementsTab === "cr" &&
+                              selectedVacancy.requirements_cr?.map(
+                                (req, idx) => (
+                                  <li key={idx}>{req.task || req}</li>
+                                )
+                              )}
+                            {activeRequirementsTab === "ru" &&
+                              selectedVacancy.requirements_ru?.map(
+                                (req, idx) => (
+                                  <li key={idx}>{req.task || req}</li>
+                                )
+                              )}
                           </ul>
                         </div>
                       )}
 
                       {/* Job Tasks with Tabs */}
-                      {((selectedVacancy.job_tasks_uz && Array.isArray(selectedVacancy.job_tasks_uz) && selectedVacancy.job_tasks_uz.length > 0) ||
-                        (selectedVacancy.job_tasks_cr && Array.isArray(selectedVacancy.job_tasks_cr) && selectedVacancy.job_tasks_cr.length > 0) ||
-                        (selectedVacancy.job_tasks_ru && Array.isArray(selectedVacancy.job_tasks_ru) && selectedVacancy.job_tasks_ru.length > 0)) && (
+                      {((selectedVacancy.job_tasks_uz &&
+                        Array.isArray(selectedVacancy.job_tasks_uz) &&
+                        selectedVacancy.job_tasks_uz.length > 0) ||
+                        (selectedVacancy.job_tasks_cr &&
+                          Array.isArray(selectedVacancy.job_tasks_cr) &&
+                          selectedVacancy.job_tasks_cr.length > 0) ||
+                        (selectedVacancy.job_tasks_ru &&
+                          Array.isArray(selectedVacancy.job_tasks_ru) &&
+                          selectedVacancy.job_tasks_ru.length > 0)) && (
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <h5 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
@@ -1013,15 +1081,18 @@ const ManagementDetails = () => {
                             </div>
                           </div>
                           <ul className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed list-disc list-inside space-y-1">
-                            {activeJobTasksTab === "uz" && selectedVacancy.job_tasks_uz?.map((task, idx) => (
-                              <li key={idx}>{task.task || task}</li>
-                            ))}
-                            {activeJobTasksTab === "cr" && selectedVacancy.job_tasks_cr?.map((task, idx) => (
-                              <li key={idx}>{task.task || task}</li>
-                            ))}
-                            {activeJobTasksTab === "ru" && selectedVacancy.job_tasks_ru?.map((task, idx) => (
-                              <li key={idx}>{task.task || task}</li>
-                            ))}
+                            {activeJobTasksTab === "uz" &&
+                              selectedVacancy.job_tasks_uz?.map((task, idx) => (
+                                <li key={idx}>{task.task || task}</li>
+                              ))}
+                            {activeJobTasksTab === "cr" &&
+                              selectedVacancy.job_tasks_cr?.map((task, idx) => (
+                                <li key={idx}>{task.task || task}</li>
+                              ))}
+                            {activeJobTasksTab === "ru" &&
+                              selectedVacancy.job_tasks_ru?.map((task, idx) => (
+                                <li key={idx}>{task.task || task}</li>
+                              ))}
                           </ul>
                         </div>
                       )}
@@ -1033,9 +1104,10 @@ const ManagementDetails = () => {
                             Ingliz tili
                           </h5>
                           <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {selectedVacancy.lan_requirements_eng === "not_required" 
-                              ? "Talab qilinmaydi" 
-                              : (selectedVacancy.lan_requirements_eng || "—")}
+                            {selectedVacancy.lan_requirements_eng ===
+                            "not_required"
+                              ? "Talab qilinmaydi"
+                              : selectedVacancy.lan_requirements_eng || "—"}
                           </p>
                         </div>
                         <div>
@@ -1043,9 +1115,10 @@ const ManagementDetails = () => {
                             Rus tili
                           </h5>
                           <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {selectedVacancy.lan_requirements_ru === "not_required" 
-                              ? "Talab qilinmaydi" 
-                              : (selectedVacancy.lan_requirements_ru || "—")}
+                            {selectedVacancy.lan_requirements_ru ===
+                            "not_required"
+                              ? "Talab qilinmaydi"
+                              : selectedVacancy.lan_requirements_ru || "—"}
                           </p>
                         </div>
                       </div>
@@ -1233,7 +1306,7 @@ const ManagementDetails = () => {
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
                         <button
                           type="button"
-                          onClick={() => toggleEditSection('requirements')}
+                          onClick={() => toggleEditSection("requirements")}
                           className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700/30 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all"
                         >
                           <div className="flex items-center space-x-3">
@@ -1242,11 +1315,18 @@ const ManagementDetails = () => {
                               Talablar *
                             </label>
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-500">
-                              {editFormData.requirements_uz.length + editFormData.requirements_cr.length + editFormData.requirements_ru.length} ta
+                              {editFormData.requirements_uz.length +
+                                editFormData.requirements_cr.length +
+                                editFormData.requirements_ru.length}{" "}
+                              ta
                             </span>
                           </div>
                           <svg
-                            className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${editExpandedSections.requirements ? 'rotate-180' : ''}`}
+                            className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+                              editExpandedSections.requirements
+                                ? "rotate-180"
+                                : ""
+                            }`}
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -1261,16 +1341,27 @@ const ManagementDetails = () => {
                         </button>
                         {editExpandedSections.requirements && (
                           <div className="p-5 space-y-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                            {['uz', 'cr', 'ru'].map((lang) => {
-                              const langNames = { uz: "O'zbekcha", cr: "O'zbekcha (Kirill)", ru: "Ruscha" };
+                            {["uz", "cr", "ru"].map((lang) => {
+                              const langNames = {
+                                uz: "O'zbekcha",
+                                cr: "O'zbekcha (Kirill)",
+                                ru: "Ruscha",
+                              };
                               const requirementsField = `requirements_${lang}`;
-                              const requirements = editFormData[requirementsField] || [];
-                              
+                              const requirements =
+                                editFormData[requirementsField] || [];
+
                               return (
-                                <div key={`edit_requirements_${lang}`} className="space-y-3">
+                                <div
+                                  key={`edit_requirements_${lang}`}
+                                  className="space-y-3"
+                                >
                                   <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700">
                                     <label className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                      {langNames[lang]} {lang === 'uz' && <span className="text-red-500">*</span>}
+                                      {langNames[lang]}{" "}
+                                      {lang === "uz" && (
+                                        <span className="text-red-500">*</span>
+                                      )}
                                     </label>
                                     <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
                                       {requirements.length} ta
@@ -1291,18 +1382,31 @@ const ManagementDetails = () => {
                                           <textarea
                                             value={req.task}
                                             onChange={(e) =>
-                                              handleEditTaskChange('requirements', lang, index, e.target.value)
+                                              handleEditTaskChange(
+                                                "requirements",
+                                                lang,
+                                                index,
+                                                e.target.value
+                                              )
                                             }
                                             rows={3}
                                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm transition-all"
-                                            placeholder={`${langNames[lang]} talab ${index + 1}...`}
+                                            placeholder={`${
+                                              langNames[lang]
+                                            } talab ${index + 1}...`}
                                             disabled={editSaving}
                                           />
                                         </div>
                                         {requirements.length > 1 && (
                                           <button
                                             type="button"
-                                            onClick={() => removeEditTask('requirements', lang, index)}
+                                            onClick={() =>
+                                              removeEditTask(
+                                                "requirements",
+                                                lang,
+                                                index
+                                              )
+                                            }
                                             disabled={editSaving}
                                             className="flex-shrink-0 mt-1 p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                                             title="Talabni o'chirish"
@@ -1326,15 +1430,29 @@ const ManagementDetails = () => {
                                     ))}
                                     <button
                                       type="button"
-                                      onClick={() => addEditTask('requirements', lang)}
+                                      onClick={() =>
+                                        addEditTask("requirements", lang)
+                                      }
                                       disabled={editSaving}
                                       className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-sm font-medium text-gray-700 dark:text-gray-300"
                                     >
                                       <span className="flex items-center justify-center space-x-2">
-                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        <svg
+                                          className="h-4 w-4"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 4v16m8-8H4"
+                                          />
                                         </svg>
-                                        <span>{langNames[lang]} talab qo'shish</span>
+                                        <span>
+                                          {langNames[lang]} talab qo'shish
+                                        </span>
                                       </span>
                                     </button>
                                   </div>
@@ -1349,7 +1467,7 @@ const ManagementDetails = () => {
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
                         <button
                           type="button"
-                          onClick={() => toggleEditSection('job_tasks')}
+                          onClick={() => toggleEditSection("job_tasks")}
                           className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700/30 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all"
                         >
                           <div className="flex items-center space-x-3">
@@ -1358,11 +1476,16 @@ const ManagementDetails = () => {
                               Ish vazifalari *
                             </label>
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-500">
-                              {editFormData.job_tasks_uz.length + editFormData.job_tasks_cr.length + editFormData.job_tasks_ru.length} ta
+                              {editFormData.job_tasks_uz.length +
+                                editFormData.job_tasks_cr.length +
+                                editFormData.job_tasks_ru.length}{" "}
+                              ta
                             </span>
                           </div>
                           <svg
-                            className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${editExpandedSections.job_tasks ? 'rotate-180' : ''}`}
+                            className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+                              editExpandedSections.job_tasks ? "rotate-180" : ""
+                            }`}
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -1377,16 +1500,27 @@ const ManagementDetails = () => {
                         </button>
                         {editExpandedSections.job_tasks && (
                           <div className="p-5 space-y-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                            {['uz', 'cr', 'ru'].map((lang) => {
-                              const langNames = { uz: "O'zbekcha", cr: "O'zbekcha (Kirill)", ru: "Ruscha" };
+                            {["uz", "cr", "ru"].map((lang) => {
+                              const langNames = {
+                                uz: "O'zbekcha",
+                                cr: "O'zbekcha (Kirill)",
+                                ru: "Ruscha",
+                              };
                               const jobTasksField = `job_tasks_${lang}`;
-                              const jobTasks = editFormData[jobTasksField] || [];
-                              
+                              const jobTasks =
+                                editFormData[jobTasksField] || [];
+
                               return (
-                                <div key={`edit_job_tasks_${lang}`} className="space-y-3">
+                                <div
+                                  key={`edit_job_tasks_${lang}`}
+                                  className="space-y-3"
+                                >
                                   <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700">
                                     <label className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                      {langNames[lang]} {lang === 'uz' && <span className="text-red-500">*</span>}
+                                      {langNames[lang]}{" "}
+                                      {lang === "uz" && (
+                                        <span className="text-red-500">*</span>
+                                      )}
                                     </label>
                                     <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
                                       {jobTasks.length} ta
@@ -1407,18 +1541,31 @@ const ManagementDetails = () => {
                                           <textarea
                                             value={task.task}
                                             onChange={(e) =>
-                                              handleEditTaskChange('job_tasks', lang, index, e.target.value)
+                                              handleEditTaskChange(
+                                                "job_tasks",
+                                                lang,
+                                                index,
+                                                e.target.value
+                                              )
                                             }
                                             rows={3}
                                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white text-sm transition-all"
-                                            placeholder={`${langNames[lang]} vazifa ${index + 1}...`}
+                                            placeholder={`${
+                                              langNames[lang]
+                                            } vazifa ${index + 1}...`}
                                             disabled={editSaving}
                                           />
                                         </div>
                                         {jobTasks.length > 1 && (
                                           <button
                                             type="button"
-                                            onClick={() => removeEditTask('job_tasks', lang, index)}
+                                            onClick={() =>
+                                              removeEditTask(
+                                                "job_tasks",
+                                                lang,
+                                                index
+                                              )
+                                            }
                                             disabled={editSaving}
                                             className="flex-shrink-0 mt-1 p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                                             title="Vazifani o'chirish"
@@ -1442,15 +1589,29 @@ const ManagementDetails = () => {
                                     ))}
                                     <button
                                       type="button"
-                                      onClick={() => addEditTask('job_tasks', lang)}
+                                      onClick={() =>
+                                        addEditTask("job_tasks", lang)
+                                      }
                                       disabled={editSaving}
                                       className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all text-sm font-medium text-gray-700 dark:text-gray-300"
                                     >
                                       <span className="flex items-center justify-center space-x-2">
-                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        <svg
+                                          className="h-4 w-4"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 4v16m8-8H4"
+                                          />
                                         </svg>
-                                        <span>{langNames[lang]} vazifa qo'shish</span>
+                                        <span>
+                                          {langNames[lang]} vazifa qo'shish
+                                        </span>
                                       </span>
                                     </button>
                                   </div>
@@ -1495,10 +1656,13 @@ const ManagementDetails = () => {
                               onChange={handleEditFormChange}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                             >
-                              <option value="">Testni tanlang (ixtiyoriy)</option>
+                              <option value="">
+                                Testni tanlang (ixtiyoriy)
+                              </option>
                               {tests.map((test) => (
                                 <option key={test.id} value={test.id}>
-                                  {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
+                                  {test.title} ({test.total_questions} ta savol,{" "}
+                                  {test.duration_minutes} daqiqa)
                                 </option>
                               ))}
                             </select>
@@ -1550,7 +1714,9 @@ const ManagementDetails = () => {
                             onChange={handleEditFormChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                           >
-                            <option value="not_required">Talab qilinmaydi</option>
+                            <option value="not_required">
+                              Talab qilinmaydi
+                            </option>
                             <option value="A1">A1</option>
                             <option value="A2">A2</option>
                             <option value="B1">B1</option>
@@ -1570,7 +1736,9 @@ const ManagementDetails = () => {
                             onChange={handleEditFormChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                           >
-                            <option value="not_required">Talab qilinmaydi</option>
+                            <option value="not_required">
+                              Talab qilinmaydi
+                            </option>
                             <option value="A1">A1</option>
                             <option value="A2">A2</option>
                             <option value="B1">B1</option>
@@ -1579,6 +1747,28 @@ const ManagementDetails = () => {
                             <option value="C2">C2</option>
                           </select>
                         </div>
+                      </div>
+
+                      {/* Quantity */}
+                      <div>
+                        <label
+                          htmlFor="quantity"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                          Vakant soni
+                        </label>
+                        <input
+                          type="number"
+                          id="quantity"
+                          name="quantity"
+                          value={editFormData.quantity}
+                          onChange={handleEditFormChange}
+                          disabled={editSaving}
+                          min="1"
+                          step="1"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                          placeholder="Vakant sonini kiriting (masalan: 5)"
+                        />
                       </div>
 
                       {/* Is Active */}
@@ -1606,7 +1796,9 @@ const ManagementDetails = () => {
                             Boshqarma
                           </p>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {editingVacancy.management_details.name_uz || editingVacancy.management_details.name || "Noma'lum"}
+                            {editingVacancy.management_details.name_uz ||
+                              editingVacancy.management_details.name ||
+                              "Noma'lum"}
                           </p>
                         </div>
                       )}

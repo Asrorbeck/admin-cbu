@@ -17,6 +17,7 @@ const Testlar = () => {
   const [testToDelete, setTestToDelete] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isModalExpanded, setIsModalExpanded] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,9 +32,9 @@ const Testlar = () => {
       const data = await getTestsApi();
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
-      const testsArray = Array.isArray(data) 
-        ? data 
-        : (data?.results || data?.data || []);
+      const testsArray = Array.isArray(data)
+        ? data
+        : data?.results || data?.data || [];
       setTests(testsArray);
       setPage(1);
     } catch (error) {
@@ -47,9 +48,34 @@ const Testlar = () => {
     }
   };
 
-  const formatDuration = (durationMinutes) => {
-    if (!durationMinutes && durationMinutes !== 0) return "Ma'lumot yo'q";
-    return `${durationMinutes} daqiqa`;
+  const formatDuration = (durationMinutes, duration) => {
+    // If duration_minutes exists, use it
+    if (
+      durationMinutes !== undefined &&
+      durationMinutes !== null &&
+      durationMinutes !== ""
+    ) {
+      return `${durationMinutes} daqiqa`;
+    }
+
+    // If duration exists in HH:MM:SS format, parse it
+    if (duration && typeof duration === "string" && duration.includes(":")) {
+      const parts = duration.split(":");
+      if (parts.length === 3) {
+        const hours = parseInt(parts[0]) || 0;
+        const minutes = parseInt(parts[1]) || 0;
+        const seconds = parseInt(parts[2]) || 0;
+        const totalMinutes = hours * 60 + minutes + (seconds > 0 ? 1 : 0);
+        return `${totalMinutes} daqiqa`;
+      }
+    }
+
+    // If duration is already a number, use it
+    if (duration && typeof duration === "number") {
+      return `${duration} daqiqa`;
+    }
+
+    return "Ma'lumot yo'q";
   };
 
   const handleViewTest = async (testId) => {
@@ -78,7 +104,7 @@ const Testlar = () => {
 
   const handleDeleteConfirm = async () => {
     if (!testToDelete) return;
-    
+
     try {
       setDeleting(true);
       await deleteTestApi(testToDelete.id);
@@ -97,6 +123,7 @@ const Testlar = () => {
 
   const closeViewModal = () => {
     setIsViewModalOpen(false);
+    setIsModalExpanded(false);
     setTimeout(() => setSelectedTest(null), 300);
   };
 
@@ -343,7 +370,8 @@ const Testlar = () => {
                   {paginated.map((test, index) => (
                     <tr
                       key={test.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                      onClick={() => handleViewTest(test.id)}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {startIndex + index + 1}
@@ -354,7 +382,7 @@ const Testlar = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {formatDuration(test.duration_minutes)}
+                        {formatDuration(test.duration_minutes, test.duration)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {test.max_violations !== undefined &&
@@ -492,34 +520,85 @@ const Testlar = () => {
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
               &#8203;
             </span>
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div
+              className={`inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all ${
+                isModalExpanded
+                  ? "fixed inset-0 w-screen h-screen max-w-none m-0 rounded-none"
+                  : "sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
+              }`}
+            >
               <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Test tafsilotlari
                   </h3>
-                  <button
-                    onClick={closeViewModal}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsModalExpanded(!isModalExpanded)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      title={
+                        isModalExpanded ? "Kichiklashtirish" : "Kattalashtirish"
+                      }
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
+                      {isModalExpanded ? (
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={closeViewModal}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="px-6 py-5 space-y-5 max-h-[calc(100vh-250px)] overflow-y-auto">
+              <div
+                className={`px-6 py-5 space-y-5 overflow-y-auto ${
+                  isModalExpanded
+                    ? "max-h-[calc(100vh-150px)]"
+                    : "max-h-[calc(100vh-250px)]"
+                }`}
+              >
                 {viewLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="flex items-center space-x-2">
@@ -565,7 +644,10 @@ const Testlar = () => {
                           Vaqt
                         </h4>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          {formatDuration(selectedTest.duration_minutes)}
+                          {formatDuration(
+                            selectedTest.duration_minutes,
+                            selectedTest.duration
+                          )}
                         </p>
                       </div>
                       <div>
@@ -593,52 +675,79 @@ const Testlar = () => {
                     </div>
 
                     {/* Questions */}
-                    {selectedTest.questions && selectedTest.questions.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                          Savollar
-                        </h4>
-                        <div className="space-y-4">
-                          {selectedTest.questions.map((question, qIndex) => (
-                            <div
-                              key={question.id || qIndex}
-                              className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/40"
-                            >
-                              <div className="flex items-start space-x-3 mb-3">
-                                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                                  {qIndex + 1}
+                    {selectedTest.questions &&
+                      selectedTest.questions.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Savollar
+                          </h4>
+                          <div className="space-y-4">
+                            {selectedTest.questions.map((question, qIndex) => (
+                              <div
+                                key={question.id || qIndex}
+                                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/40"
+                              >
+                                <div className="flex items-start space-x-3 mb-3">
+                                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                                    {qIndex + 1}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {question.text || "Ma'lumot yo'q"}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {question.text || "Ma'lumot yo'q"}
-                                  </p>
-                                </div>
-                              </div>
-                              {question.choices && question.choices.length > 0 && (
-                                <div className="ml-11 space-y-2">
-                                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                                    Variantlar:
-                                  </p>
-                                  {question.choices.map((choice, cIndex) => (
-                                    <div
-                                      key={choice.id || cIndex}
-                                      className="flex items-center space-x-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600"
-                                    >
-                                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                                        {cIndex + 1}.
-                                      </span>
-                                      <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
-                                        {choice.text || "Ma'lumot yo'q"}
-                                      </span>
+                                {question.choices &&
+                                  question.choices.length > 0 && (
+                                    <div className="ml-11 space-y-2">
+                                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                                        Variantlar:
+                                      </p>
+                                      {question.choices.map(
+                                        (choice, cIndex) => (
+                                          <div
+                                            key={choice.id || cIndex}
+                                            className={`flex items-center space-x-2 p-2 rounded border ${
+                                              choice.is_correct
+                                                ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
+                                                : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600"
+                                            }`}
+                                          >
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                              {cIndex + 1}.
+                                            </span>
+                                            <span
+                                              className={`text-sm flex-1 ${
+                                                choice.is_correct
+                                                  ? "text-green-700 dark:text-green-300 font-medium"
+                                                  : "text-gray-700 dark:text-gray-300"
+                                              }`}
+                                            >
+                                              {choice.text || "Ma'lumot yo'q"}
+                                            </span>
+                                            {choice.is_correct && (
+                                              <svg
+                                                className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                              >
+                                                <path
+                                                  fillRule="evenodd"
+                                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                  clipRule="evenodd"
+                                                />
+                                              </svg>
+                                            )}
+                                          </div>
+                                        )
+                                      )}
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                  )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </>
                 ) : null}
               </div>
@@ -660,7 +769,9 @@ const Testlar = () => {
       <ConfirmDialog
         open={isDeleteDialogOpen}
         title="Testni o'chirish"
-        description={`"${testToDelete?.title || "Bu test"}" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi.`}
+        description={`"${
+          testToDelete?.title || "Bu test"
+        }" ni o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi.`}
         confirmText={deleting ? "O'chirilmoqda..." : "O'chirish"}
         cancelText="Bekor qilish"
         onConfirm={handleDeleteConfirm}
