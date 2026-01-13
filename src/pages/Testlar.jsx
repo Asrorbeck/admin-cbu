@@ -10,6 +10,9 @@ const Testlar = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrevious, setHasPrevious] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedTest, setSelectedTest] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -23,26 +26,40 @@ const Testlar = () => {
   useEffect(() => {
     fetchTests();
     document.title = "Testlar - Markaziy Bank Administratsiyasi";
-  }, []);
+  }, [page, pageSize]);
 
   const fetchTests = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getTestsApi();
+      const data = await getTestsApi({ page, page_size: pageSize });
       // Handle paginated response structure: { count, next, previous, results: [...] }
-      // or direct array response
-      const testsArray = Array.isArray(data)
-        ? data
-        : data?.results || data?.data || [];
-      setTests(testsArray);
-      setPage(1);
+      if (data && typeof data === 'object' && 'results' in data) {
+        setTests(data.results || []);
+        setTotalCount(data.count || 0);
+        setHasNext(!!data.next);
+        setHasPrevious(!!data.previous);
+      } else if (Array.isArray(data)) {
+        // Fallback for non-paginated response
+        setTests(data);
+        setTotalCount(data.length);
+        setHasNext(false);
+        setHasPrevious(false);
+      } else {
+        setTests([]);
+        setTotalCount(0);
+        setHasNext(false);
+        setHasPrevious(false);
+      }
     } catch (error) {
       console.error("Error fetching tests:", error);
       setError(error.message);
       toast.error("Testlarni yuklashda xatolik yuz berdi");
       // Set empty array on error to prevent filter errors
       setTests([]);
+      setTotalCount(0);
+      setHasNext(false);
+      setHasPrevious(false);
     } finally {
       setLoading(false);
     }
@@ -111,8 +128,13 @@ const Testlar = () => {
       toast.success("Test muvaffaqiyatli o'chirildi");
       setIsDeleteDialogOpen(false);
       setTestToDelete(null);
-      // Refresh the list
-      fetchTests();
+      // Refresh the list - if current page becomes empty, go to previous page
+      const currentPageTests = tests.length;
+      if (currentPageTests === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchTests();
+      }
     } catch (error) {
       console.error("Error deleting test:", error);
       toast.error("Testni o'chirishda xatolik yuz berdi");
@@ -189,7 +211,7 @@ const Testlar = () => {
     );
   }
 
-  // Filter and paginate tests
+  // Filter tests (client-side search only, pagination is server-side)
   const safeTests = Array.isArray(tests) ? tests : [];
   const q = query.trim().toLowerCase();
   const filtered = safeTests.filter((test) => {
@@ -201,12 +223,10 @@ const Testlar = () => {
     return true;
   });
 
-  const total = filtered.length;
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginated = filtered.slice(startIndex, endIndex);
-  const showingStart = total === 0 ? 0 : startIndex + 1;
-  const showingEnd = Math.min(endIndex, total);
+  // Calculate pagination info from backend response
+  const total = totalCount;
+  const showingStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingEnd = Math.min(page * pageSize, total);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -274,7 +294,7 @@ const Testlar = () => {
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
-                setPage(1);
+                // Don't reset page for client-side search
               }}
               placeholder="Qidirish: test nomi..."
               className="w-full pr-7 pl-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm placeholder:text-sm text-gray-900 dark:text-white"
@@ -303,7 +323,7 @@ const Testlar = () => {
             onChange={(e) => {
               const size = Number(e.target.value);
               setPageSize(size);
-              setPage(1);
+              setPage(1); // Reset to first page when changing page size
             }}
             className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
           >
@@ -367,14 +387,14 @@ const Testlar = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginated.map((test, index) => (
+                  {filtered.map((test, index) => (
                     <tr
                       key={test.id}
                       onClick={() => handleViewTest(test.id)}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {startIndex + index + 1}
+                        {(page - 1) * pageSize + index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -488,7 +508,7 @@ const Testlar = () => {
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
+                disabled={!hasPrevious || page === 1}
                 className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Oldingi
@@ -499,7 +519,7 @@ const Testlar = () => {
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
+                disabled={!hasNext || page >= totalPages}
                 className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Keyingi

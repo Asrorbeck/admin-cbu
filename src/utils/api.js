@@ -484,8 +484,23 @@ export const getVacancySelectionHierarchyApi = async () => {
 };
 
 // Tests API calls
-export const getTestsApi = async () => {
-  return apiRequest(API_CONFIG.ENDPOINTS.TESTS, {
+export const getTestsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.page) {
+    queryParams.append("page", params.page);
+  }
+  
+  if (params.page_size) {
+    queryParams.append("page_size", params.page_size);
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString 
+    ? `${API_CONFIG.ENDPOINTS.TESTS}?${queryString}`
+    : API_CONFIG.ENDPOINTS.TESTS;
+  
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };
