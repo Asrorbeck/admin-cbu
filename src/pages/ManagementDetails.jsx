@@ -85,7 +85,7 @@ const ManagementDetails = () => {
   const fetchTests = async () => {
     try {
       setLoadingTests(true);
-      const data = await getTestsApi();
+      const data = await getTestsApi({ page_size: 100 });
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
       const testsArray = Array.isArray(data)
@@ -269,7 +269,9 @@ const ManagementDetails = () => {
         lan_requirements_eng:
           fullVacancyData.lan_requirements_eng || "not_required",
         test_id:
-          fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0
+          fullVacancyData.tests && fullVacancyData.tests.length > 0
+            ? String(fullVacancyData.tests[0].id)
+            : fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0
             ? String(fullVacancyData.test_ids[0])
             : "",
         lan_requirements_ru:
