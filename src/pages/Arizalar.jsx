@@ -666,19 +666,31 @@ const Arizalar = () => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const d1 = parseDateSafe(deadline);
     const d2 = parseDateSafe(testAt);
-    
+
     // Check if deadline is before today (not including today)
-    const deadlineExpired = d1 && (() => {
-      const deadlineDate = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
-      return deadlineDate < today;
-    })();
-    
+    const deadlineExpired =
+      d1 &&
+      (() => {
+        const deadlineDate = new Date(
+          d1.getFullYear(),
+          d1.getMonth(),
+          d1.getDate()
+        );
+        return deadlineDate < today;
+      })();
+
     // Check if test date is before today (not including today)
-    const testExpired = d2 && (() => {
-      const testDate = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
-      return testDate < today;
-    })();
-    
+    const testExpired =
+      d2 &&
+      (() => {
+        const testDate = new Date(
+          d2.getFullYear(),
+          d2.getMonth(),
+          d2.getDate()
+        );
+        return testDate < today;
+      })();
+
     return deadlineExpired || testExpired;
   };
 
@@ -980,7 +992,16 @@ const Arizalar = () => {
     const s = (status || "").toUpperCase();
     if (s === "NEW" || s === "PENDING" || s === "REVIEWING") return "pending";
     if (s === "TEST_SCHEDULED") return "test_scheduled";
-    if (s === "REJECTED_DOCS" || s === "REJECTED" || s === "REJECTED_EXPERIENCE" || s === "REJECTED_NOT_SUITABLE" || s === "REJECTED_RESTRICTION" || s === "REJECTED_DEFECTS" || s === "REJECTED_STUDENT") return "rejected";
+    if (
+      s === "REJECTED_DOCS" ||
+      s === "REJECTED" ||
+      s === "REJECTED_EXPERIENCE" ||
+      s === "REJECTED_NOT_SUITABLE" ||
+      s === "REJECTED_RESTRICTION" ||
+      s === "REJECTED_DEFECTS" ||
+      s === "REJECTED_STUDENT"
+    )
+      return "rejected";
     return s.toLowerCase();
   };
 
@@ -1807,10 +1828,18 @@ const Arizalar = () => {
               <option value="NEW">Yangi</option>
               <option value="REVIEWING">Kutilmoqda</option>
               <option value="TEST_SCHEDULED">Qabul qilindi</option>
-              <option value="REJECTED_EXPERIENCE">Rad etildi (ish tajribasi)</option>
-              <option value="REJECTED_NOT_SUITABLE">Rad etildi (vakantga mos emas)</option>
-              <option value="REJECTED_RESTRICTION">Rad etildi (3 oylik cheklov)</option>
-              <option value="REJECTED_DEFECTS">Rad etildi (ariza kamchiliklari)</option>
+              <option value="REJECTED_EXPERIENCE">
+                Rad etildi (ish tajribasi)
+              </option>
+              <option value="REJECTED_NOT_SUITABLE">
+                Rad etildi (vakantga mos emas)
+              </option>
+              <option value="REJECTED_RESTRICTION">
+                Rad etildi (3 oylik cheklov)
+              </option>
+              <option value="REJECTED_DEFECTS">
+                Rad etildi (ariza kamchiliklari)
+              </option>
               <option value="REJECTED_STUDENT">Rad etildi (Talaba)</option>
             </select>
             <button
@@ -2551,11 +2580,21 @@ const Arizalar = () => {
                             <option value="TEST_SCHEDULED">
                               Qabul qilindi
                             </option>
-                            <option value="REJECTED_EXPERIENCE">Rad etildi (ish tajribasi)</option>
-                            <option value="REJECTED_NOT_SUITABLE">Rad etildi (vakantga mos emas)</option>
-                            <option value="REJECTED_RESTRICTION">Rad etildi (3 oylik cheklov)</option>
-                            <option value="REJECTED_DEFECTS">Rad etildi (ariza kamchiliklari)</option>
-                            <option value="REJECTED_STUDENT">Rad etildi (Talaba)</option>
+                            <option value="REJECTED_EXPERIENCE">
+                              Rad etildi (ish tajribasi)
+                            </option>
+                            <option value="REJECTED_NOT_SUITABLE">
+                              Rad etildi (vakantga mos emas)
+                            </option>
+                            <option value="REJECTED_RESTRICTION">
+                              Rad etildi (3 oylik cheklov)
+                            </option>
+                            <option value="REJECTED_DEFECTS">
+                              Rad etildi (ariza kamchiliklari)
+                            </option>
+                            <option value="REJECTED_STUDENT">
+                              Rad etildi (Talaba)
+                            </option>
                           </select>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             Joriy: {getStatusBadge(selectedApplication.status)}
@@ -2597,9 +2636,13 @@ const Arizalar = () => {
                                         r.value ===
                                         selectedApplication.job.region
                                     );
-                                    return region
-                                      ? region.label
-                                      : selectedApplication.job.region;
+                                    if (region) {
+                                      if (region.value === "qoraqalpogiston") {
+                                        return region.label; // "Qoraqalpog'iston Respublikasi"
+                                      }
+                                      return region.label + " viloyati";
+                                    }
+                                    return selectedApplication.job.region;
                                   })()}
                                 </p>
                               </div>

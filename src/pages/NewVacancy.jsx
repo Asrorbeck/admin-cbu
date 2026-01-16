@@ -77,7 +77,7 @@ const NewVacancy = () => {
   const fetchTests = async () => {
     try {
       setLoadingTests(true);
-      const data = await getTestsApi();
+      const data = await getTestsApi({ page_size: 100 });
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
       const testsArray = Array.isArray(data)
