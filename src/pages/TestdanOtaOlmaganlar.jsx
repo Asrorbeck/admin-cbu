@@ -44,7 +44,7 @@ const TestdanOtaOlmaganlar = () => {
         return {
           id: restriction.id,
           jshshir: restriction.jshshir || "Ma'lumot yo'q",
-          user_name: jobTitle !== "Ma'lumot yo'q" ? `Ariza: ${jobTitle}` : "Ma'lumot yo'q",
+          user_name: restriction.application_info?.full_name || "Ma'lumot yo'q",
           user_email: restriction.jshshir || "Ma'lumot yo'q",
           phone_number: restriction.jshshir || "Ma'lumot yo'q",
           test_title: jobTitle,
@@ -178,7 +178,7 @@ const TestdanOtaOlmaganlar = () => {
       "JSHSHIR": result.jshshir || "Ma'lumot yo'q",
       "Ish o'rni": result.test_title || "Ma'lumot yo'q",
       "Test balli": result.score || 0,
-      "O'tkazilmagan sana": formatDate(result.failed_date),
+      "Cheklov sanasi": formatDate(result.failed_date),
       "Qayta topshirish mumkin": result.can_retake ? "Ha" : "Yo'q",
       "Qayta topshirishga qolgan kunlar": result.can_retake ? 0 : result.days_until_retake,
       "Qayta ariza berish mumkin": result.can_apply_after ? formatDate(result.can_apply_after) : "Ma'lumot yo'q",
@@ -460,13 +460,16 @@ const TestdanOtaOlmaganlar = () => {
                       JSHSHIR
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Foydalanuvchi
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider max-w-xs">
                       Ish o'rni
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Test balli
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      O'tkazilmagan sana
+                      Cheklov sanasi
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Qayta ariza berish mumkin
@@ -491,8 +494,15 @@ const TestdanOtaOlmaganlar = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {result.jshshir || "Ma'lumot yo'q"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.test_title || result.application_info?.job_title_uz || result.application_info?.job_title || "Ma'lumot yo'q"}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {result.user_name || "Ma'lumot yo'q"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-sm text-gray-900 dark:text-gray-100 truncate" title={result.test_title || result.application_info?.job_title_uz || result.application_info?.job_title || "Ma'lumot yo'q"}>
+                          {result.test_title || result.application_info?.job_title_uz || result.application_info?.job_title || "Ma'lumot yo'q"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {result.score !== undefined ? result.score : "Ma'lumot yo'q"}

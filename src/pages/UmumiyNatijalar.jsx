@@ -50,18 +50,17 @@ const UmumiyNatijalar = () => {
         return;
       }
 
-      // Call API with selected date
+      // Call API with selected date and overall_result filter
       const response = await getAttemptsApi({
         end_time: selectedDate,
+        overall_result: true,
       });
 
       // Extract results from API response
       const attempts = response?.results || [];
 
-      // Map API response to component format and filter by overall_result === true
-      const mappedResults = attempts
-        .filter((attempt) => attempt.overall_result === true)
-        .map((attempt) => {
+      // Map API response to component format (backend already filters by overall_result === true)
+      const mappedResults = attempts.map((attempt) => {
           // Determine interview type from interview_details (when available)
           let interviewType = null;
 
@@ -321,9 +320,6 @@ const UmumiyNatijalar = () => {
     // Date filter (API already filters by date, but keeping for consistency)
     if (!filterByDate(result)) return false;
 
-    // Only show those who passed overall (API already filters, but keeping for safety)
-    if (!result.overall_passed) return false;
-
     // Search filter
     if (q) {
       const inUserName = result.user_name?.toLowerCase().includes(q);
@@ -528,7 +524,7 @@ const UmumiyNatijalar = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Foydalanuvchi
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider max-w-xs">
                       Vakansiya
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -560,8 +556,10 @@ const UmumiyNatijalar = () => {
                           {result.user_name || "Ma'lumot yo'q"}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.vacancy_title || "Ma'lumot yo'q"}
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-sm text-gray-900 dark:text-gray-100 truncate" title={result.vacancy_title || "Ma'lumot yo'q"}>
+                          {result.vacancy_title || "Ma'lumot yo'q"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-gray-100">

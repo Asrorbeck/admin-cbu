@@ -200,8 +200,7 @@ const TilSuhbati = () => {
         return {
           id: attempt.id,
           user_name:
-            attempt.chat?.full_name ||
-            attempt.chat?.username ||
+            attempt.application?.full_name ||
             "Ma'lumot yo'q",
           phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
           vacancy_title: vacancyTitle,
@@ -911,7 +910,7 @@ const TilSuhbati = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Foydalanuvchi
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider max-w-xs">
                       Vakansiya
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -961,8 +960,10 @@ const TilSuhbati = () => {
                           {result.user_name || "Ma'lumot yo'q"}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {result.vacancy_title || "Ma'lumot yo'q"}
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-sm text-gray-900 dark:text-gray-100 truncate" title={result.vacancy_title || "Ma'lumot yo'q"}>
+                          {result.vacancy_title || "Ma'lumot yo'q"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {result.russian_level && typeof result.russian_level === 'string' ? (

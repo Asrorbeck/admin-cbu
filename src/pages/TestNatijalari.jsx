@@ -97,7 +97,7 @@ const TestNatijalari = () => {
         "T/r": index + 1,
         "Test nomi": result.test?.title || "Ma'lumot yo'q",
         Foydalanuvchi:
-          result.chat?.full_name || result.chat?.username || "Ma'lumot yo'q",
+          result.application?.full_name || "Ma'lumot yo'q",
         Telefon: result.chat?.phone_number || "Ma'lumot yo'q",
         Foiz:
           result.score !== undefined && result.score !== null
@@ -263,9 +263,8 @@ const TestNatijalari = () => {
     // Search filter (client-side only, other filters handled by backend)
     if (q) {
       const inTestTitle = result.test?.title?.toLowerCase().includes(q);
-      const inUserName = result.chat?.full_name?.toLowerCase().includes(q);
-      const inUsername = result.chat?.username?.toLowerCase().includes(q);
-      if (!inTestTitle && !inUserName && !inUsername) return false;
+      const inUserName = result.application?.full_name?.toLowerCase().includes(q);
+      if (!inTestTitle && !inUserName) return false;
     }
     return true;
   });
@@ -473,7 +472,7 @@ const TestNatijalari = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       T/r
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider max-w-xs">
                       Test nomi
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -508,17 +507,15 @@ const TestNatijalari = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {showingStart + index}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" title={result.test?.title || "Ma'lumot yo'q"}>
                           {result.test?.title || "Ma'lumot yo'q"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         <div>
                           <div className="font-medium">
-                            {result.chat?.full_name ||
-                              result.chat?.username ||
-                              "Ma'lumot yo'q"}
+                            {result.application?.full_name || "Ma'lumot yo'q"}
                           </div>
                           {result.chat?.phone_number && (
                             <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -713,9 +710,7 @@ const TestNatijalari = () => {
                         To'liq ism
                       </label>
                       <p className="text-sm text-gray-900 dark:text-white">
-                        {selectedResult.chat?.full_name ||
-                          selectedResult.chat?.username ||
-                          "Ma'lumot yo'q"}
+                        {selectedResult.application?.full_name || "Ma'lumot yo'q"}
                       </p>
                     </div>
                     <div>

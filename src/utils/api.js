@@ -543,6 +543,9 @@ export const getAttemptsApi = async (params = {}) => {
   if (params.is_passed !== undefined && params.is_passed !== null) {
     queryParams.append("is_passed", params.is_passed);
   }
+  if (params.overall_result !== undefined && params.overall_result !== null) {
+    queryParams.append("overall_result", params.overall_result);
+  }
   
   const queryString = queryParams.toString();
   const endpoint = queryString ? `/attempts/?${queryString}` : "/attempts/";
