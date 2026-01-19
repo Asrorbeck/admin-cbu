@@ -53,6 +53,9 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                   Nofaol vakansiyalar
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Muddati o'tgan faol vakansiya
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Amallar
                 </th>
               </tr>
@@ -86,6 +89,17 @@ const DepartmentsTable = ({ departments, onEdit, onDelete, onViewDetails }) => {
                     <div className="text-sm text-gray-900 dark:text-gray-300">
                       {department.inactive_vacancies_count || 0}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        department.expired_active_vacancies_count > 0
+                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                      }`}
+                    >
+                      {department.expired_active_vacancies_count || 0}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">

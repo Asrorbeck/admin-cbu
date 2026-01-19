@@ -14,7 +14,11 @@ const Departments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // Load pageSize from localStorage or default to 10
+  const [pageSize, setPageSize] = useState(() => {
+    const savedPageSize = localStorage.getItem("departments_page_size");
+    return savedPageSize ? Number(savedPageSize) : 10;
+  });
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [paginationInfo, setPaginationInfo] = useState({
     count: 0,
@@ -282,6 +286,8 @@ const Departments = () => {
               const size = Number(e.target.value);
               setPageSize(size);
               setPage(1);
+              // Save to localStorage
+              localStorage.setItem("departments_page_size", size.toString());
             }}
             className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
           >
