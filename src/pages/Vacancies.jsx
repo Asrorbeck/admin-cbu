@@ -279,7 +279,7 @@ const Vacancies = () => {
         region: fullVacancyData.region || "",
         lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
         lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
-        test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
+        test_id: fullVacancyData.tests && fullVacancyData.tests.length > 0 ? String(fullVacancyData.tests[0].id) : "",
         quantity: fullVacancyData.quantity ? String(fullVacancyData.quantity) : "1",
       });
       
