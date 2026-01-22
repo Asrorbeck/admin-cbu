@@ -892,6 +892,13 @@ export const sendUserMessageApi = async (userId, message) => {
   });
 };
 
+// Regions API calls
+export const getRegionsApi = async () => {
+  return apiRequest("/regions/", {
+    method: "GET",
+  });
+};
+
 // Logout API call (if needed)
 export const logoutApi = async () => {
   // Clear secure storage
