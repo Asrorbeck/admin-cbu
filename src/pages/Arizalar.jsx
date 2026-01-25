@@ -227,6 +227,8 @@ const Arizalar = () => {
   const [deletingApplicationId, setDeletingApplicationId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hierarchyData, setHierarchyData] = useState(null);
+  const [resumeModalOpen, setResumeModalOpen] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState(null);
   const [loadingHierarchy, setLoadingHierarchy] = useState(true);
   const [hierarchyFilters, setHierarchyFilters] = useState({
     type: null, // 'central' or 'regional'
@@ -1900,6 +1902,9 @@ const Arizalar = () => {
                   Tajriba
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Resume
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Moslik
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -2031,6 +2036,35 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatExperience(
                       getTotalExperienceMonths(application.employments)
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {application.resume ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setResumeUrl(application.resume);
+                          setResumeModalOpen(true);
+                        }}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 underline flex items-center gap-1"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                          />
+                        </svg>
+                        Ko'rish
+                      </button>
+                    ) : (
+                      <span className="text-gray-500">Ma'lumot yo'q</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -2817,6 +2851,74 @@ const Arizalar = () => {
                 >
                   Yopish
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Modal */}
+      {resumeModalOpen && resumeUrl && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
+              onClick={() => setResumeModalOpen(false)}
+            ></div>
+
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Resume
+                  </h3>
+                  <button
+                    onClick={() => setResumeModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-4">
+                  {resumeUrl.endsWith('.pdf') ? (
+                    <iframe
+                      src={resumeUrl}
+                      className="w-full h-[800px] border border-gray-300 dark:border-gray-600 rounded"
+                      title="Resume PDF"
+                    />
+                  ) : (
+                    <div className="w-full h-[800px] border border-gray-300 dark:border-gray-600 rounded overflow-auto p-4">
+                      <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(resumeUrl)}&embedded=true`}
+                        className="w-full h-full border-0"
+                        title="Resume Document"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <a
+                    href={resumeUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Yuklab olish
+                  </a>
+                </div>
               </div>
             </div>
           </div>
