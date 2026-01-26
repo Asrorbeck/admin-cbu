@@ -13,6 +13,32 @@ const Header = () => {
   const [logoExists, setLogoExists] = useState(false);
   const location = useLocation();
 
+  // Translate role to Uzbek
+  const translateRole = (role) => {
+    if (!role) return "HR Manager";
+    
+    const roleLower = role.toLowerCase();
+    
+    if (roleLower === "moderator_vacancy") {
+      return "Moderator";
+    }
+    if (roleLower === "application_corruption" || roleLower.includes("corruption")) {
+      return "Korrupsiya murojaatlari";
+    }
+    if (roleLower === "application_spelling" || roleLower.includes("spelling")) {
+      return "Imloviy xatoliklar";
+    }
+    if (roleLower === "application_appeals" || roleLower.includes("appeals")) {
+      return "Iste'molchi huquqlari";
+    }
+    if (roleLower === "admin") {
+      return "Admin";
+    }
+    
+    // If role_display exists, use it, otherwise return role as is
+    return role;
+  };
+
   // Get current section title based on pathname
   const getCurrentSectionTitle = () => {
     const pathname = location.pathname;
@@ -224,15 +250,31 @@ const Header = () => {
             >
               <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
-                  {user?.name?.charAt(0) || "A"}
+                  {(() => {
+                    if (user?.first_name) {
+                      return user.first_name.charAt(0).toUpperCase();
+                    } else if (user?.last_name) {
+                      return user.last_name.charAt(0).toUpperCase();
+                    }
+                    return "A";
+                  })()}
                 </span>
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {user?.name || "Admin User"}
+                  {(() => {
+                    if (user?.first_name && user?.last_name) {
+                      return `${user.first_name} ${user.last_name}`;
+                    } else if (user?.first_name) {
+                      return user.first_name;
+                    } else if (user?.last_name) {
+                      return user.last_name;
+                    }
+                    return "admin";
+                  })()}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {user?.role || "HR Manager"}
+                  {translateRole(user?.role_display || user?.role)}
                 </p>
               </div>
               <svg
@@ -265,12 +307,28 @@ const Header = () => {
                     <div className="flex items-center space-x-3">
                       <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center">
                         <span className="text-white font-medium">
-                          {user?.name?.charAt(0) || "A"}
+                          {(() => {
+                            if (user?.first_name) {
+                              return user.first_name.charAt(0).toUpperCase();
+                            } else if (user?.last_name) {
+                              return user.last_name.charAt(0).toUpperCase();
+                            }
+                            return "A";
+                          })()}
                         </span>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user?.name || "Admin User"}
+                          {(() => {
+                            if (user?.first_name && user?.last_name) {
+                              return `${user.first_name} ${user.last_name}`;
+                            } else if (user?.first_name) {
+                              return user.first_name;
+                            } else if (user?.last_name) {
+                              return user.last_name;
+                            }
+                            return "admin";
+                          })()}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {user?.username || "admin@example.com"}
@@ -280,77 +338,6 @@ const Header = () => {
                   </div>
 
                   <div className="py-2">
-                    <Link
-                      to="/profile"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <svg
-                        className="h-4 w-4 mr-3"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                      Profil
-                    </Link>
-
-                    <Link
-                      to="/settings"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <svg
-                        className="h-4 w-4 mr-3"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      Sozlamalar
-                    </Link>
-
-                    <Link
-                      to="/help"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <svg
-                        className="h-4 w-4 mr-3"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      Yordam
-                    </Link>
-                  </div>
-
-                  <div className="border-t border-gray-200 dark:border-gray-700 py-2">
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"

@@ -1,7 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
+  const { user } = useAuth();
+  
+  // Get permissions from user object
+  const permissions = user?.permissions || {};
 
   const sidebarClasses = `
     fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out
@@ -52,10 +57,11 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         <nav className="mt-6 space-y-6 overflow-y-auto flex-1 pb-6">
           {/* Kadrlar bo'limi */}
-          <div className="px-6">
-            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-              Departament
-            </h2>
+          {permissions.can_access_vacancies && (
+            <div className="px-6">
+              <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                Kadrlar
+              </h2>
             <div className="space-y-1">
               <Link
                 to="/"
@@ -404,8 +410,10 @@ const Sidebar = ({ isOpen, onClose }) => {
               </Link>
             </div>
           </div>
+          )}
 
           {/* Iste'molchi huquqlari */}
+          {permissions.can_access_appeals && (
           <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
             Iste'molchi huquqlari
@@ -524,8 +532,10 @@ const Sidebar = ({ isOpen, onClose }) => {
               </Link>
             </div>
           </div>
+          )}
 
           {/* Imloviy xatoliklar */}
+          {permissions.can_access_spelling && (
           <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
             Imloviy xatoliklar
@@ -616,8 +626,10 @@ const Sidebar = ({ isOpen, onClose }) => {
               </Link>
             </div>
           </div>
+          )}
 
           {/* Korrupsiya murojaatlari */}
+          {permissions.can_access_reports && (
           <div className="px-6">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
             Korrupsiya murojaatlari
@@ -708,6 +720,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </Link>
             </div>
           </div>
+          )}
 
           {/* So'rovnomalar */}
           {/* <div className="px-6">

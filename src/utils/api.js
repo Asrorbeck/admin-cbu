@@ -899,6 +899,13 @@ export const getRegionsApi = async () => {
   });
 };
 
+// User Info API call
+export const getUserInfoApi = async () => {
+  return apiRequest("/user-info/me/", {
+    method: "GET",
+  });
+};
+
 // Logout API call (if needed)
 export const logoutApi = async () => {
   // Clear secure storage

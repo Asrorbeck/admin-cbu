@@ -47,19 +47,48 @@ import Foydalanuvchilar from "./pages/Foydalanuvchilar";
 function AppRoutes() {
   const { user } = useAuth();
 
+  // Get user permissions
+  const permissions = user?.permissions || {};
+
+  // Determine default route based on permissions
+  const getDefaultRoute = () => {
+    // If user has access to vacancies, show dashboard
+    if (permissions.can_access_vacancies) {
+      return "/";
+    }
+    
+    // Otherwise, redirect to the first available section
+    if (permissions.can_access_appeals) {
+      return "/murojaatlar";
+    }
+    if (permissions.can_access_spelling) {
+      return "/imloviy-xatoliklar/murojaatlar";
+    }
+    if (permissions.can_access_reports) {
+      return "/korrupsiya-murojaatlari/murojaatlar";
+    }
+    
+    // Fallback to dashboard if no specific permissions
+    return "/";
+  };
+
   return (
     <Routes>
       <Route
         path="/login"
-        element={user ? <Navigate to="/" replace /> : <Login />}
+        element={user ? <Navigate to={getDefaultRoute()} replace /> : <Login />}
       />
       <Route
         path="/"
         element={
           <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
+            {permissions.can_access_vacancies ? (
+              <Layout>
+                <Dashboard />
+              </Layout>
+            ) : (
+              <Navigate to={getDefaultRoute()} replace />
+            )}
           </ProtectedRoute>
         }
       />
