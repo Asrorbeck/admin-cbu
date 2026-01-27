@@ -381,17 +381,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 Xabarnoma
               </Link>
 
-              <Link
-                to="/foydalanuvchilar"
-                className={`
-                  flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  ${
-                    location.pathname === "/foydalanuvchilar"
-                      ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
-                  }
-                `}
-                onClick={onClose}
+              <div
+                className="flex items-center px-3 py-2 text-sm font-medium rounded-md opacity-50 cursor-not-allowed"
               >
                 <svg
                   className="mr-3 h-5 w-5"
@@ -407,7 +398,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   />
                 </svg>
                 Foydalanuvchilar
-              </Link>
+              </div>
             </div>
           </div>
           )}
