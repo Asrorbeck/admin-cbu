@@ -2039,7 +2039,9 @@ const Arizalar = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {application.resume ? (
                       <a
-                        href={application.resume}
+                        href={application.resume.startsWith('http://') 
+                          ? application.resume.replace('http://', 'https://')
+                          : application.resume}
                         download
                         onClick={(e) => {
                           e.stopPropagation();
