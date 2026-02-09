@@ -598,6 +598,22 @@ export const sendMeetLinkInviteApi = async (data) => {
   });
 };
 
+/** POST /attempts/send-final-interview-invite/ — final intervyu taklifi */
+export const sendFinalInterviewInviteApi = async (data) => {
+  const body = {
+    attempt_ids: data.attempt_ids,
+  };
+  if (data.online_interview_date) body.online_interview_date = data.online_interview_date;
+  if (data.online_interview_time) body.online_interview_time = data.online_interview_time;
+  if (data.online_meet_link) body.online_meet_link = data.online_meet_link;
+  if (data.offline_interview_date) body.offline_interview_date = data.offline_interview_date;
+  if (data.offline_interview_time) body.offline_interview_time = data.offline_interview_time;
+  return apiRequest("/attempts/send-final-interview-invite/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+};
+
 export const updateAttemptApi = async (id, data) => {
   return apiRequest(`/attempts/${id}/`, {
     method: "PUT",

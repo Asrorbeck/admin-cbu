@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { sendFinalInterviewInviteApi } from "../../utils/api";
+
+const getTodayDate = () => {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+};
 
 const SendInterviewNotificationModal = ({ isOpen, onClose, users, selectedDate, onSuccess }) => {
+  const minDate = getTodayDate();
   const [formData, setFormData] = useState({
     online_meet_link: "",
     online_interview_date: selectedDate || "",
@@ -12,11 +19,13 @@ const SendInterviewNotificationModal = ({ isOpen, onClose, users, selectedDate, 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && selectedDate) {
+    if (isOpen) {
+      const today = getTodayDate();
+      const date = selectedDate && selectedDate >= today ? selectedDate : today;
       setFormData((prev) => ({
         ...prev,
-        online_interview_date: selectedDate,
-        offline_interview_date: selectedDate,
+        online_interview_date: date,
+        offline_interview_date: date,
       }));
     }
   }, [isOpen, selectedDate]);
@@ -63,29 +72,20 @@ const SendInterviewNotificationModal = ({ isOpen, onClose, users, selectedDate, 
 
     try {
       setLoading(true);
-      
-      // TODO: Replace with actual API call when endpoint is available
-      // await sendInterviewNotificationApi({
-      //   users: users.map(u => u.id),
-      //   online_meet_link: formData.online_meet_link,
-      //   online_interview_date: formData.online_interview_date,
-      //   online_interview_time: formData.online_interview_time,
-      //   offline_interview_date: formData.offline_interview_date,
-      //   offline_interview_time: formData.offline_interview_time,
-      // });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const attemptIds = users.map((u) => u.id);
+      await sendFinalInterviewInviteApi({
+        attempt_ids: attemptIds,
+        online_interview_date: formData.online_interview_date || undefined,
+        online_interview_time: formData.online_interview_time || undefined,
+        online_meet_link: formData.online_meet_link?.trim() || undefined,
+        offline_interview_date: formData.offline_interview_date || undefined,
+        offline_interview_time: formData.offline_interview_time || undefined,
+      });
 
       toast.success(
         `${users.length} ta foydalanuvchiga bildirishnoma muvaffaqiyatli yuborildi`
       );
-      
-      // TODO: Send Telegram notifications
-      // Foydalanuvchilar Telegram orqali bildirishnoma oladi va onlayn/oflayn tanlaydi
-      // Onlayn tanlaganlar: meet link, sana, vaqt oladi
-      // Oflayn tanlaganlar: sana, vaqt oladi
-      // await sendTelegramNotifications(users, formData);
 
       onSuccess && onSuccess();
       onClose();
@@ -182,6 +182,7 @@ const SendInterviewNotificationModal = ({ isOpen, onClose, users, selectedDate, 
                     value={formData.online_interview_date}
                     onChange={handleChange}
                     disabled={loading}
+                    min={minDate}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
                     required
                   />
@@ -233,6 +234,7 @@ const SendInterviewNotificationModal = ({ isOpen, onClose, users, selectedDate, 
                   value={formData.offline_interview_date}
                   onChange={handleChange}
                   disabled={loading}
+                  min={minDate}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
                   required
                 />

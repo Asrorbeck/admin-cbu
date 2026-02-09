@@ -61,11 +61,13 @@ const UmumiyNatijalar = () => {
 
       // Map API response to component format (backend already filters by overall_result === true)
       const mappedResults = attempts.map((attempt) => {
-          // Determine interview type from interview_details (when available)
+          // Foydalanuvchi tanlagan final suhbat shakli (online/offline) yoki interview_details
           let interviewType = null;
-
-          // When interview_details is ready, use this:
-          if (attempt.interview_details?.interview_type) {
+          if (attempt.final_interview_candidate_choice === "online") {
+            interviewType = "onlayn";
+          } else if (attempt.final_interview_candidate_choice === "offline") {
+            interviewType = "oflayn";
+          } else if (attempt.interview_details?.interview_type) {
             interviewType =
               attempt.interview_details.interview_type === "online"
                 ? "onlayn"
@@ -73,7 +75,6 @@ const UmumiyNatijalar = () => {
                 ? "oflayn"
                 : null;
           }
-          // For now, if interview_details is not available, it will remain null (showing "Kutilmoqda")
 
           // Calculate test score and percentage
           const testScore = attempt.score || 0;
@@ -127,6 +128,23 @@ const UmumiyNatijalar = () => {
             interview_type: interviewType,
             overall_passed: attempt.overall_result === true,
             created_at: attempt.end_time || attempt.start_time,
+            // Final suhbat vaqti (tanlov bo‘yicha: online yoki offline sana/vaqt/link)
+            final_meet_date:
+              attempt.final_interview_candidate_choice === "online"
+                ? attempt.final_interview_online_date
+                : attempt.final_interview_candidate_choice === "offline"
+                ? attempt.final_interview_offline_date
+                : null,
+            final_meet_time:
+              attempt.final_interview_candidate_choice === "online"
+                ? attempt.final_interview_online_time
+                : attempt.final_interview_candidate_choice === "offline"
+                ? attempt.final_interview_offline_time
+                : null,
+            final_meet_link:
+              attempt.final_interview_candidate_choice === "online"
+                ? attempt.final_interview_online_meet_link || null
+                : null,
             // Store original attempt data for potential updates
             _originalAttempt: attempt,
           };
@@ -165,18 +183,17 @@ const UmumiyNatijalar = () => {
     setIsNotificationModalOpen(false);
   };
 
-  // Filter results by selected date (now handled by API, but keeping for search filtering)
+  // Filter by selected date: API filters by end_time (test completion date), so we use test_date here too
   const filterByDate = (result) => {
     if (!selectedDate) return true;
 
-    const resultDate = result.language_interview_date || result.test_date;
+    const resultDate = result.test_date;
     if (!resultDate) return false;
 
     try {
       const date = new Date(resultDate);
       const selected = new Date(selectedDate);
 
-      // Compare only date part (ignore time)
       return (
         date.getFullYear() === selected.getFullYear() &&
         date.getMonth() === selected.getMonth() &&
@@ -216,6 +233,10 @@ const UmumiyNatijalar = () => {
           : result.interview_type === "oflayn"
           ? "Oflayn"
           : "Kutilmoqda",
+      "Suhbat vaqti":
+        result.final_meet_date && result.final_meet_time
+          ? `${formatDateOnly(result.final_meet_date)}, ${result.final_meet_time?.slice(0, 5) || ""}${result.final_meet_link ? ` | ${result.final_meet_link}` : ""}`
+          : "—",
       "Test sanasi": formatDate(result.test_date),
       "Til suhbati sanasi": formatDate(result.language_interview_date),
     }));
@@ -247,6 +268,41 @@ const UmumiyNatijalar = () => {
         hour: "2-digit",
         minute: "2-digit",
       }).format(date);
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    try {
+      const part = timeString.slice(0, 5);
+      return part;
+    } catch {
+      return timeString;
+    }
+  };
+
+  const MONTH_NAMES_UZ = [
+    "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+    "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"
+  ];
+
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return "—";
+    try {
+      const part = String(dateString).split("T")[0];
+      if (!part || !/^\d{4}-\d{2}-\d{2}$/.test(part)) {
+        const date = new Date(dateString);
+        const day = date.getDate();
+        const monthIdx = date.getMonth();
+        const year = date.getFullYear();
+        const monthName = MONTH_NAMES_UZ[monthIdx] || String(monthIdx + 1);
+        return `${day}-${monthName}, ${year}`;
+      }
+      const [, y, m, d] = part.match(/(\d{4})-(\d{2})-(\d{2})/);
+      const monthName = MONTH_NAMES_UZ[parseInt(m, 10) - 1] || m;
+      return `${parseInt(d, 10)}-${monthName}, ${y}`;
     } catch {
       return dateString;
     }
@@ -537,7 +593,7 @@ const UmumiyNatijalar = () => {
                       Suhbat shakli
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Holat
+                      Suhbat vaqti
                     </th>
                   </tr>
                 </thead>
@@ -596,9 +652,30 @@ const UmumiyNatijalar = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                          Kutilmoqda
-                        </span>
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {result.final_meet_date && result.final_meet_time ? (
+                            <>
+                              <div>{formatDateOnly(result.final_meet_date)}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatTime(result.final_meet_time)}
+                              </div>
+                              {result.final_meet_link && (
+                                <a
+                                  href={result.final_meet_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate block max-w-[200px]"
+                                  title={result.final_meet_link}
+                                >
+                                  Meet havolasi
+                                </a>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-gray-500 dark:text-gray-400">—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
