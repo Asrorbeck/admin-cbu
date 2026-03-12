@@ -448,9 +448,16 @@ export const deleteApplicationApi = async (id) => {
   });
 };
 
-// Appeals API calls
-export const getAppealsApi = async () => {
-  return apiRequest(API_CONFIG.ENDPOINTS.APPEALS, {
+// Appeals API calls — backend pagination: page, page_size
+export const getAppealsApi = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.page != null) queryParams.append("page", params.page);
+  if (params.page_size != null) queryParams.append("page_size", params.page_size);
+  const endpoint =
+    queryParams.toString() === ""
+      ? API_CONFIG.ENDPOINTS.APPEALS
+      : `${API_CONFIG.ENDPOINTS.APPEALS}?${queryParams.toString()}`;
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };

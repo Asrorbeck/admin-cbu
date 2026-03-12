@@ -6,18 +6,41 @@ const Murojaatlar = () => {
   const [appeals, setAppeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [paginationInfo, setPaginationInfo] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+  });
 
   useEffect(() => {
     document.title = "Murojaatlar bo'limi - Markaziy Bank Administratsiyasi";
-    fetchAppeals();
   }, []);
+
+  useEffect(() => {
+    fetchAppeals();
+  }, [page, pageSize]);
 
   const fetchAppeals = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAppealsApi();
-      setAppeals(Array.isArray(data) ? data : []);
+      const data = await getAppealsApi({ page, page_size: pageSize });
+      if (data && typeof data === "object" && Array.isArray(data.results)) {
+        setAppeals(data.results);
+        setPaginationInfo({
+          count: data.count ?? data.results.length,
+          next: data.next ?? null,
+          previous: data.previous ?? null,
+        });
+      } else if (Array.isArray(data)) {
+        setAppeals(data);
+        setPaginationInfo({ count: data.length, next: null, previous: null });
+      } else {
+        setAppeals([]);
+        setPaginationInfo({ count: 0, next: null, previous: null });
+      }
     } catch (e) {
       setError(e.message || "Xatolik yuz berdi");
       toast.error("Murojaatlarni yuklashda xatolik yuz berdi");
@@ -80,17 +103,49 @@ const Murojaatlar = () => {
   const [statusValue, setStatusValue] = useState("NEW");
   const [savingStatus, setSavingStatus] = useState(false);
 
-  const totalCount = appeals.length;
+  const totalCount = paginationInfo.count > 0 ? paginationInfo.count : appeals.length;
+  const totalItems = paginationInfo.count;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const currentPage = page;
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalItems);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push("ellipsis");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push("ellipsis");
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("ellipsis");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push("ellipsis");
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
   const newCount = appeals.filter(
     (a) => (a.status || "").toUpperCase() === "NEW"
   ).length;
   const answeredCount = appeals.filter(
-    (a) => (a.status || "").toUpperCase() === "CLOSED_ACCEPTED"
+    (a) =>
+      (a.status || "").toUpperCase() === "APPEAL_CLOSED_ACCEPTED" ||
+      (a.status || "").toUpperCase() === "CLOSED_ACCEPTED"
   ).length;
 
   const handleRowClick = (a) => {
     setSelectedAppeal(a);
-    setStatusValue(((a.status || "NEW") + "").toUpperCase());
+    setStatusValue(String(a.status || "NEW").toUpperCase());
     setIsModalOpen(true);
   };
   const closeModal = () => {
@@ -307,6 +362,80 @@ const Murojaatlar = () => {
             </table>
           </div>
         )}
+
+        {/* Pagination footer (Arizalar singari, backend bilan) */}
+        {!loading && !error && (
+          <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-gray-600 dark:text-gray-300">
+              {totalItems === 0
+                ? "0 yozuv"
+                : `${startIndex}–${endIndex} / ${totalItems} yozuv`}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Sahifa hajmi:
+              </label>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                disabled={!paginationInfo.previous}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Oldingi
+              </button>
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pageNum, index) => {
+                  if (pageNum === "ellipsis") {
+                    return (
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="px-2 text-sm text-gray-500 dark:text-gray-400"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isActive = pageNum === currentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setPage(pageNum)}
+                      className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                        isActive
+                          ? "bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:border-blue-600"
+                          : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                disabled={!paginationInfo.next}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Keyingi
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && selectedAppeal && (
@@ -363,7 +492,7 @@ const Murojaatlar = () => {
                         onChange={(e) => setStatusValue(e.target.value)}
                         className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
                       >
-                        <option value="APPEAL_NEW">Yangi</option>
+                        <option value="NEW">Yangi</option>
                         <option value="APPEAL_PENDING">
                           Koʻrib chiqish kutilmoqda
                         </option>
