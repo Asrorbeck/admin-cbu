@@ -2,12 +2,26 @@ import { useState, useEffect } from "react";
 import { getAppealsApi, updateAppealApi } from "../utils/api";
 import toast from "react-hot-toast";
 
+const PAGE_SIZE_STORAGE_KEY = "murojaatlar_page_size";
+const ALLOWED_PAGE_SIZES = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 20;
+
+const getStoredPageSize = () => {
+  try {
+    const stored = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+    const num = stored != null ? parseInt(stored, 10) : NaN;
+    return ALLOWED_PAGE_SIZES.includes(num) ? num : DEFAULT_PAGE_SIZE;
+  } catch {
+    return DEFAULT_PAGE_SIZE;
+  }
+};
+
 const Murojaatlar = () => {
   const [appeals, setAppeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(getStoredPageSize);
   const [paginationInfo, setPaginationInfo] = useState({
     count: 0,
     next: null,
@@ -27,16 +41,15 @@ const Murojaatlar = () => {
       setLoading(true);
       setError(null);
       const data = await getAppealsApi({ page, page_size: pageSize });
+      // Backend format: { count, next, previous, results }
       if (data && typeof data === "object" && Array.isArray(data.results)) {
         setAppeals(data.results);
+        const total = data.count != null ? Number(data.count) : 0;
         setPaginationInfo({
-          count: data.count ?? data.results.length,
+          count: total,
           next: data.next ?? null,
           previous: data.previous ?? null,
         });
-      } else if (Array.isArray(data)) {
-        setAppeals(data);
-        setPaginationInfo({ count: data.length, next: null, previous: null });
       } else {
         setAppeals([]);
         setPaginationInfo({ count: 0, next: null, previous: null });
@@ -103,12 +116,13 @@ const Murojaatlar = () => {
   const [statusValue, setStatusValue] = useState("NEW");
   const [savingStatus, setSavingStatus] = useState(false);
 
-  const totalCount = paginationInfo.count > 0 ? paginationInfo.count : appeals.length;
-  const totalItems = paginationInfo.count;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  // Pagination faqat backend count/next/previous ga asoslangan
+  const totalItems = Number(paginationInfo.count) || 0;
+  const totalCount = totalItems;
+  const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / pageSize);
   const currentPage = page;
   const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endIndex = Math.min(currentPage * pageSize, totalItems);
+  const endIndex = totalItems === 0 ? 0 : Math.min(currentPage * pageSize, totalItems);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -291,14 +305,41 @@ const Murojaatlar = () => {
               Qayta urinish
             </button>
           </div>
-        ) : appeals.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Murojaatlar yo'q
-            </p>
-          </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Toolbar: sahifa hajmi — jadval tepasida o'ngda */}
+            <div className="flex flex-wrap items-center justify-end gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  Sahifa hajmi
+                </label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setPageSize(value);
+                    setPage(1);
+                    try {
+                      localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(value));
+                    } catch {}
+                  }}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+            {appeals.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Murojaatlar yo'q
+                </p>
+              </div>
+            ) : (
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
@@ -360,7 +401,9 @@ const Murojaatlar = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+            )}
+          </>
         )}
 
         {/* Pagination footer (Arizalar singari, backend bilan) */}
@@ -372,22 +415,6 @@ const Murojaatlar = () => {
                 : `${startIndex}–${endIndex} / ${totalItems} yozuv`}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                Sahifa hajmi:
-              </label>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-xs sm:text-sm text-gray-900 dark:text-white"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
               <button
                 type="button"
                 className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -552,11 +579,11 @@ const Murojaatlar = () => {
                     {selectedAppeal.subject}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 p-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                     Xabar
                   </p>
-                  <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap break-words">
+                  <p className="text-base text-gray-900 dark:text-white whitespace-pre-wrap break-words leading-relaxed">
                     {selectedAppeal.message}
                   </p>
                 </div>

@@ -35,7 +35,7 @@ export const refreshAccessToken = async () => {
         body: JSON.stringify({
           refresh: refreshToken,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -106,7 +106,7 @@ export const apiRequest = async (endpoint, options = {}) => {
             const error = new Error(
               errorData.detail ||
                 errorData.message ||
-                `HTTP error! status: ${retryResponse.status}`
+                `HTTP error! status: ${retryResponse.status}`,
             );
             error.responseData = errorData;
             error.status = retryResponse.status;
@@ -131,7 +131,7 @@ export const apiRequest = async (endpoint, options = {}) => {
                 const error = new Error(
                   errorData.detail ||
                     errorData.message ||
-                    `HTTP error! status: ${retryResponse.status}`
+                    `HTTP error! status: ${retryResponse.status}`,
                 );
                 error.responseData = errorData;
                 error.status = retryResponse.status;
@@ -152,7 +152,7 @@ export const apiRequest = async (endpoint, options = {}) => {
       const error = new Error(
         errorData.detail ||
           errorData.message ||
-          `HTTP error! status: ${response.status}`
+          `HTTP error! status: ${response.status}`,
       );
       // Preserve the full error data for field-specific error handling
       error.responseData = errorData;
@@ -193,20 +193,20 @@ export const loginApi = async (username, password) => {
 // Departments API calls
 export const getDepartmentsApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (params.page) {
     queryParams.append("page", params.page);
   }
-  
+
   if (params.page_size) {
     queryParams.append("page_size", params.page_size);
   }
-  
+
   const queryString = queryParams.toString();
-  const endpoint = queryString 
+  const endpoint = queryString
     ? `${API_CONFIG.ENDPOINTS.DEPARTMENTS}?${queryString}`
     : API_CONFIG.ENDPOINTS.DEPARTMENTS;
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -278,11 +278,11 @@ export const deleteManagementApi = async (id) => {
 // Vacancy API calls
 export const getVacanciesApi = async (managementId = null, params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (managementId) {
     queryParams.append("management_id", managementId);
   }
-  
+
   // Add region and branch_type params if provided
   if (params.region) {
     queryParams.append("region", params.region);
@@ -290,9 +290,9 @@ export const getVacanciesApi = async (managementId = null, params = {}) => {
   if (params.branch_type) {
     queryParams.append("branch_type", params.branch_type);
   }
-  
+
   const queryString = queryParams.toString();
-  const endpoint = queryString 
+  const endpoint = queryString
     ? `${API_CONFIG.ENDPOINTS.VACANCIES}?${queryString}`
     : API_CONFIG.ENDPOINTS.VACANCIES;
 
@@ -330,44 +330,42 @@ export const deleteVacancyApi = async (id) => {
 // Applications API calls
 export const getApplicationsApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (params.application_deadline) {
     queryParams.append("application_deadline", params.application_deadline);
   }
-  
+
   if (params.page) {
     queryParams.append("page", params.page);
   }
-  
+
   if (params.page_size) {
     queryParams.append("page_size", params.page_size);
   }
-  
+
   if (params.jshshir) {
     queryParams.append("jshshir", params.jshshir);
   }
-  
+
   if (params.full_name) {
     queryParams.append("full_name", params.full_name);
   }
-  
+
   if (params.department_id) {
     queryParams.append("department_id", params.department_id);
   }
-  
+
   if (params.management_id) {
     queryParams.append("management_id", params.management_id);
   }
-  
+
   if (params.job_id) {
     queryParams.append("job_id", params.job_id);
   }
-  
+
   const queryString = queryParams.toString();
-  const endpoint = queryString 
-    ? `/apply-jobs/?${queryString}`
-    : "/apply-jobs/";
-  
+  const endpoint = queryString ? `/apply-jobs/?${queryString}` : "/apply-jobs/";
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -375,28 +373,28 @@ export const getApplicationsApi = async (params = {}) => {
 
 export const getUrgentTestApplicationsApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   queryParams.append("urgent_test_applications", "true");
-  
+
   if (params.page) {
     queryParams.append("page", params.page);
   }
-  
+
   if (params.page_size) {
     queryParams.append("page_size", params.page_size);
   }
-  
+
   if (params.jshshir) {
     queryParams.append("jshshir", params.jshshir);
   }
-  
+
   if (params.full_name) {
     queryParams.append("full_name", params.full_name);
   }
-  
+
   const queryString = queryParams.toString();
   const endpoint = `/apply-jobs/?${queryString}`;
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -410,20 +408,20 @@ export const getDeadlineArchivesApi = async () => {
 
 export const getApplicationsStatisticsApi = async (dateFrom, dateTo) => {
   const queryParams = new URLSearchParams();
-  
+
   if (dateFrom) {
     queryParams.append("date_from", dateFrom);
   }
-  
+
   if (dateTo) {
     queryParams.append("date_to", dateTo);
   }
-  
+
   const queryString = queryParams.toString();
-  const endpoint = queryString 
+  const endpoint = queryString
     ? `/apply-jobs/statistics/?${queryString}`
     : "/apply-jobs/statistics/";
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -448,11 +446,20 @@ export const deleteApplicationApi = async (id) => {
   });
 };
 
-// Appeals API calls — backend pagination: page, page_size
+// Appeals API calls — backend pagination: page, page_size; filters: status, is_anonymous, date
 export const getAppealsApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
   if (params.page != null) queryParams.append("page", params.page);
-  if (params.page_size != null) queryParams.append("page_size", params.page_size);
+  if (params.page_size != null)
+    queryParams.append("page_size", params.page_size);
+  if (params.status != null && params.status !== "")
+    queryParams.append("status", params.status);
+  if (params.is_anonymous != null && params.is_anonymous !== "")
+    queryParams.append("is_anonymous", params.is_anonymous);
+  if (params.date_from != null && params.date_from !== "")
+    queryParams.append("date_from", params.date_from);
+  if (params.date_to != null && params.date_to !== "")
+    queryParams.append("date_to", params.date_to);
   const endpoint =
     queryParams.toString() === ""
       ? API_CONFIG.ENDPOINTS.APPEALS
@@ -493,20 +500,20 @@ export const getVacancySelectionHierarchyApi = async () => {
 // Tests API calls
 export const getTestsApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (params.page) {
     queryParams.append("page", params.page);
   }
-  
+
   if (params.page_size) {
     queryParams.append("page_size", params.page_size);
   }
-  
+
   const queryString = queryParams.toString();
-  const endpoint = queryString 
+  const endpoint = queryString
     ? `${API_CONFIG.ENDPOINTS.TESTS}?${queryString}`
     : API_CONFIG.ENDPOINTS.TESTS;
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -542,7 +549,7 @@ export const deleteTestApi = async (id) => {
 export const getAttemptsApi = async (params = {}) => {
   // Build query string from params
   const queryParams = new URLSearchParams();
-  
+
   if (params.page) queryParams.append("page", params.page);
   if (params.page_size) queryParams.append("page_size", params.page_size);
   if (params.end_time) queryParams.append("end_time", params.end_time);
@@ -553,10 +560,10 @@ export const getAttemptsApi = async (params = {}) => {
   if (params.overall_result !== undefined && params.overall_result !== null) {
     queryParams.append("overall_result", params.overall_result);
   }
-  
+
   const queryString = queryParams.toString();
   const endpoint = queryString ? `/attempts/?${queryString}` : "/attempts/";
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -565,16 +572,18 @@ export const getAttemptsApi = async (params = {}) => {
 // Restrictions API calls
 export const getRestrictionsApi = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  
+
   if (params.page) queryParams.append("page", params.page);
   if (params.page_size) queryParams.append("page_size", params.page_size);
   // if (params.is_active !== undefined && params.is_active !== null) {
   //   queryParams.append("is_active", params.is_active);
   // }
-  
+
   const queryString = queryParams.toString();
-  const endpoint = queryString ? `/restrictions/?${queryString}` : "/restrictions/";
-  
+  const endpoint = queryString
+    ? `/restrictions/?${queryString}`
+    : "/restrictions/";
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -610,11 +619,15 @@ export const sendFinalInterviewInviteApi = async (data) => {
   const body = {
     attempt_ids: data.attempt_ids,
   };
-  if (data.online_interview_date) body.online_interview_date = data.online_interview_date;
-  if (data.online_interview_time) body.online_interview_time = data.online_interview_time;
+  if (data.online_interview_date)
+    body.online_interview_date = data.online_interview_date;
+  if (data.online_interview_time)
+    body.online_interview_time = data.online_interview_time;
   if (data.online_meet_link) body.online_meet_link = data.online_meet_link;
-  if (data.offline_interview_date) body.offline_interview_date = data.offline_interview_date;
-  if (data.offline_interview_time) body.offline_interview_time = data.offline_interview_time;
+  if (data.offline_interview_date)
+    body.offline_interview_date = data.offline_interview_date;
+  if (data.offline_interview_time)
+    body.offline_interview_time = data.offline_interview_time;
   return apiRequest("/attempts/send-final-interview-invite/", {
     method: "POST",
     body: JSON.stringify(body),
@@ -704,12 +717,12 @@ export const deleteOrganizationApi = async (id) => {
 export const getCorruptionReportsApi = async (params = {}) => {
   let endpoint = "/report/";
   const queryParams = new URLSearchParams();
-  
+
   // Single date filter (for murojaatlar page)
   if (params.createdAt) {
     queryParams.append("created_at", params.createdAt);
   }
-  
+
   // Date range filter (for statistics page)
   if (params.createdAtFrom) {
     queryParams.append("created_at_from", params.createdAtFrom);
@@ -717,37 +730,37 @@ export const getCorruptionReportsApi = async (params = {}) => {
   if (params.createdAtTo) {
     queryParams.append("created_at_to", params.createdAtTo);
   }
-  
+
   // Page parameter for pagination
   if (params.page) {
     queryParams.append("page", params.page);
   }
-  
+
   // Page size parameter
   if (params.pageSize) {
     queryParams.append("page_size", params.pageSize);
   }
-  
+
   // Status filter
   if (params.status) {
     queryParams.append("status", params.status);
   }
-  
+
   // Anonymous filter
   if (params.isAnonymous !== undefined && params.isAnonymous !== null) {
     queryParams.append("is_anonymous", params.isAnonymous);
   }
-  
+
   // Full name search
   if (params.fullName) {
     queryParams.append("full_name", params.fullName);
   }
-  
+
   const queryString = queryParams.toString();
   if (queryString) {
     endpoint = `/report/?${queryString}`;
   }
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -757,20 +770,20 @@ export const getCorruptionReportsApi = async (params = {}) => {
 export const getCorruptionReportsStatisticsApi = async (dateFrom, dateTo) => {
   let endpoint = "/report/statistics/";
   const params = new URLSearchParams();
-  
+
   if (dateFrom) {
     params.append("date_from", dateFrom);
   }
-  
+
   if (dateTo) {
     params.append("date_to", dateTo);
   }
-  
+
   const queryString = params.toString();
   if (queryString) {
     endpoint = `/report/statistics/?${queryString}`;
   }
-  
+
   return apiRequest(endpoint, {
     method: "GET",
   });
@@ -890,6 +903,14 @@ export const sendNotificationApi = async (data) => {
       recipients: data.recipients || "all", // "all" or array of user IDs
       ...data,
     }),
+  });
+};
+
+/** POST /api/v1/chat-messages/broadcast-applicants/ — xabarnoma matnini arizachilarga yuborish */
+export const broadcastApplicantsApi = async (messageText) => {
+  return apiRequest("/chat-messages/broadcast-applicants/", {
+    method: "POST",
+    body: JSON.stringify({ message_text: messageText }),
   });
 };
 
