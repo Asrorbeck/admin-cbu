@@ -180,27 +180,57 @@ const KorrupsiyaFAQCategories = () => {
     return true;
   };
 
+  const buildPayload = (override = {}) => {
+    const nextForm = { ...form, ...override };
+    return {
+      name: nextForm.name.trim(),
+      slug: nextForm.slug.trim(),
+      description: nextForm.description.trim(),
+      faq_category: "reports",
+      is_active: nextForm.is_active,
+      order: nextForm.order,
+      items: (nextForm.items || []).map((item) => ({
+        ...(item.id && { id: item.id }),
+        question: (item.question || "").trim(),
+        answer: (item.answer || "").trim(),
+        is_active: !!item.is_active,
+        order: item.order,
+      })),
+    };
+  };
+
+  const handleItemActiveToggle = async (index, checked) => {
+    const prevItems = form.items;
+
+    // Optimistic UI
+    const nextItems = form.items.map((it, i) =>
+      i === index ? { ...it, is_active: checked } : it
+    );
+    updateField("items", nextItems);
+
+    // Agar hali kategoriya yaratilmagan bo'lsa, faqat form holatini o'zgartiramiz
+    if (!category?.id) return;
+
+    try {
+      const payload = buildPayload({ items: nextItems });
+      await toast.promise(updateFaqCategoryApi(category.id, payload), {
+        loading: "Yangilanmoqda...",
+        success: checked ? "Savol faol qilindi" : "Savol nofaol qilindi",
+        error: (err) => err?.message || "Xatolik yuz berdi",
+      });
+    } catch (e) {
+      // Rollback
+      updateField("items", prevItems);
+    }
+  };
+
   // Saqlash
   const handleSave = async () => {
     if (!validate()) return;
 
     try {
       setSaving(true);
-      const payload = {
-        name: form.name.trim(),
-        slug: form.slug.trim(),
-        description: form.description.trim(),
-        faq_category: "reports",
-        is_active: form.is_active,
-        order: form.order,
-        items: form.items.map((item) => ({
-          ...(item.id && { id: item.id }),
-          question: item.question.trim(),
-          answer: item.answer.trim(),
-          is_active: item.is_active,
-          order: item.order,
-        })),
-      };
+      const payload = buildPayload();
 
       let result;
       if (category) {
@@ -360,33 +390,7 @@ const KorrupsiyaFAQCategories = () => {
             />
           </div>
 
-          <div className="flex items-center gap-6">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => updateField("is_active", e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                Faol
-              </span>
-            </label>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tartib
-              </label>
-              <input
-                type="number"
-                value={form.order}
-                onChange={(e) =>
-                  updateField("order", parseInt(e.target.value) || 1)
-                }
-                className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                min="1"
-              />
-            </div>
-          </div>
+          {/* Tavsifdan keyin darhol savol-javoblar boshlanadi */}
         </div>
 
         {/* Savol-Javoblar */}
@@ -469,7 +473,7 @@ const KorrupsiyaFAQCategories = () => {
                           type="checkbox"
                           checked={item.is_active}
                           onChange={(e) =>
-                            updateQuestion(index, "is_active", e.target.checked)
+                            handleItemActiveToggle(index, e.target.checked)
                           }
                           className="w-4 h-4 text-blue-600 rounded"
                         />
