@@ -124,7 +124,9 @@ const RegionVacancies = () => {
   const fetchTests = async () => {
     try {
       setLoadingTests(true);
-      const data = await getTestsApi();
+      // Backend paginated: default page_size kichik bo'lishi mumkin (ko'pincha 20)
+      // Select uchun hammasini olib kelish uchun katta page_size beramiz
+      const data = await getTestsApi({ page: 1, page_size: 1000 });
       // Handle paginated response structure: { count, next, previous, results: [...] }
       // or direct array response
       const testsArray = Array.isArray(data) 
@@ -226,7 +228,13 @@ const RegionVacancies = () => {
         region: fullVacancyData.region || region_name || "",
         lan_requirements_eng: fullVacancyData.lan_requirements_eng || "not_required",
         lan_requirements_ru: fullVacancyData.lan_requirements_ru || "not_required",
-        test_id: fullVacancyData.test_ids && fullVacancyData.test_ids.length > 0 ? String(fullVacancyData.test_ids[0]) : "",
+        // Backend may return selected tests as `tests: [{ id, title }]`
+        test_id:
+          Array.isArray(fullVacancyData.tests) && fullVacancyData.tests.length > 0
+            ? String(fullVacancyData.tests[0]?.id ?? "")
+            : (Array.isArray(fullVacancyData.test_ids) && fullVacancyData.test_ids.length > 0
+                ? String(fullVacancyData.test_ids[0])
+                : ""),
         quantity: fullVacancyData.quantity ? String(fullVacancyData.quantity) : "1",
       });
       setEditManualEditFlags({
@@ -1662,7 +1670,7 @@ const RegionVacancies = () => {
                             >
                               <option value="">Testni tanlang (ixtiyoriy)</option>
                               {tests.map((test) => (
-                                <option key={test.id} value={test.id}>
+                                <option key={test.id} value={String(test.id)}>
                                   {test.title} ({test.total_questions} ta savol, {test.duration_minutes} daqiqa)
                                 </option>
                               ))}
