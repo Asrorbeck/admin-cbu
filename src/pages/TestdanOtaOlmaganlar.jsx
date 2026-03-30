@@ -7,6 +7,7 @@ import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 const TestdanOtaOlmaganlar = () => {
   const [results, setResults] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
@@ -18,9 +19,13 @@ const TestdanOtaOlmaganlar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchResults();
     document.title = "Cheklov o'rnatilganlar - Markaziy Bank Administratsiyasi";
   }, []);
+
+  useEffect(() => {
+    fetchResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, query]);
 
   const fetchResults = async () => {
     try {
@@ -28,12 +33,21 @@ const TestdanOtaOlmaganlar = () => {
       setError(null);
       
       // Fetch restrictions from API (all restrictions, not just active ones)
-      const response = await getRestrictionsApi();
+      const response = await getRestrictionsApi({
+        page,
+        page_size: pageSize,
+        search: query?.trim() ? query.trim() : undefined,
+      });
       
       // Handle paginated response format: { results: [...], count: ... }
-      const restrictions = Array.isArray(response) 
-        ? response 
+      const restrictions = Array.isArray(response)
+        ? response
         : (response?.results || response?.data || []);
+
+      const countFromApi =
+        typeof response?.count === "number"
+          ? response.count
+          : (Array.isArray(restrictions) ? restrictions.length : 0);
       
       // Map API response to component format
       const mappedResults = restrictions.map((restriction) => {
@@ -65,7 +79,7 @@ const TestdanOtaOlmaganlar = () => {
       });
       
       setResults(mappedResults);
-      setPage(1);
+      setTotalCount(countFromApi);
     } catch (error) {
       console.error("Error fetching restrictions:", error);
       setError(error.message || "Xatolik yuz berdi");
@@ -99,6 +113,9 @@ const TestdanOtaOlmaganlar = () => {
     } catch (error) {
       console.error("Error removing restriction:", error);
       toast.error("Xatolik yuz berdi");
+    } finally {
+      // Sync with server pagination/counts
+      fetchResults();
     }
   };
 
@@ -126,6 +143,9 @@ const TestdanOtaOlmaganlar = () => {
     } catch (error) {
       console.error("Error activating restriction:", error);
       toast.error("Xatolik yuz berdi");
+    } finally {
+      // Sync with server pagination/counts
+      fetchResults();
     }
   };
 
@@ -152,12 +172,15 @@ const TestdanOtaOlmaganlar = () => {
       setResults((prev) =>
         prev.filter((r) => r.id !== deletingRestrictionId)
       );
+      setTotalCount((c) => Math.max(0, (c || 0) - 1));
       setDeleteConfirmOpen(false);
       setDeletingRestrictionId(null);
     } catch (error) {
       console.error("Error deleting restriction:", error);
     } finally {
       setIsDeleting(false);
+      // Sync with server pagination/counts (in case backend adjusts page)
+      fetchResults();
     }
   };
 
@@ -168,12 +191,13 @@ const TestdanOtaOlmaganlar = () => {
 
   // Export to Excel
   const exportToExcel = () => {
-    if (filtered.length === 0) {
+    if (results.length === 0) {
       toast.error("Eksport qilish uchun ma'lumot yo'q");
       return;
     }
 
-    const excelData = filtered.map((result, index) => ({
+    const startIndex = (page - 1) * pageSize;
+    const excelData = results.map((result, index) => ({
       "T/r": index + 1,
       "JSHSHIR": result.jshshir || "Ma'lumot yo'q",
       "Ish o'rni": result.test_title || "Ma'lumot yo'q",
@@ -287,26 +311,10 @@ const TestdanOtaOlmaganlar = () => {
     );
   }
 
-  // Filter and paginate results
-  const q = query.trim().toLowerCase();
-  const filtered = results.filter((result) => {
-    if (q) {
-      const inJshshir = result.jshshir?.toLowerCase().includes(q);
-      const inTestTitle = result.test_title?.toLowerCase().includes(q);
-      const jobTitle = result.application_info?.job_title_uz || result.application_info?.job_title || "";
-      const inJobTitle = jobTitle.toLowerCase().includes(q);
-      if (!inJshshir && !inTestTitle && !inJobTitle) return false;
-    }
-    return true;
-  });
-
-  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
   const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginated = filtered.slice(startIndex, endIndex);
-  const showingStart = total === 0 ? 0 : startIndex + 1;
-  const showingEnd = Math.min(endIndex, total);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const showingStart = totalCount === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(startIndex + results.length, totalCount || 0);
 
   return (
     <div className="space-y-6">
@@ -383,7 +391,7 @@ const TestdanOtaOlmaganlar = () => {
           {/* Excel Export Button */}
           <button
             onClick={exportToExcel}
-            disabled={filtered.length === 0}
+            disabled={results.length === 0}
             className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg
@@ -483,7 +491,7 @@ const TestdanOtaOlmaganlar = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginated.map((result, index) => (
+                  {results.map((result, index) => (
                     <tr
                       key={result.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -600,7 +608,7 @@ const TestdanOtaOlmaganlar = () => {
           {/* Pagination controls */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${total}`}
+              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${totalCount || 0}`}
             </div>
             <div className="flex items-center space-x-2">
               <button

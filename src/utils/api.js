@@ -575,6 +575,7 @@ export const getRestrictionsApi = async (params = {}) => {
 
   if (params.page) queryParams.append("page", params.page);
   if (params.page_size) queryParams.append("page_size", params.page_size);
+  if (params.search) queryParams.append("search", params.search);
   // if (params.is_active !== undefined && params.is_active !== null) {
   //   queryParams.append("is_active", params.is_active);
   // }
