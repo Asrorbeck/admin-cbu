@@ -17,10 +17,11 @@ const TilSuhbati = () => {
   };
 
   const [results, setResults] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,10 +53,10 @@ const TilSuhbati = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    // When date changes, refetch results
     fetchResults();
     setSelectedUserIds([]); // Clear selections when date changes
-  }, [selectedDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, page, pageSize]);
 
   // Set indeterminate state for select all checkbox
   // This must be before early returns to follow Rules of Hooks
@@ -127,12 +128,14 @@ const TilSuhbati = () => {
 
       if (!selectedDate) {
         setResults([]);
-        setPage(1);
+        setTotalCount(0);
         return;
       }
 
       // Call API with end_time (test date) and is_passed=true
       const response = await getAttemptsApi({
+        page,
+        page_size: pageSize,
         end_time: selectedDate,
         is_passed: true,
       });
@@ -141,6 +144,11 @@ const TilSuhbati = () => {
       const attempts = Array.isArray(response)
         ? response
         : response?.results || response?.data || [];
+
+      const countFromApi =
+        typeof response?.count === "number"
+          ? response.count
+          : (Array.isArray(attempts) ? attempts.length : 0);
 
       // Helper function to safely extract string value from potentially object values
       const getStringValue = (value) => {
@@ -236,12 +244,13 @@ const TilSuhbati = () => {
       });
 
       setResults(mappedResults);
-      setPage(1);
+      setTotalCount(countFromApi);
     } catch (error) {
       console.error("Error fetching language interview results:", error);
       setError(error.message || "Xatolik yuz berdi");
       toast.error("Til suhbati natijalarini yuklashda xatolik yuz berdi");
       setResults([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -582,13 +591,11 @@ const TilSuhbati = () => {
     return true;
   });
 
-  const total = filtered.length;
   const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginated = filtered.slice(startIndex, endIndex);
-  const showingStart = total === 0 ? 0 : startIndex + 1;
-  const showingEnd = Math.min(endIndex, total);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const paginated = filtered; // backend already paginates; keep client filters on current page only
+  const showingStart = (totalCount || 0) === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(startIndex + results.length, totalCount || 0);
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
 
   // Handle select all (moved here to access paginated)
   const handleSelectAll = (checked) => {
@@ -1084,7 +1091,7 @@ const TilSuhbati = () => {
           {/* Pagination controls */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${total}`}
+              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${totalCount || 0}`}
             </div>
             <div className="flex items-center space-x-2">
               <button
