@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import EditOverallResultsModal from "../components/modals/EditOverallResultsModal";
 import SendInterviewNotificationModal from "../components/modals/SendInterviewNotificationModal";
+import SendRegionalInterviewNotificationModal from "../components/modals/SendRegionalInterviewNotificationModal";
 import { getAttemptsApi } from "../utils/api";
 
 const UmumiyNatijalar = () => {
@@ -18,7 +19,9 @@ const UmumiyNatijalar = () => {
 
   const PAGE_SIZE_STORAGE_KEY = "umumiy_natijalar_page_size";
   const DATE_STORAGE_KEY = "umumiy_natijalar_selected_date";
+  const BRANCH_TYPE_STORAGE_KEY = "umumiy_natijalar_branch_type";
   const ALLOWED_PAGE_SIZES = [10, 20, 50, 100];
+  const ALLOWED_BRANCH_TYPES = ["central", "regional"];
 
   const [results, setResults] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -36,10 +39,48 @@ const UmumiyNatijalar = () => {
     if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
     return getTodayDate();
   });
+  const [branchType, setBranchType] = useState(() => {
+    const saved = localStorage.getItem(BRANCH_TYPE_STORAGE_KEY);
+    return ALLOWED_BRANCH_TYPES.includes(saved) ? saved : "central";
+  });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isRegionalNotificationModalOpen, setIsRegionalNotificationModalOpen] =
+    useState(false);
+  const [notificationUsers, setNotificationUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
+
+  const fetchAllAttemptsForNotification = async () => {
+    if (!selectedDate) return [];
+    const batchSize = 500;
+    const collected = [];
+    let currentPage = 1;
+
+    while (true) {
+      const response = await getAttemptsApi({
+        end_time: selectedDate,
+        overall_result: true,
+        branch_type: branchType,
+        page: currentPage,
+        page_size: batchSize,
+      });
+
+      const attempts = Array.isArray(response)
+        ? response
+        : response?.results || response?.data || [];
+
+      const total =
+        typeof response?.count === "number" ? response.count : attempts.length;
+
+      collected.push(...attempts.map((a) => ({ id: a.id })));
+
+      if (collected.length >= total || attempts.length === 0) break;
+      currentPage += 1;
+    }
+
+    return collected;
+  };
 
   useEffect(() => {
     document.title = "Umumiy natijalar - Markaziy Bank Administratsiyasi";
@@ -48,7 +89,7 @@ const UmumiyNatijalar = () => {
   useEffect(() => {
     fetchResults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, page, pageSize]);
+  }, [selectedDate, branchType, page, pageSize]);
 
   useEffect(() => {
     localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
@@ -57,6 +98,10 @@ const UmumiyNatijalar = () => {
   useEffect(() => {
     if (selectedDate) localStorage.setItem(DATE_STORAGE_KEY, selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    localStorage.setItem(BRANCH_TYPE_STORAGE_KEY, branchType);
+  }, [branchType]);
 
   const fetchResults = async () => {
     try {
@@ -76,6 +121,7 @@ const UmumiyNatijalar = () => {
         page_size: pageSize,
         end_time: selectedDate,
         overall_result: true,
+        branch_type: branchType,
       });
 
       // Extract results from API response
@@ -502,14 +548,71 @@ const UmumiyNatijalar = () => {
           </div>
         </div>
         <div className="flex items-center space-x-3">
+          {/* Branch Type (Radio) */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Turi:
+            </span>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="radio"
+                name="branchType"
+                value="regional"
+                checked={branchType === "regional"}
+                onChange={() => {
+                  setBranchType("regional");
+                  setPage(1);
+                }}
+                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              Hududiy boshqarmalar
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="radio"
+                name="branchType"
+                value="central"
+                checked={branchType === "central"}
+                onChange={() => {
+                  setBranchType("central");
+                  setPage(1);
+                }}
+                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              Markaziy apparat
+            </label>
+          </div>
+
           {/* Send Notification Button */}
           <button
-            onClick={() => {
-              if (filtered.length === 0) {
-                toast.error("Yuborish uchun foydalanuvchilar yo'q");
+            onClick={async () => {
+              if (!selectedDate) {
+                toast.error("Sanani tanlang");
                 return;
               }
-              setIsNotificationModalOpen(true);
+
+              const loadingId = toast.loading("Ro'yxat tayyorlanmoqda...");
+              try {
+                const all = await fetchAllAttemptsForNotification();
+                toast.dismiss(loadingId);
+
+                if (!all || all.length === 0) {
+                  toast.error("Yuborish uchun foydalanuvchilar yo'q");
+                  return;
+                }
+
+                setNotificationUsers(all);
+                if (branchType === "regional") {
+                  setIsRegionalNotificationModalOpen(true);
+                } else {
+                  setIsNotificationModalOpen(true);
+                }
+              } catch (err) {
+                toast.dismiss(loadingId);
+                toast.error(
+                  err?.message || "Ro'yxatni yuklashda xatolik yuz berdi"
+                );
+              }
             }}
             className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
           >
@@ -762,8 +865,18 @@ const UmumiyNatijalar = () => {
           onClose={() => {
             setIsNotificationModalOpen(false);
           }}
-          users={filtered}
+          users={notificationUsers}
           selectedDate={selectedDate}
+          onSuccess={handleNotificationSuccess}
+        />
+      )}
+
+      {/* Regional Notification Modal */}
+      {isRegionalNotificationModalOpen && (
+        <SendRegionalInterviewNotificationModal
+          isOpen={isRegionalNotificationModalOpen}
+          onClose={() => setIsRegionalNotificationModalOpen(false)}
+          users={notificationUsers}
           onSuccess={handleNotificationSuccess}
         />
       )}

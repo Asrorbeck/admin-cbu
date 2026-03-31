@@ -553,6 +553,7 @@ export const getAttemptsApi = async (params = {}) => {
   if (params.page) queryParams.append("page", params.page);
   if (params.page_size) queryParams.append("page_size", params.page_size);
   if (params.end_time) queryParams.append("end_time", params.end_time);
+  if (params.branch_type) queryParams.append("branch_type", params.branch_type);
   if (params.status) queryParams.append("status", params.status);
   if (params.is_passed !== undefined && params.is_passed !== null) {
     queryParams.append("is_passed", params.is_passed);
@@ -632,6 +633,17 @@ export const sendFinalInterviewInviteApi = async (data) => {
   return apiRequest("/attempts/send-final-interview-invite/", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+};
+
+/** POST /attempts/send-final-interview-invite/ — regional invite (no meet/offline details) */
+export const sendRegionalFinalInterviewInviteApi = async (data) => {
+  return apiRequest("/attempts/send-final-interview-invite/", {
+    method: "POST",
+    body: JSON.stringify({
+      invite_target: "regional",
+      attempt_ids: data.attempt_ids,
+    }),
   });
 };
 
