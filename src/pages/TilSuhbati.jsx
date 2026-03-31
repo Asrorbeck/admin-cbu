@@ -6,6 +6,121 @@ import SendMeetLinkModal from "../components/modals/SendMeetLinkModal";
 import EditLanguageInterviewModal from "../components/modals/EditLanguageInterviewModal";
 import { getAttemptsApi } from "../utils/api";
 
+const getStringValue = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    return value.title || value.name || value.task || value.level || String(value);
+  }
+  return String(value);
+};
+
+/** Map raw attempts API rows to table row shape (same as table fetch). */
+const mapAttemptsToResults = (attempts, selectedDate) => {
+  return attempts.map((attempt) => {
+    const vacancyTitle =
+      attempt.application?.vacancy?.title_uz ||
+      attempt.application?.vacancy?.title_ru ||
+      attempt.application?.vacancy?.title_cr ||
+      attempt.application?.job?.title ||
+      attempt.application?.vacancy?.title ||
+      attempt.test?.title ||
+      "Ma'lumot yo'q";
+
+    const lanRequirementsRu = attempt.application?.vacancy?.lan_requirements_ru;
+    const lanRequirementsEng =
+      attempt.application?.vacancy?.lan_requirements_eng;
+
+    const requiredRussianLevel =
+      typeof lanRequirementsRu === "string" &&
+      lanRequirementsRu !== "not_required" &&
+      lanRequirementsRu.trim() !== ""
+        ? lanRequirementsRu.trim()
+        : null;
+    const requiredEnglishLevel =
+      typeof lanRequirementsEng === "string" &&
+      lanRequirementsEng !== "not_required" &&
+      lanRequirementsEng.trim() !== ""
+        ? lanRequirementsEng.trim()
+        : null;
+
+    const meetingDetails = attempt.meeting_details || null;
+    const meetLinkSent = meetingDetails !== null;
+    const russianLevel = attempt.actual_russian_level;
+    const englishLevel = attempt.actual_english_level;
+    const userLanguages = attempt.user_languages || null;
+
+    return {
+      id: attempt.id,
+      user_name: attempt.application?.full_name || "Ma'lumot yo'q",
+      phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
+      vacancy_title: vacancyTitle,
+      test_passed: attempt.is_passed || false,
+      test_date:
+        attempt.start_time || attempt.end_time || new Date().toISOString(),
+      interview_date: selectedDate,
+      meet_link: meetingDetails?.meet_link || null,
+      meet_link_sent: meetLinkSent,
+      meet_interview_date: meetingDetails?.meet_date || null,
+      meet_interview_time: meetingDetails?.meet_time
+        ? getStringValue(meetingDetails.meet_time)
+        : null,
+      meeting_details: meetingDetails,
+      meeting_attended: attempt.attend !== null ? attempt.attend : null,
+      russian_level: russianLevel ? String(russianLevel) : null,
+      english_level: englishLevel ? String(englishLevel) : null,
+      required_russian_level: requiredRussianLevel,
+      required_english_level: requiredEnglishLevel,
+      user_languages: userLanguages,
+      overall_result:
+        attempt.overall_result !== null ? attempt.overall_result : null,
+      passed:
+        attempt.overall_result !== null ? attempt.overall_result : null,
+      status:
+        attempt.overall_result !== null
+          ? attempt.overall_result
+            ? "passed"
+            : "rejected"
+          : null,
+      created_at:
+        attempt.start_time || attempt.end_time || new Date().toISOString(),
+      attempt_data: attempt,
+    };
+  });
+};
+
+/** Fetch all attempts for selected date: only end_time + is_passed (same filters as list API). */
+const fetchAllAttemptsForExport = async (endDate) => {
+  const batchSize = 500;
+  const collected = [];
+  let page = 1;
+
+  while (true) {
+    const response = await getAttemptsApi({
+      end_time: endDate,
+      is_passed: true,
+      page,
+      page_size: batchSize,
+    });
+
+    const attempts = Array.isArray(response)
+      ? response
+      : response?.results || response?.data || [];
+
+    const total =
+      typeof response?.count === "number"
+        ? response.count
+        : attempts.length;
+
+    collected.push(...mapAttemptsToResults(attempts, endDate));
+
+    if (collected.length >= total || attempts.length === 0) break;
+    page += 1;
+  }
+
+  return collected;
+};
+
 const TilSuhbati = () => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
@@ -150,98 +265,7 @@ const TilSuhbati = () => {
           ? response.count
           : (Array.isArray(attempts) ? attempts.length : 0);
 
-      // Helper function to safely extract string value from potentially object values
-      const getStringValue = (value) => {
-        if (!value) return null;
-        if (typeof value === 'string') return value;
-        if (typeof value === 'object') {
-          // If it's an object, try to extract a meaningful string value
-          return value.title || value.name || value.task || value.level || String(value);
-        }
-        return String(value);
-      };
-
-      // Map API response to component's expected structure
-      const mappedResults = attempts.map((attempt) => {
-        // Get vacancy title from application - new structure uses title_uz, title_ru, title_cr
-        const vacancyTitle = 
-          attempt.application?.vacancy?.title_uz || 
-          attempt.application?.vacancy?.title_ru ||
-          attempt.application?.vacancy?.title_cr ||
-          attempt.application?.job?.title ||
-          attempt.application?.vacancy?.title ||
-          attempt.test?.title ||
-          "Ma'lumot yo'q";
-
-        // Get required language levels from vacancy - new structure uses lan_requirements_ru and lan_requirements_eng
-        // These can be "not_required" or actual levels like "A1", "A2", "B1", etc.
-        const lanRequirementsRu = attempt.application?.vacancy?.lan_requirements_ru;
-        const lanRequirementsEng = attempt.application?.vacancy?.lan_requirements_eng;
-        
-        // Convert "not_required" or empty/null to null, otherwise use the level
-        // Ensure we're working with strings (not arrays or objects)
-        const requiredRussianLevel =
-          typeof lanRequirementsRu === "string" &&
-          lanRequirementsRu !== "not_required" &&
-          lanRequirementsRu.trim() !== ""
-            ? lanRequirementsRu.trim()
-            : null;
-        const requiredEnglishLevel =
-          typeof lanRequirementsEng === "string" &&
-          lanRequirementsEng !== "not_required" &&
-          lanRequirementsEng.trim() !== ""
-            ? lanRequirementsEng.trim()
-            : null;
-
-        // Extract meeting details from API response
-        const meetingDetails = attempt.meeting_details || null;
-        const meetLinkSent = meetingDetails !== null;
-
-        // Get actual language levels - ONLY from actual_russian_level and actual_english_level
-        // These are set by admin after evaluation, user_languages is just informational
-        const russianLevel = attempt.actual_russian_level;
-        const englishLevel = attempt.actual_english_level;
-        
-        // Extract user languages (self-assessment) for informational purposes
-        const userLanguages = attempt.user_languages || null;
-
-        return {
-          id: attempt.id,
-          user_name:
-            attempt.application?.full_name ||
-            "Ma'lumot yo'q",
-          phone_number: attempt.chat?.phone_number || "Ma'lumot yo'q",
-          vacancy_title: vacancyTitle,
-          test_passed: attempt.is_passed || false,
-          test_date:
-            attempt.start_time || attempt.end_time || new Date().toISOString(),
-          interview_date: selectedDate, // Use selected date as interview date
-          meet_link: meetingDetails?.meet_link || null,
-          meet_link_sent: meetLinkSent,
-          meet_interview_date: meetingDetails?.meet_date || null,
-          meet_interview_time: meetingDetails?.meet_time ? getStringValue(meetingDetails.meet_time) : null,
-          meeting_details: meetingDetails, // Store full meeting details
-          meeting_attended: attempt.attend !== null ? attempt.attend : null, // From API
-          russian_level: russianLevel ? String(russianLevel) : null, // From actual_russian_level - set by admin after evaluation
-          english_level: englishLevel ? String(englishLevel) : null, // From actual_english_level - set by admin after evaluation
-          required_russian_level: requiredRussianLevel,
-          required_english_level: requiredEnglishLevel,
-          user_languages: userLanguages, // User's self-assessment of languages (informational only)
-          overall_result:
-            attempt.overall_result !== null ? attempt.overall_result : null, // From API
-          passed:
-            attempt.overall_result !== null ? attempt.overall_result : null, // Use overall_result as passed
-          status:
-            attempt.overall_result !== null
-              ? attempt.overall_result
-                ? "passed"
-                : "rejected"
-              : null,
-          created_at:
-            attempt.start_time || attempt.end_time || new Date().toISOString(),
-          attempt_data: attempt, // Store original attempt data for reference
-        };
-      });
+      const mappedResults = mapAttemptsToResults(attempts, selectedDate);
 
       setResults(mappedResults);
       setTotalCount(countFromApi);
@@ -373,62 +397,78 @@ const TilSuhbati = () => {
     }
   };
 
-  // Export to Excel
-  const exportToExcel = () => {
-    const dataToExport = showPassedOnly
-      ? filtered.filter((r) => r.passed)
-      : filtered;
-
-    if (dataToExport.length === 0) {
-      toast.error("Eksport qilish uchun ma'lumot yo'q");
+  // Export to Excel — barcha yozuvlar: API faqat end_time + is_passed=true (sahifadan mustaqil)
+  const exportToExcel = async () => {
+    if (!selectedDate) {
+      toast.error("Sanani tanlang");
       return;
     }
 
-    // Helper to safely get string value
     const safeString = (value) => {
       if (!value) return "Ma'lumot yo'q";
-      if (typeof value === 'string') return value;
-      if (typeof value === 'object') {
-        return value.title || value.name || value.task || value.level || String(value);
+      if (typeof value === "string") return value;
+      if (typeof value === "object") {
+        return (
+          value.title || value.name || value.task || value.level || String(value)
+        );
       }
       return String(value);
     };
 
-    // Prepare data for Excel
-    const excelData = dataToExport.map((result, index) => ({
-      "T/r": index + 1,
-      Foydalanuvchi: safeString(result.user_name),
-      "Telefon raqami": safeString(result.phone_number),
-      Vakansiya: safeString(result.vacancy_title),
-      "Rus tili": safeString(result.russian_level),
-      "Ingliz tili": safeString(result.english_level),
-      "Talab qilinadigan rus tili": safeString(result.required_russian_level),
-      "Talab qilinadigan ingliz tili": safeString(result.required_english_level),
-      Holat:
-        result.meeting_attended === false
-          ? "Rad etildi (Meetingga qatnashmadi)"
-          : result.russian_level && typeof result.russian_level === 'string' && result.english_level && typeof result.english_level === 'string'
-          ? result.passed
-            ? "O'tdi"
-            : "Rad etildi"
-          : "Kutilmoqda",
-      Sana: formatDate(result.interview_date || result.created_at),
-    }));
+    const loadingId = toast.loading("Excel uchun ma'lumotlar yuklanmoqda...");
 
-    // Create workbook and worksheet
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Til suhbati natijalari");
+    try {
+      const allRows = await fetchAllAttemptsForExport(selectedDate);
 
-    // Generate filename with date
-    const dateStr = selectedDate
-      ? new Date(selectedDate).toLocaleDateString("uz-UZ").replace(/\//g, "-")
-      : "barcha";
-    const filename = `til-suhbati-natijalari-${dateStr}.xlsx`;
+      const dataToExport = showPassedOnly
+        ? allRows.filter((r) => r.passed)
+        : allRows;
 
-    // Save file
-    XLSX.writeFile(wb, filename);
-    toast.success("Excel fayl muvaffaqiyatli yuklab olindi");
+      if (dataToExport.length === 0) {
+        toast.dismiss(loadingId);
+        toast.error("Eksport qilish uchun ma'lumot yo'q");
+        return;
+      }
+
+      const excelData = dataToExport.map((result, index) => ({
+        "T/r": index + 1,
+        Foydalanuvchi: safeString(result.user_name),
+        "Telefon raqami": safeString(result.phone_number),
+        Vakansiya: safeString(result.vacancy_title),
+        "Rus tili": safeString(result.russian_level),
+        "Ingliz tili": safeString(result.english_level),
+        "Talab qilinadigan rus tili": safeString(result.required_russian_level),
+        "Talab qilinadigan ingliz tili": safeString(result.required_english_level),
+        Holat:
+          result.meeting_attended === false
+            ? "Rad etildi (Meetingga qatnashmadi)"
+            : result.russian_level &&
+                typeof result.russian_level === "string" &&
+                result.english_level &&
+                typeof result.english_level === "string"
+              ? result.passed
+                ? "O'tdi"
+                : "Rad etildi"
+              : "Kutilmoqda",
+        Sana: formatDate(result.interview_date || result.created_at),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Til suhbati natijalari");
+
+      const dateStr = selectedDate
+        ? new Date(selectedDate).toLocaleDateString("uz-UZ").replace(/\//g, "-")
+        : "barcha";
+      const filename = `til-suhbati-natijalari-${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      toast.dismiss(loadingId);
+      toast.success("Excel fayl muvaffaqiyatli yuklab olindi");
+    } catch (err) {
+      toast.dismiss(loadingId);
+      toast.error(err?.message || "Ma'lumotlarni yuklashda xatolik yuz berdi");
+    }
   };
 
   const formatDate = (dateString) => {
@@ -801,7 +841,7 @@ const TilSuhbati = () => {
           {/* Excel Export Button */}
           <button
             onClick={exportToExcel}
-            disabled={filtered.length === 0}
+            disabled={!selectedDate}
             className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg

@@ -16,26 +16,46 @@ const UmumiyNatijalar = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const PAGE_SIZE_STORAGE_KEY = "umumiy_natijalar_page_size";
+  const DATE_STORAGE_KEY = "umumiy_natijalar_selected_date";
+  const ALLOWED_PAGE_SIZES = [10, 20, 50, 100];
+
   const [results, setResults] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+    const parsed = saved ? Number(saved) : NaN;
+    return ALLOWED_PAGE_SIZES.includes(parsed) ? parsed : 10;
+  });
   const [query, setQuery] = useState("");
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const saved = localStorage.getItem(DATE_STORAGE_KEY);
+    if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+    return getTodayDate();
+  });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchResults();
     document.title = "Umumiy natijalar - Markaziy Bank Administratsiyasi";
   }, []);
 
   useEffect(() => {
-    // When date changes, refetch results
     fetchResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, page, pageSize]);
+
+  useEffect(() => {
+    localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
+  }, [pageSize]);
+
+  useEffect(() => {
+    if (selectedDate) localStorage.setItem(DATE_STORAGE_KEY, selectedDate);
   }, [selectedDate]);
 
   const fetchResults = async () => {
@@ -45,19 +65,28 @@ const UmumiyNatijalar = () => {
 
       if (!selectedDate) {
         setResults([]);
-        setPage(1);
+        setTotalCount(0);
         setLoading(false);
         return;
       }
 
       // Call API with selected date and overall_result filter
       const response = await getAttemptsApi({
+        page,
+        page_size: pageSize,
         end_time: selectedDate,
         overall_result: true,
       });
 
       // Extract results from API response
-      const attempts = response?.results || [];
+      const attempts = Array.isArray(response)
+        ? response
+        : response?.results || response?.data || [];
+
+      const countFromApi =
+        typeof response?.count === "number"
+          ? response.count
+          : (Array.isArray(attempts) ? attempts.length : 0);
 
       // Map API response to component format (backend already filters by overall_result === true)
       const mappedResults = attempts.map((attempt) => {
@@ -151,7 +180,7 @@ const UmumiyNatijalar = () => {
         });
 
       setResults(mappedResults);
-      setPage(1);
+      setTotalCount(countFromApi);
     } catch (error) {
       console.error("Error fetching overall results:", error);
       setError(
@@ -159,6 +188,7 @@ const UmumiyNatijalar = () => {
       );
       toast.error("Umumiy natijalarni yuklashda xatolik yuz berdi");
       setResults([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -370,7 +400,7 @@ const UmumiyNatijalar = () => {
     );
   }
 
-  // Filter and paginate results
+  // Filter results (backend pagination; filter applies to current page only)
   const q = query.trim().toLowerCase();
   const filtered = results.filter((result) => {
     // Date filter (API already filters by date, but keeping for consistency)
@@ -385,13 +415,11 @@ const UmumiyNatijalar = () => {
     return true;
   });
 
-  const total = filtered.length;
   const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginated = filtered.slice(startIndex, endIndex);
-  const showingStart = total === 0 ? 0 : startIndex + 1;
-  const showingEnd = Math.min(endIndex, total);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const paginated = filtered;
+  const showingStart = (totalCount || 0) === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(startIndex + results.length, totalCount || 0);
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
 
   return (
     <div className="space-y-6">
@@ -535,7 +563,7 @@ const UmumiyNatijalar = () => {
             }}
             className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
           >
-            {[5, 10, 15, 20, 50].map((s) => (
+            {ALLOWED_PAGE_SIZES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -687,7 +715,7 @@ const UmumiyNatijalar = () => {
           {/* Pagination controls */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${total}`}
+              {`Ko'rsatilmoqda ${showingStart}-${showingEnd} / ${totalCount || 0}`}
             </div>
             <div className="flex items-center space-x-2">
               <button
