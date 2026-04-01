@@ -220,6 +220,8 @@ const UmumiyNatijalar = () => {
               attempt.final_interview_candidate_choice === "online"
                 ? attempt.final_interview_online_meet_link || null
                 : null,
+            final_interview_status_regional:
+              attempt.final_interview_status_regional || null,
             // Store original attempt data for potential updates
             _originalAttempt: attempt,
           };
@@ -720,12 +722,20 @@ const UmumiyNatijalar = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Til suhbati
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Suhbat shakli
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Suhbat vaqti
-                    </th>
+                    {branchType === "regional" ? (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Bildirishnoma
+                      </th>
+                    ) : (
+                      <>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Suhbat shakli
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Suhbat vaqti
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -767,47 +777,65 @@ const UmumiyNatijalar = () => {
                           {formatDate(result.language_interview_date)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {result.interview_type === "onlayn" ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            Onlayn
-                          </span>
-                        ) : result.interview_type === "oflayn" ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                            Oflayn
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                            Kutilmoqda
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-gray-100">
-                          {result.final_meet_date && result.final_meet_time ? (
-                            <>
-                              <div>{formatDateOnly(result.final_meet_date)}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatTime(result.final_meet_time)}
-                              </div>
-                              {result.final_meet_link && (
-                                <a
-                                  href={result.final_meet_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate block max-w-[200px]"
-                                  title={result.final_meet_link}
-                                >
-                                  Meet havolasi
-                                </a>
-                              )}
-                            </>
+                      {branchType === "regional" ? (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {String(result.final_interview_status_regional || "")
+                            .toLowerCase()
+                            .trim() === "sent" ? (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                              Yuborildi
+                            </span>
                           ) : (
-                            <span className="text-gray-500 dark:text-gray-400">—</span>
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                              Kutilmoqda
+                            </span>
                           )}
-                        </div>
-                      </td>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {result.interview_type === "onlayn" ? (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                Onlayn
+                              </span>
+                            ) : result.interview_type === "oflayn" ? (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                Oflayn
+                              </span>
+                            ) : (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                Kutilmoqda
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                              {result.final_meet_date && result.final_meet_time ? (
+                                <>
+                                  <div>{formatDateOnly(result.final_meet_date)}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {formatTime(result.final_meet_time)}
+                                  </div>
+                                  {result.final_meet_link && (
+                                    <a
+                                      href={result.final_meet_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate block max-w-[200px]"
+                                      title={result.final_meet_link}
+                                    >
+                                      Meet havolasi
+                                    </a>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">—</span>
+                              )}
+                            </div>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
