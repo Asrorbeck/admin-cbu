@@ -72,40 +72,53 @@ const Murojaatlar = () => {
     }
   };
 
+  /** Backend: NEW, PENDING, IN_PROGRESS, CLOSED_ACCEPTED, CLOSED_REJECTED (eski: APPEAL_*) */
+  const normalizeAppealStatus = (s) => {
+    const v = String(s || "").toUpperCase();
+    if (v === "APPEAL_NEW" || v === "NEW") return "NEW";
+    if (v === "APPEAL_PENDING" || v === "PENDING") return "PENDING";
+    if (v === "APPEAL_IN_PROGRESS" || v === "IN_PROGRESS") return "IN_PROGRESS";
+    if (v === "APPEAL_CLOSED_ACCEPTED" || v === "CLOSED_ACCEPTED")
+      return "CLOSED_ACCEPTED";
+    if (v === "APPEAL_CLOSED_REJECTED" || v === "CLOSED_REJECTED")
+      return "CLOSED_REJECTED";
+    return v || "NEW";
+  };
+
   const getStatusBadge = (s) => {
-    const v = (s || "").toUpperCase();
-    if (v === "NEW")
+    const key = normalizeAppealStatus(s);
+    if (key === "NEW")
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+        <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
           Yangi
         </span>
       );
-    if (v === "APPEAL_PENDING")
+    if (key === "PENDING")
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+        <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
           Koʻrib chiqish kutilmoqda
         </span>
       );
-    if (v === "APPEAL_IN_PROGRESS")
+    if (key === "IN_PROGRESS")
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+        <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
           Jarayonda
         </span>
       );
-    if (v === "APPEAL_CLOSED_ACCEPTED")
+    if (key === "CLOSED_ACCEPTED")
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+        <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
           Qanoatlantirildi
         </span>
       );
-    if (v === "APPEAL_CLOSED_REJECTED")
+    if (key === "CLOSED_REJECTED")
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+        <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
           Rad etildi
         </span>
       );
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300">
+      <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300">
         {s || "Noma'lum"}
       </span>
     );
@@ -149,17 +162,15 @@ const Murojaatlar = () => {
     return pages;
   };
   const newCount = appeals.filter(
-    (a) => (a.status || "").toUpperCase() === "NEW"
+    (a) => normalizeAppealStatus(a.status) === "NEW"
   ).length;
   const answeredCount = appeals.filter(
-    (a) =>
-      (a.status || "").toUpperCase() === "APPEAL_CLOSED_ACCEPTED" ||
-      (a.status || "").toUpperCase() === "CLOSED_ACCEPTED"
+    (a) => normalizeAppealStatus(a.status) === "CLOSED_ACCEPTED"
   ).length;
 
   const handleRowClick = (a) => {
     setSelectedAppeal(a);
-    setStatusValue(String(a.status || "NEW").toUpperCase());
+    setStatusValue(normalizeAppealStatus(a.status));
     setIsModalOpen(true);
   };
   const closeModal = () => {
@@ -513,27 +524,22 @@ const Murojaatlar = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Holati
                     </p>
-                    <div className="mt-1 flex items-center gap-3">
+                    <div className="mt-1 flex flex-col gap-2">
                       <select
                         value={statusValue}
                         onChange={(e) => setStatusValue(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
+                        className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white"
                       >
                         <option value="NEW">Yangi</option>
-                        <option value="APPEAL_PENDING">
-                          Koʻrib chiqish kutilmoqda
-                        </option>
-                        <option value="APPEAL_IN_PROGRESS">Jarayonda</option>
-                        <option value="APPEAL_CLOSED_ACCEPTED">
-                          Qanoatlantirildi
-                        </option>
-                        <option value="APPEAL_CLOSED_REJECTED">
-                          Rad etildi
-                        </option>
+                        <option value="PENDING">Koʻrib chiqish kutilmoqda</option>
+                        <option value="IN_PROGRESS">Jarayonda</option>
+                        <option value="CLOSED_ACCEPTED">Qanoatlantirildi</option>
+                        <option value="CLOSED_REJECTED">Rad etildi</option>
                       </select>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Joriy: {getStatusBadge(selectedAppeal.status)}
-                      </span>
+                      <div className="flex min-w-0 items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="shrink-0">Joriy:</span>
+                        <span className="min-w-0">{getStatusBadge(selectedAppeal.status)}</span>
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -621,8 +627,7 @@ const Murojaatlar = () => {
                         message: selectedAppeal.message,
                         attachment: selectedAppeal.attachment,
                         created_at: selectedAppeal.created_at,
-                        // Backend formatiga mos: NEW, PENDING, IN_PROGRESS, CLOSED_ACCEPTED, CLOSED_REJECTED
-                        status: statusValue.toUpperCase(),
+                        status: normalizeAppealStatus(statusValue),
                       };
                       await toast.promise(
                         updateAppealApi(selectedAppeal.id, payload),
